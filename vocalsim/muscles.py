@@ -39,6 +39,7 @@ class FoldParams:
     a0: float      # 휴지기 성문 면적 (cm^2), 음수면 눌린 상태
     ps: float      # 성문하압 (dyn/cm^2)
     strain: float  # 성대 늘어난 비율
+    chink: float   # 뒤쪽 틈 면적 (cm^2): 진동과 상관없이 늘 새는 길
 
 
 def strain(ct, ta, lca):
@@ -67,5 +68,7 @@ def fold_params(ct, ta, lca, ps_cmh2o, base=1.6):
     # 내전: LCA 가 클수록 성문 간격 감소
     xi0 = 0.04 * (0.85 - lca)
     a0 = 2.0 * l * xi0
+    # LCA 가 약하면 피열연골 사이(성문 뒤쪽)가 벌어져 공기가 샌다
+    chink = 0.6 * max(0.0, a0 - 0.03)
     return FoldParams(m1, m2, k1, k2, kc, r1, r2, D1 * th, D2 * th, l, a0,
-                      ps_cmh2o * CMH2O, e)
+                      ps_cmh2o * CMH2O, e, chink)

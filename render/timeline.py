@@ -57,6 +57,7 @@ class Timeline:
                 "title": seg.get("title"),
                 "sub": seg.get("sub"),
                 "captions": [(t + float(a), t + float(b), txt) for a, b, txt in caps],
+                **{k: seg[k] for k in ("tag", "tick", "tick_label") if k in seg},
             })
             t += dur
         self.duration = t

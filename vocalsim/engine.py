@@ -6,6 +6,7 @@
 import math
 import numpy as np
 from numba import njit
+from scipy.signal import lfilter
 
 from .muscles import fold_params
 from . import tract
@@ -13,9 +14,10 @@ from . import tract
 FS = 44100
 OVERSAMPLE = 4
 BLOCK = 32  # 제어 파라미터 갱신 단위 (샘플)
+WALL_LOSS_HZ = 1200.0
 
 # 블록 파라미터 열 순서
-_COLS = ("m1", "m2", "k1", "k2", "kc", "r1", "r2", "d1", "d2", "l", "a0", "ps")
+_COLS = ("m1", "m2", "k1", "k2", "kc", "r1", "r2", "d1", "d2", "l", "a0", "ps", "chink")
 
 
 @njit(cache=True)
@@ -31,7 +33,8 @@ def _simulate(P, D, block, fs, os, seed):
     rho = 0.00114
     mu = 1.86e-4
     re_crit = 1200.0
-    noise_gain = 1.5e-6
+    noise_gain = 0.05
+    chink_gain = 0.15
     glot_refl = 0.75
     lip_refl = -0.85
     fade = 0.999
@@ -70,6 +73,7 @@ def _simulate(P, D, block, fs, os, seed):
         l = P[b, 9]
         a0 = P[b, 10]
         ps = P[b, 11]
+        chink = P[b, 12]
         h1 = 3.0 * k1
         h2 = 3.0 * k2
         rc1 = 2.0 * 1.0 * math.sqrt(m1 * k1)
@@ -106,7 +110,8 @@ def _simulate(P, D, block, fs, os, seed):
                 x1 += dt * v1
                 x2 += dt * v2
                 usum += vel * max(amin, 0.0)
-            U = usum / os
+            # 뒤쪽 틈(피열연골 사이)으로 늘 새는 공기
+            U = usum / os + vel * chink
 
             # 난류 잡음 (레이놀즈 수 기준)
             re = rho * U / (mu * l)
@@ -116,7 +121,9 @@ def _simulate(P, D, block, fs, os, seed):
             nl = lp_a * nl + (1.0 - lp_a) * nh
             noise = 0.0
             if re > re_crit:
-                noise = noise_gain * (re * re - re_crit * re_crit) * nl
+                # 난류 세기는 흐름에 비례, 임계 레이놀즈 수를 넘은 비율만큼만 (큰 소리라고 잡음이 더 커지진 않음)
+                noise = noise_gain * U * (1.0 - re_crit / re) * nl
+            noise += chink_gain * vel * chink * nl
 
             g = (U + noise) * gin
             lip = 0.0
@@ -167,8 +174,11 @@ def synthesize(ctrl, base=1.6, seed=1, fs=FS):
         fp = fold_params(ctrl.ct[b], ctrl.ta[b], ctrl.lca[b], ctrl.ps[b], base)
         q = 2.0 ** ((vib[b] + slow[b]) / 12.0)
         P[b] = (fp.m1 / q, fp.m2 / q, fp.k1 * q, fp.k2 * q, fp.kc * q, fp.r1, fp.r2,
-                fp.d1, fp.d2, fp.l, fp.a0, fp.ps)
+                fp.d1, fp.d2, fp.l, fp.a0, fp.ps, fp.chink)
     audio, x1, x2, u = _simulate(P, ctrl.diam, BLOCK, fs, OVERSAMPLE, seed)
+    # 성도 벽 점성/열 손실: 실제 목소리처럼 고음역이 완만하게 줄어들도록 1차 저역 통과
+    k = math.exp(-2 * math.pi * WALL_LOSS_HZ / fs)
+    audio = lfilter([1 - k], [1, -k], audio)
     return {"audio": audio, "x1": x1, "x2": x2, "u": u,
             "a0": P[:, 10], "l": P[:, 9], "fs": fs, "block": BLOCK}
 

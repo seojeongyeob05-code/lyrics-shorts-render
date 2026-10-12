@@ -196,7 +196,7 @@ class Renderer:
             c.text(40, 28, seg["title"] or "", 60, C_TEXT, "Bold")
             c.text(42, 104, seg["sub"] or "", 28, C_SUB)
             v = st["ctrl"][focus]
-            nv = NEUTRAL_UI[focus]
+            nv = seg.get("tick", NEUTRAL_UI[focus])
             if focus == "ps":
                 v, nv = v / PS_MAX, nv / PS_MAX
             x0, x1, y = 40, 1040, 160
@@ -204,11 +204,11 @@ class Renderer:
             c.rect(x0, y, x0 + max(22, (x1 - x0) * min(1, v)), y + 22, fill=C_GOLD, r=11)
             tx = x0 + (x1 - x0) * nv
             c.rect(tx - 2, y - 8, tx + 2, y + 30, fill=C_TEXT)
-            c.text(tx, y + 36, "정상", 22, C_SUB, anchor="ma")
+            c.text(tx, y + 36, seg.get("tick_label", "정상"), 22, C_SUB, anchor="ma")
         else:
-            c.text(40, 40, d_title(self.data), 50, C_TEXT, "Bold")
-            c.text(1040, 56, self.data["tag"], 26, C_SUB, anchor="ra")
-            c.text(42, 122, "숨 → 성대 → 목구멍과 입 → 소리", 28, C_SUB)
+            c.text(40, 40, seg.get("title") or d_title(self.data), 50, C_TEXT, "Bold")
+            c.text(1040, 56, seg.get("tag") or self.data["tag"], 26, C_SUB, anchor="ra")
+            c.text(42, 122, seg.get("sub") or "숨 → 성대 → 목구멍과 입 → 소리", 28, C_SUB)
         c.text(40, 228, "음높이 " + (f"{f0:.0f} Hz" if f0 else "—"), 42, C_TEXT, "Bold")
         c.text(1040, 228, "크기 " + (f"{db:.0f} dB" if db else "—"), 42, C_TEXT, "Bold", anchor="ra")
 
