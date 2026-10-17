@@ -1,0 +1,1621 @@
+<title>일반화학 데일리</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['$', '$']], displayMath: [['$$', '$$']] },
+  svg: { fontCache: 'global' },
+  options: { enableMenu: false },
+  startup: { typeset: false }
+};
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js" async></script>
+<style>
+/* Layout (teal = 일반화학, matching the 학습일지): one calm 520px column. Home = "continue" card on top, then each unit as a vertical timeline of lessons. Lesson = full-screen, question on top, action bar pinned to the bottom. */
+:root {
+  --bg: #F4F5F7;
+  --surface: #FFFFFF;
+  --sunken: #EEF0F3;
+  --ink: #15181D;
+  --ink-2: #3A404A;
+  --muted: #737B87;
+  --line: #E2E5EA;
+  --accent: #17716B;
+  --accent-ink: #FFFFFF;
+  --accent-soft: #DDF0EC;
+  --ok: #2F7D32;
+  --ok-soft: #E7F6EC;
+  --bad: #C2341F;
+  --bad-soft: #FCEBE7;
+  --flame: #EA6A12;
+  --radius: 16px;
+  --f-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0F1114; --surface: #181B20; --sunken: #20242A; --ink: #ECEEF1; --ink-2: #C3C8D0; --muted: #8B93A0;
+    --line: #2A2F37; --accent: #5CC3B9; --accent-ink: #062320; --accent-soft: #173A37; --ok: #7CCF80; --ok-soft: #12291C;
+    --bad: #FF8A73; --bad-soft: #2E1814; --flame: #FB923C; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0F1114; --surface: #181B20; --sunken: #20242A; --ink: #ECEEF1; --ink-2: #C3C8D0; --muted: #8B93A0;
+  --line: #2A2F37; --accent: #5CC3B9; --accent-ink: #062320; --accent-soft: #173A37; --ok: #7CCF80; --ok-soft: #12291C;
+  --bad: #FF8A73; --bad-soft: #2E1814; --flame: #FB923C; color-scheme: dark;
+}
+html, body { min-height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+button { font: inherit; color: inherit; cursor: pointer; background: none; border: 0; padding: 0; }
+button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wrap { box-sizing: border-box; width: 100%; max-width: 520px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+
+/* top bar */
+.topbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.topbar .wrap { display: flex; align-items: center; gap: 8px; padding-block: 14px; }
+.brand { flex: 1; min-width: 0; font-weight: 700; font-size: 17px; letter-spacing: -0.02em; }
+.pill { display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 11px 0 9px; border-radius: 99px; background: var(--surface); border: 1px solid var(--line); font-family: var(--f-mono); font-weight: 600; font-size: 14px; }
+.pill svg { width: 16px; height: 16px; }
+.pill.streak { color: var(--flame); }
+.pill.streak.off { color: var(--muted); }
+.pill.xp { color: var(--accent); }
+
+/* home */
+main.home { padding-block: 4px 64px; display: grid; gap: 28px; }
+.eyebrow { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; color: var(--muted); }
+.hero { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 20px; display: grid; gap: 18px; }
+.hero-top { display: flex; gap: 16px; align-items: center; }
+.hero-txt { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.hero h1 { margin: 0; font-size: 22px; line-height: 1.3; font-weight: 700; letter-spacing: -0.03em; text-wrap: balance; }
+.hero .meta { margin: 0; color: var(--muted); font-size: 14px; }
+.ring { flex: none; width: 64px; height: 64px; position: relative; }
+.ring svg { width: 64px; height: 64px; transform: rotate(-90deg); }
+.ring circle { fill: none; stroke-width: 6; }
+.ring .track { stroke: var(--sunken); }
+.ring .bar { stroke: var(--accent); stroke-linecap: round; transition: stroke-dashoffset .5s; }
+.ring.full .bar { stroke: var(--ok); }
+.ring span { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; font-size: 11px; line-height: 1.15; color: var(--muted); }
+.ring span b { display: block; font-family: var(--f-mono); font-size: 15px; color: var(--ink); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 52px; padding: 0 22px; border-radius: 14px; font-weight: 600; font-size: 16px; background: var(--accent); color: var(--accent-ink); transition: filter .15s, transform .1s; }
+.btn:hover { filter: brightness(1.06); }
+.btn:active { transform: scale(.985); }
+.btn:disabled { background: var(--sunken); color: var(--muted); cursor: default; filter: none; transform: none; }
+.btn.wide { width: 100%; }
+.btn.ok { background: var(--ok); color: var(--surface); }
+.btn.bad { background: var(--bad); color: var(--surface); }
+.review { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+.review .ic { flex: none; width: 40px; height: 40px; border-radius: 12px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; }
+.review .ic svg { width: 20px; height: 20px; }
+.review .tx { flex: 1; min-width: 0; display: grid; line-height: 1.35; }
+.review .tx b { font-weight: 600; }
+.review .tx span { font-size: 13px; color: var(--muted); }
+.review:disabled { cursor: default; }
+.review:disabled .ic { background: var(--sunken); color: var(--muted); }
+.chev { flex: none; width: 18px; height: 18px; color: var(--muted); }
+
+.unit { display: grid; gap: 12px; }
+.unit-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding-inline: 4px; }
+.unit-head h2 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }
+.unit-head span { font-family: var(--f-mono); font-size: 13px; color: var(--muted); }
+.unit-bar { height: 4px; border-radius: 99px; background: var(--line); overflow: hidden; margin-inline: 4px; }
+.unit-bar i { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
+.steps { list-style: none; margin: 0; padding: 6px 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.steps li { position: relative; }
+.steps li + li::before { content: ""; position: absolute; left: 33px; top: -10px; height: 20px; width: 2px; background: var(--line); }
+.steps li.was-done + li::before { background: var(--accent); }
+.row { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 10px 16px; border-radius: 12px; }
+.row:hover { background: var(--sunken); }
+.disc { position: relative; z-index: 1; flex: none; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-family: var(--f-mono); font-weight: 600; font-size: 13px; color: var(--muted); background: var(--surface); border: 2px solid var(--line); }
+.disc svg { width: 18px; height: 18px; }
+.row.done .disc { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.row.next .disc { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+.row .tx { flex: 1; min-width: 0; display: grid; line-height: 1.35; }
+.row .tx b { font-weight: 500; font-size: 15px; color: var(--ink); }
+.row .tx span { font-size: 12.5px; color: var(--muted); }
+.row.next .tx b { font-weight: 700; }
+.row.next .tx span { color: var(--accent); font-weight: 600; }
+.sync { font-size: 12px; color: var(--muted); text-align: center; margin: 0; }
+
+/* lesson screen */
+.lesson { position: fixed; inset: 0; z-index: 20; background: var(--bg); display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px); }
+.lesson-top { display: flex; align-items: center; gap: 14px; padding-block: 14px; flex: none; }
+.x { width: 36px; height: 36px; flex: none; border-radius: 10px; display: grid; place-items: center; color: var(--muted); }
+.x:hover { background: var(--sunken); color: var(--ink); }
+.x svg { width: 20px; height: 20px; }
+.prog { flex: 1; height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.prog i { display: block; height: 100%; background: var(--accent); border-radius: 99px; transition: width .35s; }
+.lesson-body { flex: 1; overflow-y: auto; }
+.lesson-body .wrap { display: grid; gap: 20px; align-content: start; padding-block: 12px 28px; }
+.qtext { font-size: 20px; line-height: 1.55; font-weight: 600; letter-spacing: -0.02em; margin: 0; overflow-x: auto; }
+.concept { display: grid; gap: 14px; }
+.concept h2 { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.03em; text-wrap: balance; }
+.concept ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; counter-reset: c; }
+.concept li { counter-increment: c; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px 14px 48px; position: relative; overflow-x: auto; color: var(--ink-2); }
+.concept li::before { content: counter(c); position: absolute; left: 16px; top: 15px; width: 22px; height: 22px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font: 600 12px/22px var(--f-mono); text-align: center; }
+.concept strong { color: var(--ink); font-weight: 700; }
+.concept a { justify-self: start; color: var(--accent); font-size: 14px; font-weight: 600; text-decoration: none; }
+.concept a:hover { text-decoration: underline; }
+.opts { display: grid; gap: 10px; }
+.opt { text-align: left; border: 1.5px solid var(--line); background: var(--surface); border-radius: 14px; padding: 14px 16px; display: flex; gap: 14px; align-items: center; min-width: 0; transition: border-color .12s, background .12s; }
+.opt:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.opt .k { flex: none; width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid var(--line); display: grid; place-items: center; font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
+.opt .t { min-width: 0; overflow-x: auto; }
+.opt.sel { border-color: var(--accent); background: var(--accent-soft); }
+.opt.sel .k { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+.opt.right { border-color: var(--ok); background: var(--ok-soft); }
+.opt.right .k { border-color: var(--ok); background: var(--ok); color: var(--surface); }
+.opt.wrong { border-color: var(--bad); background: var(--bad-soft); }
+.opt.wrong .k { border-color: var(--bad); background: var(--bad); color: var(--surface); }
+.opts.locked .opt { cursor: default; }
+.opts.locked .opt:not(.right):not(.wrong) { opacity: .55; }
+.answer-in { width: 100%; box-sizing: border-box; font: 500 20px var(--f-mono); padding: 14px 16px; border-radius: 14px; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); }
+.answer-in:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 4px var(--accent-soft); }
+.hint { font-size: 13px; color: var(--muted); margin-top: -10px; }
+.slots { min-height: 56px; border-radius: 14px; border: 1.5px dashed var(--line); padding: 8px; display: grid; gap: 8px; align-content: start; }
+.slots:empty { display: grid; place-items: center; }
+.slots:empty::before { content: "아래에서 단계를 순서대로 눌러주세요"; color: var(--muted); font-size: 14px; }
+.pool { display: grid; gap: 8px; }
+.chip { text-align: left; border: 1.5px solid var(--line); background: var(--surface); border-radius: 12px; padding: 11px 14px; display: flex; gap: 12px; align-items: baseline; min-width: 0; font-size: 15px; }
+.chip .t { min-width: 0; overflow-x: auto; }
+.chip .n { font-family: var(--f-mono); font-size: 12px; color: var(--accent); font-weight: 600; flex: none; }
+.slots .chip { border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); }
+.chip.used { visibility: hidden; }
+
+.sheet { flex: none; background: var(--bg); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); transition: background .15s; }
+.sheet .wrap { padding-block: 16px; display: grid; gap: 12px; }
+.sheet.ok { background: var(--ok-soft); border-color: transparent; }
+.sheet.bad { background: var(--bad-soft); border-color: transparent; }
+.verdict { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 18px; font-weight: 700; }
+.verdict i { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; color: var(--surface); }
+.verdict i svg { width: 16px; height: 16px; }
+.sheet.ok .verdict { color: var(--ok); } .sheet.ok .verdict i { background: var(--ok); }
+.sheet.bad .verdict { color: var(--bad); } .sheet.bad .verdict i { background: var(--bad); }
+.explain { margin: 0; font-size: 15px; color: var(--ink-2); overflow-x: auto; max-height: 34vh; overflow-y: auto; }
+.explain b { color: var(--ink); }
+
+.finish { text-align: center; display: grid; gap: 10px; justify-items: center; padding-block: 48px 8px; }
+.finish .badge { width: 72px; height: 72px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; margin-bottom: 8px; }
+.finish .badge svg { width: 34px; height: 34px; }
+.finish h2 { font-size: 28px; font-weight: 700; letter-spacing: -0.03em; margin: 0; }
+.finish p { margin: 0; color: var(--muted); }
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; margin-top: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.tile { padding: 16px 6px; display: grid; gap: 2px; }
+.tile + .tile { border-left: 1px solid var(--line); }
+.tile b { font-family: var(--f-mono); font-size: 22px; font-weight: 600; }
+.tile span { font-size: 12px; color: var(--muted); }
+.tile.xp b { color: var(--accent); }
+.tile.acc b { color: var(--ok); }
+.tile.st b { color: var(--flame); }
+.term { cursor: help; text-decoration: underline dotted; text-decoration-color: color-mix(in srgb, var(--accent) 70%, transparent); text-decoration-thickness: 2px; text-underline-offset: 4px; border-radius: 4px; }
+.term:hover { background: var(--accent-soft); }
+.gloss { position: fixed; inset: 0; z-index: 40; background: rgba(10, 14, 20, 0.42); display: flex; align-items: flex-end; justify-content: center; }
+.gloss-card { box-sizing: border-box; width: 100%; max-width: 520px; background: var(--surface); border-radius: 20px 20px 0 0; padding: 14px max(20px, env(safe-area-inset-right, 0px)) calc(24px + env(safe-area-inset-bottom, 0px)) max(20px, env(safe-area-inset-left, 0px)); display: grid; gap: 6px; animation: rise .2s ease-out; }
+.gloss-head { display: flex; align-items: center; justify-content: space-between; }
+.gloss-head .x { margin-right: -8px; }
+.gloss h3 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+.gloss p { margin: 0; color: var(--ink-2); overflow-x: auto; }
+mjx-container { font-size: 106% !important; }
+mjx-container[display="true"] { margin: .4em 0 !important; overflow-x: auto; overflow-y: hidden; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+@keyframes rise { from { transform: translateY(6px); opacity: .4 } to { transform: none; opacity: 1 } }
+.rise { animation: rise .2s ease-out; }
+</style>
+
+<header class="topbar">
+  <div class="wrap">
+    <div class="brand">일반화학 데일리</div>
+    <span class="pill streak off" id="st-streak" title="연속 학습일"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c1 3.5-1.5 5-1.5 7.5 0 1.2.8 2 1.8 2 1.5 0 2.2-1.4 1.7-3.3C17 10 19 13 19 15.5 19 19.6 15.9 22 12 22s-7-2.4-7-6.5C5 10.6 10 8 12 2z"/></svg><span id="st-streak-n">0</span></span>
+    <span class="pill xp" title="총 XP"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/></svg><span id="st-xp">0</span></span>
+  </div>
+</header>
+
+<main class="home wrap" id="home">
+  <section class="hero" aria-label="이어서 학습">
+    <div class="hero-top">
+      <div class="hero-txt">
+        <span class="eyebrow" id="hero-eyebrow">이어서 학습</span>
+        <h1 id="hero-title">1장 화학의 기초</h1>
+        <p class="meta" id="hero-meta">기초 · 6문제 · 약 4분</p>
+      </div>
+      <div class="ring" id="ring" title="오늘 목표">
+        <svg viewBox="0 0 64 64" aria-hidden="true"><circle class="track" cx="32" cy="32" r="27"/><circle class="bar" id="ring-bar" cx="32" cy="32" r="27" stroke-dasharray="169.6" stroke-dashoffset="169.6"/></svg>
+        <span><b id="ring-n">0</b>/30 XP</span>
+      </div>
+    </div>
+    <button class="btn wide" id="hero-btn" type="button">레슨 시작</button>
+  </section>
+  <button class="review" id="review-btn" type="button">
+    <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></span>
+    <span class="tx"><b>틀린 문제 복습</b><span id="review-sub">복습할 문제가 없어요</span></span>
+    <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+  </button>
+  <div id="units" style="display:grid;gap:28px"></div>
+  <p class="sync" id="sync">진도는 이 브라우저에 저장 중</p>
+</main>
+
+<div class="gloss" id="gloss" hidden role="dialog" aria-modal="true" aria-labelledby="gloss-term">
+  <div class="gloss-card">
+    <div class="gloss-head"><span class="eyebrow">용어 설명</span><button class="x" id="gloss-close" type="button" aria-label="닫기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+    <h3 id="gloss-term"></h3>
+    <p id="gloss-def"></p>
+  </div>
+</div>
+
+<section class="lesson" id="lesson" hidden>
+  <div class="wrap lesson-top">
+    <button class="x" id="quit" type="button" aria-label="레슨 나가기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    <div class="prog" aria-hidden="true"><i id="prog-fill" style="width:0%"></i></div>
+  </div>
+  <div class="lesson-body" id="lesson-body"><div class="wrap" id="stage"></div></div>
+  <div class="sheet" id="sheet"><div class="wrap" id="sheet-inner"></div></div>
+</section>
+
+<script type="text/plain" id="course">
+## 1 | 기초 | 화학의 기초
+c: **유효숫자** 세기: 앞쪽 0은 세지 않고, 사이에 낀 0은 세고, 소수점이 있을 때 뒤쪽 0은 세요. $0.00450$ 은 3개예요.
+c: 곱셈·나눗셈은 유효숫자 **개수**가 가장 적은 값에 맞추고, 덧셈·뺄셈은 **소수점 자리**가 가장 적은 값에 맞춰요.
+c: 온도 변환: $T(\text{K}) = T(^\circ\text{C}) + 273.15$, $T(^\circ\text{F}) = 1.8\,T(^\circ\text{C}) + 32$. 밀도 $d = m/V$.
+Q in
+q: $0.004050$ 의 유효숫자는 몇 개일까요?
+a: 4
+e: 앞의 0 세 개는 자리만 잡아줘요. 4, 0, 5, 0 이 유효숫자예요. 마지막 0은 소수점 뒤에 있으니 세요.
+Q mc
+q: $12.11 + 18.0 + 1.013$ 을 유효숫자에 맞게 쓰면?
+a: $31.1$
+w: $31.123$
+w: $31.12$
+w: $31$
+e: 덧셈은 소수점 자리가 가장 적은 $18.0$ (첫째 자리)에 맞춰요. $31.123 \to 31.1$
+Q mc
+q: $4.56 \times 1.4$ 를 유효숫자에 맞게 쓰면?
+a: $6.4$
+w: $6.38$
+w: $6.384$
+w: $6$
+e: 곱셈은 유효숫자 개수가 가장 적은 $1.4$ (2개)에 맞춰요. $6.384 \to 6.4$
+Q in
+q: 25 °C 는 몇 K일까요?
+a: 298.15 ; 298
+e: $25 + 273.15 = 298.15\ \text{K}$
+Q in
+q: 밀도 2.70 g/cm³ 인 알루미늄 5.40 g 의 부피는 몇 cm³?
+a: 2.00 ; 2
+e: $V = m/d = 5.40 / 2.70 = 2.00\ \text{cm}^3$
+Q mc
+q: 측정값들이 서로 아주 가깝지만 참값과는 멀리 떨어져 있다면?
+a: 정밀하지만 정확하지 않다
+w: 정확하지만 정밀하지 않다
+w: 정확하고 정밀하다
+w: 정확하지도 정밀하지도 않다
+e: 정밀도는 측정값끼리의 일치, 정확도는 참값과의 일치예요. 이런 경우는 대개 계통 오차 때문이에요.
+
+## 2 | 기초 | 원자·분자·이온
+c: **원자번호** $Z$ = 양성자 수, **질량수** $A$ = 양성자 + 중성자. 표기 $^{A}_{Z}\text{X}$
+c: **동위원소**는 $Z$ 가 같고 중성자 수(그래서 $A$)가 다른 원자예요.
+c: 원자 모형의 역사: 톰슨 음극선(전자 발견) → 밀리컨 기름방울(전자 전하) → 러더퍼드 금박 실험(원자핵 발견)
+c: 이온 화합물은 전하 합이 0이 되게 써요. 다원자 이온이 2개 이상이면 괄호: Ca₃(PO₄)₂
+Q in
+q: $^{56}_{26}\text{Fe}^{2+}$ 의 중성자 수는?
+a: 30
+e: $A - Z = 56 - 26 = 30$. 이온 전하는 중성자 수와 상관없어요.
+Q in
+q: $^{56}_{26}\text{Fe}^{2+}$ 의 전자 수는?
+a: 24
+e: 중성이면 26개인데 $2+$ 이니 전자 2개를 잃었어요.
+Q mc
+q: 원자핵의 존재를 밝힌 실험은?
+a: 러더퍼드의 금박 실험
+w: 밀리컨의 기름방울 실험
+w: 톰슨의 음극선 실험
+w: 돌턴의 원자설
+e: 대부분의 α 입자는 통과하고 극소수만 크게 튕겨 나와서, 작고 무거운 양전하 핵이 있다는 결론이 나왔어요.
+Q mc
+q: 같은 원소의 동위원소끼리 **다른** 것은?
+a: 중성자 수
+w: 양성자 수
+w: 원자번호
+w: 중성 원자의 전자 수
+e: 양성자 수가 같으니 원소가 같고, 중성자 수만 달라서 질량이 달라요.
+Q mc
+q: Ca²⁺ 와 PO₄³⁻ 로 이루어진 화합물의 화학식은?
+a: Ca₃(PO₄)₂
+w: CaPO₄
+w: Ca₂(PO₄)₃
+w: Ca₃PO₄
+e: $3 \times (+2) + 2 \times (-3) = 0$. 전하를 교차해서 아래 첨자로 써도 돼요.
+
+## 3 | 기초 | 화학량론
+c: 1 mol = $6.022 \times 10^{23}$ 개 (아보가드로 수). **몰질량** $M$ (g/mol)으로 $n = m/M$
+c: **실험식** 구하기: 질량 % → 각 원소의 mol → 가장 작은 값으로 나누기 → 정수비
+c: **한계 반응물**: 먼저 다 떨어지는 반응물이 생성물 양을 정해요. **수득률** = 실제 수득량 / 이론 수득량 × 100
+Q in
+q: H₂O 의 몰질량은? (H = 1.008, O = 16.00, g/mol)
+a: 18.02
+e: $2(1.008) + 16.00 = 18.016 \approx 18.02$
+Q in
+q: CO₂ 88 g 은 몇 mol? (C = 12, O = 16)
+a: 2
+e: $M = 44$ g/mol, $88 / 44 = 2$
+Q mc
+q: C 40.0%, H 6.7%, O 53.3% 인 화합물의 실험식은?
+a: CH₂O
+w: CHO
+w: C₂H₄O
+w: CH₃O
+e: 100 g 기준: C $40.0/12.01 = 3.33$, H $6.7/1.008 = 6.6$, O $53.3/16.00 = 3.33$ → 1 : 2 : 1
+Q in
+q: C₃H₈ + ☐O₂ → 3CO₂ + 4H₂O 에서 O₂ 의 계수는?
+a: 5
+e: 오른쪽 O 원자: $3 \times 2 + 4 \times 1 = 10$개 → O₂ 5개
+Q mc
+q: 2H₂ + O₂ → 2H₂O 에서 H₂ 4 mol, O₂ 3 mol 로 시작하면 한계 반응물은?
+a: H₂
+w: O₂
+w: H₂O
+w: 둘 다 정확히 소모된다
+e: H₂ 4 mol 은 O₂ 2 mol 만 필요해요. O₂ 1 mol 이 남으니 H₂ 가 먼저 떨어져요.
+Q in
+q: 위 반응에서 생기는 H₂O 는 몇 mol?
+a: 4
+e: 한계 반응물 H₂ 기준: H₂ : H₂O = 2 : 2
+Q in
+q: 이론 수득량이 50 g 인데 40 g 을 얻었다면 수득률은 몇 %?
+a: 80
+e: $40 / 50 \times 100 = 80\%$
+Q ord
+q: 질량 % 로 실험식을 구하는 순서를 쌓아보세요.
+s: 시료를 100 g 으로 보고 % 를 g 으로 바꾼다
+s: 각 원소의 질량을 몰질량으로 나눠 mol 을 구한다
+s: 가장 작은 mol 수로 모두 나눈다
+s: 정수비로 맞춰 실험식을 쓴다
+e: 1.5 같은 값이 나오면 전체에 2를 곱해서 정수로 만들어요.
+
+## 4 | 기초 | 수용액 반응과 용액 화학량론
+c: **몰농도** $M = \dfrac{\text{용질 mol}}{\text{용액 L}}$. 희석은 $M_1V_1 = M_2V_2$
+c: 세 가지 반응: 침전 반응, 산-염기(중화) 반응, 산화-환원 반응
+c: 구경꾼 이온을 빼고 실제로 반응하는 이온만 쓴 것이 **알짜 이온 반응식**이에요.
+c: **산화수** 규칙: 홑원소는 0, O 는 보통 −2, H 는 보통 +1, 전체 합은 전하와 같아요. 산화 = 전자 잃음(산화수 증가), 환원 = 전자 얻음
+Q in
+q: NaOH 0.40 mol 을 녹여 용액 2.0 L 를 만들면 몰농도(M)는?
+a: 0.20 ; 0.2
+e: $0.40 / 2.0 = 0.20\ \text{M}$
+Q in
+q: 6.0 M HCl 50 mL 를 물로 희석해 300 mL 로 만들면 몇 M?
+a: 1.0 ; 1
+e: $6.0 \times 50 = M_2 \times 300 \Rightarrow M_2 = 1.0\ \text{M}$
+Q mc
+q: AgNO₃(aq) 와 NaCl(aq) 을 섞을 때의 알짜 이온 반응식은?
+a: Ag⁺(aq) + Cl⁻(aq) → AgCl(s)
+w: Na⁺(aq) + NO₃⁻(aq) → NaNO₃(s)
+w: AgNO₃(aq) + NaCl(aq) → AgCl(s) + NaNO₃(aq)
+w: Ag(s) + Cl₂(g) → AgCl(s)
+e: Na⁺ 와 NO₃⁻ 는 구경꾼 이온이에요. 세 번째는 분자 반응식이에요.
+Q in
+q: KMnO₄ 에서 Mn 의 산화수는?
+a: 7 ; +7
+e: $(+1) + x + 4(-2) = 0 \Rightarrow x = +7$
+Q mc
+q: Zn(s) + Cu²⁺(aq) → Zn²⁺(aq) + Cu(s) 에서 산화되는 것은?
+a: Zn
+w: Cu²⁺
+w: Zn²⁺
+w: Cu
+e: Zn 의 산화수가 0 → +2 로 증가했어요. Zn 은 환원제이기도 해요.
+Q in
+q: 0.10 M HCl 25.0 mL 를 중화하려면 0.050 M NaOH 가 몇 mL 필요할까요?
+a: 50
+e: HCl mol $= 0.10 \times 0.0250 = 0.0025$, NaOH 부피 $= 0.0025 / 0.050 = 0.050\ \text{L}$
+
+## 5 | 기체·열 | 기체
+c: 이상 기체 법칙 $PV = nRT$, $R = 0.08206\ \text{L·atm/(mol·K)}$. STP(0 °C, 1 atm)에서 1 mol 은 22.4 L
+c: 보일 $P_1V_1 = P_2V_2$, 샤를 $V/T$ 일정. 온도는 꼭 K 로!
+c: **분압** 법칙: $P_\text{total} = \sum P_i$, $P_i = \chi_i P_\text{total}$
+c: 분자 운동론: 평균 운동에너지 $\propto T$, $u_\text{rms} = \sqrt{3RT/M}$. 그레이엄 법칙: 분출 속도 $\propto 1/\sqrt{M}$
+c: 실제 기체: **반데르발스** 식 $\left[P + a\left(\frac{n}{V}\right)^2\right](V - nb) = nRT$
+Q in
+q: STP 에서 이상 기체 2.0 mol 의 부피는 몇 L?
+a: 44.8
+e: $2.0 \times 22.4 = 44.8\ \text{L}$
+Q in
+q: 온도가 일정할 때 2.0 atm, 4.0 L 인 기체를 1.0 atm 으로 하면 부피는 몇 L?
+a: 8.0 ; 8
+e: 보일 법칙: $2.0 \times 4.0 = 1.0 \times V_2$
+Q mc
+q: 압력이 일정할 때 27 °C → 327 °C 로 가열하면 부피는?
+a: 2배
+w: 약 12배
+w: 절반
+w: 변하지 않는다
+e: K 로 바꾸면 300 K → 600 K. 섭씨로 계산하면 12배라는 함정에 빠져요.
+Q mc
+q: 같은 조건에서 He(4 g/mol) 의 분출 속도는 CH₄(16 g/mol) 의 몇 배?
+a: 2배
+w: 4배
+w: 1/2배
+w: 1/4배
+e: $\sqrt{16/4} = 2$. 가벼울수록 빨라요.
+Q in
+q: N₂ 0.80 mol, O₂ 0.20 mol 혼합 기체의 전체 압력이 5.0 atm 이면 O₂ 의 분압(atm)은?
+a: 1.0 ; 1
+e: $\chi_{\text{O}_2} = 0.20$, $0.20 \times 5.0 = 1.0\ \text{atm}$
+Q mc
+q: 반데르발스 식의 상수 $a$ 가 보정하는 것은?
+a: 분자 사이의 인력
+w: 분자 자체의 부피
+w: 기체 분자의 질량
+w: 용기 벽의 온도
+e: $b$ 는 분자 부피 보정이에요. 인력 때문에 실제 압력은 이상 기체보다 작아져서 $P$ 에 더해 줘요.
+Q mc
+q: 실제 기체가 이상 기체에 가장 가깝게 행동하는 조건은?
+a: 고온, 저압
+w: 저온, 고압
+w: 고온, 고압
+w: 저온, 저압
+e: 저압이면 분자 부피를 무시할 수 있고, 고온이면 인력을 무시할 수 있어요.
+
+## 6 | 기체·열 | 열화학
+c: 내부 에너지 $\Delta E = q + w$ (계 기준). 팽창 일 $w = -P\Delta V$
+c: **엔탈피** 변화 $\Delta H = q_p$. $\Delta H < 0$ 발열, $\Delta H > 0$ 흡열
+c: 열량 $q = mc\Delta T$. 물의 **비열**은 $4.18\ \text{J/(g·°C)}$
+c: **헤스 법칙**: 단계를 더하면 $\Delta H$ 도 더해져요. 반응을 뒤집으면 부호 반대, $n$배 하면 $\Delta H$ 도 $n$배
+c: $\Delta H^\circ_\text{rxn} = \sum n\,\Delta H^\circ_f(\text{생성물}) - \sum n\,\Delta H^\circ_f(\text{반응물})$. 표준 상태 원소의 $\Delta H^\circ_f = 0$
+Q in
+q: 물 100 g 을 20 °C 에서 30 °C 로 데우는 데 필요한 열은 몇 J?
+a: 4180
+e: $q = 100 \times 4.18 \times 10 = 4180\ \text{J}$
+Q mc
+q: 계가 열 50 J 을 흡수하고 주위에 20 J 의 일을 했다면 $\Delta E$ 는?
+a: $+30$ J
+w: $+70$ J
+w: $-30$ J
+w: $-70$ J
+e: $q = +50$, 계가 일을 했으니 $w = -20$. $\Delta E = 50 - 20 = 30$
+Q mc
+q: 다음 중 $\Delta H^\circ_f = 0$ 인 것은?
+a: O₂(g)
+w: O₃(g)
+w: H₂O(l)
+w: CO₂(g)
+e: 산소의 표준 상태는 O₂(g) 예요. O₃ 는 같은 원소지만 표준 상태가 아니에요.
+Q in
+q: A → B $\Delta H = +100$ kJ, B → C $\Delta H = -250$ kJ 이면 A → C 의 $\Delta H$ (kJ)는?
+a: -150
+e: 헤스 법칙: $100 + (-250) = -150$
+Q in
+q: CH₄ + 2O₂ → CO₂ + 2H₂O(l) 의 $\Delta H^\circ$ (kJ)는? ($\Delta H^\circ_f$: CH₄ −75, CO₂ −394, H₂O(l) −286)
+a: -891
+e: $[-394 + 2(-286)] - [-75 + 0] = -966 + 75 = -891$
+Q mc
+q: 반응식을 거꾸로 쓰고 계수를 모두 2배 하면 $\Delta H$ 는?
+a: 부호가 바뀌고 크기는 2배
+w: 부호만 바뀐다
+w: 크기만 2배
+w: 변하지 않는다
+e: 엔탈피는 상태함수라 경로와 무관하지만, 반응의 방향과 양에는 비례해요.
+
+## 7 | 원자·결합 | 원자 구조와 주기성
+c: 빛: $c = \lambda\nu$, $E = h\nu$. 진동수가 크면(파장이 짧으면) 에너지가 커요.
+c: 수소 원자 에너지 준위 $E_n = -2.178 \times 10^{-18}\,\text{J}\,\left(\dfrac{Z^2}{n^2}\right)$
+c: **양자수**: $n = 1, 2, \dots$ / $\ell = 0 \sim n-1$ (s, p, d, f) / $m_\ell = -\ell \sim +\ell$ / $m_s = \pm\frac12$
+c: 쌓음 원리, **파울리 배타 원리**(한 오비탈에 전자 2개, 스핀 반대), **훈트 규칙**(같은 에너지 오비탈엔 홀전자로 먼저)
+c: 원자 반지름: 오른쪽으로 갈수록 작아지고 아래로 갈수록 커져요. **이온화 에너지**는 그 반대예요.
+Q mc
+q: $\ell = 2$ 인 오비탈은?
+a: d
+w: s
+w: p
+w: f
+e: $\ell = 0, 1, 2, 3$ 이 각각 s, p, d, f 예요.
+Q in
+q: $n = 3$ 껍질에 있는 오비탈은 모두 몇 개?
+a: 9
+e: $n^2 = 9$ (3s 1개 + 3p 3개 + 3d 5개)
+Q mc
+q: 불가능한 양자수 조합 $(n, \ell, m_\ell)$ 은?
+a: $(2, 2, 0)$
+w: $(3, 2, -2)$
+w: $(2, 1, 0)$
+w: $(1, 0, 0)$
+e: $\ell$ 은 최대 $n - 1$ 이에요. $n = 2$ 면 $\ell = 0, 1$ 만 가능해요.
+Q mc
+q: Fe ($Z = 26$) 의 바닥 상태 전자 배치는?
+a: [Ar] 4s² 3d⁶
+w: [Ar] 3d⁸
+w: [Ar] 4s¹ 3d⁷
+w: [Kr] 4s² 3d⁶
+e: Ar(18) 다음 4s 에 2개, 3d 에 6개
+Q mc
+q: Cr ($Z = 24$) 의 바닥 상태 전자 배치는?
+a: [Ar] 4s¹ 3d⁵
+w: [Ar] 4s² 3d⁴
+w: [Ar] 3d⁶
+w: [Ar] 4s² 3d³ 4p¹
+e: 반쯤 채운 d⁵ 가 안정해서 생기는 대표적인 예외예요. Cu 도 [Ar] 4s¹ 3d¹⁰ 예외예요.
+Q mc
+q: 원자 반지름이 큰 순서는?
+a: K > Na > Mg
+w: Mg > Na > K
+w: Na > K > Mg
+w: Na > Mg > K
+e: K 는 Na 아래 주기, Mg 는 Na 오른쪽이라 유효 핵전하가 커서 작아요.
+Q mc
+q: 1차 이온화 에너지가 가장 큰 것은?
+a: Ne
+w: Na
+w: Mg
+w: O
+e: 오른쪽 위로 갈수록 커지고, 비활성 기체는 껍질이 꽉 차서 특히 커요.
+Q mc
+q: N 의 1차 이온화 에너지가 O 보다 큰 이유는?
+a: O 는 2p 오비탈 하나에 전자가 짝지어 있어 반발이 생기기 때문
+w: N 의 원자 반지름이 더 작기 때문
+w: N 의 핵전하가 더 크기 때문
+w: O 의 전자가 더 많기 때문
+e: N 은 2p³ (홀전자 3개), O 는 2p⁴ 라서 짝지은 전자 하나가 떼기 쉬워요.
+
+## 8 | 원자·결합 | 결합의 일반 개념
+c: **전기음성도** 차이가 0이면 무극성 공유, 중간이면 극성 공유, 크면 이온 결합
+c: 루이스 구조: 원자가 전자 총수 세기 → 단일 결합 연결 → 옥텟 채우기 → **형식 전하** 최소
+c: 형식 전하 = 원자가 전자 − 비공유 전자 − ½ × 공유 전자
+c: **VSEPR**: 전자 영역 2 선형, 3 삼각 평면, 4 사면체, 5 삼각쌍뿔, 6 팔면체. 비공유 전자쌍이 모양과 각도를 바꿔요.
+Q in
+q: CO₂ 의 원자가 전자 총수는?
+a: 16
+e: $4 + 2 \times 6 = 16$
+Q mc
+q: NH₃ 의 분자 모양은?
+a: 삼각뿔
+w: 삼각 평면
+w: 사면체
+w: T자형
+e: 전자 영역 4개 (결합 3 + 비공유쌍 1) → 전자 배치는 사면체, 원자 배치는 삼각뿔
+Q mc
+q: H₂O 의 결합각에 가장 가까운 것은?
+a: 104.5°
+w: 109.5°
+w: 120°
+w: 180°
+e: 비공유 전자쌍 2개가 결합쌍을 밀어서 사면체각 109.5° 보다 작아져요.
+Q mc
+q: 다음 중 극성 분자는?
+a: NH₃
+w: CO₂
+w: CH₄
+w: BF₃
+e: 나머지는 결합이 극성이어도 대칭이라 쌍극자가 상쇄돼요.
+Q mc
+q: SF₄ 의 분자 모양은?
+a: 시소형
+w: 사면체
+w: 평면 사각형
+w: 삼각쌍뿔
+e: 전자 영역 5개 (결합 4 + 비공유쌍 1), 비공유쌍은 적도 자리에 가요.
+Q mc
+q: XeF₄ 의 분자 모양은?
+a: 평면 사각형
+w: 사면체
+w: 시소형
+w: 팔면체
+e: 전자 영역 6개 (결합 4 + 비공유쌍 2), 비공유쌍이 서로 반대편에 있어요.
+Q in
+q: C≡O (각 원자에 비공유쌍 1개) 에서 C 의 형식 전하는?
+a: -1
+e: $4 - 2 - \frac12(6) = -1$. O 는 $6 - 2 - 3 = +1$
+Q ord
+q: 루이스 구조를 그리는 순서를 쌓아보세요.
+s: 원자가 전자의 총수를 센다
+s: 중심 원자와 주변 원자를 단일 결합으로 잇는다
+s: 남은 전자로 주변 원자의 옥텟을 채운다
+s: 중심 원자가 부족하면 다중 결합을 만들고 형식 전하를 확인한다
+e: 이온이면 음전하만큼 더하고 양전하만큼 빼고 시작해요.
+
+## 9 | 원자·결합 | 공유 결합: 오비탈
+c: **혼성** 오비탈: 전자 영역 2 → sp, 3 → sp², 4 → sp³, 5 → dsp³, 6 → d²sp³
+c: 단일 결합 = σ, 이중 = σ + π, 삼중 = σ + 2π
+c: 분자 오비탈 이론: **결합 차수** $= \dfrac{(\text{결합 전자}) - (\text{반결합 전자})}{2}$. 홀전자가 있으면 **상자성**
+Q mc
+q: CH₄ 에서 C 의 혼성은?
+a: sp³
+w: sp²
+w: sp
+w: dsp³
+e: 전자 영역 4개 → sp³, 사면체
+Q mc
+q: C₂H₄ (에텐) 에서 C 의 혼성은?
+a: sp²
+w: sp³
+w: sp
+w: d²sp³
+e: C 하나에 전자 영역 3개 (C=C 1 + C–H 2). 남은 p 오비탈이 π 결합을 만들어요.
+Q in
+q: CO₂ (O=C=O) 에 있는 π 결합은 몇 개?
+a: 2
+e: 이중 결합 2개 → σ 2개 + π 2개
+Q in
+q: N₂ 의 결합 차수는?
+a: 3
+e: 결합 전자 8, 반결합 전자 2 (원자가 전자 기준) → $(8 - 2)/2 = 3$
+Q mc
+q: 분자 오비탈 이론으로 본 O₂ 는?
+a: 상자성 (홀전자 2개)
+w: 반자성 (홀전자 0개)
+w: 상자성 (홀전자 1개)
+w: 결합 차수 0 이라 존재하지 않는다
+e: π* 오비탈 두 개에 전자가 하나씩 들어가요. 액체 산소가 자석에 붙는 이유예요.
+Q in
+q: O₂⁺ 의 결합 차수는? (소수 또는 분수)
+a: 2.5 ; 5/2
+e: O₂ (결합 차수 2) 에서 π* 전자 하나가 빠지면 $(8 - 3)/2 = 2.5$
+Q mc
+q: He₂ 가 안정하게 존재하지 않는 이유는?
+a: 결합 차수가 0 이기 때문
+w: He 의 전기음성도가 너무 크기 때문
+w: 홀전자가 너무 많기 때문
+w: 결합 차수가 3 이라 너무 강하기 때문
+e: σ1s² σ*1s² → $(2 - 2)/2 = 0$
+
+## 10 | 물질의 상태 | 액체와 고체
+c: 분자간 힘 세기: **런던 분산력** < 쌍극자-쌍극자 < **수소 결합** (N, O, F 에 붙은 H)
+c: 분자간 힘이 클수록 끓는점·점성·표면장력은 커지고 **증기압**은 작아져요.
+c: 단위 세포 속 원자 수: 단순 입방 1, 체심 입방 2, 면심 입방 4
+c: 클라우지우스-클라페이롱: $\ln\dfrac{P_2}{P_1} = \dfrac{\Delta H_\text{vap}}{R}\left(\dfrac{1}{T_1} - \dfrac{1}{T_2}\right)$
+Q mc
+q: 끓는점이 가장 높은 것은?
+a: H₂O
+w: H₂S
+w: H₂Se
+w: H₂Te
+e: 나머지는 분자량이 클수록 끓는점이 오르지만, H₂O 는 수소 결합 때문에 압도적으로 높아요.
+Q mc
+q: CH₄ 분자 사이에 작용하는 힘은?
+a: 런던 분산력만
+w: 수소 결합
+w: 쌍극자-쌍극자 힘
+w: 이온 결합
+e: CH₄ 는 무극성이고 H 가 C 에 붙어 있어 수소 결합도 없어요.
+Q in
+q: 면심 입방 단위 세포에 들어 있는 원자는 몇 개?
+a: 4
+e: 꼭짓점 $8 \times \frac18 = 1$, 면 $6 \times \frac12 = 3$
+Q in
+q: 체심 입방 단위 세포에 들어 있는 원자는 몇 개?
+a: 2
+e: 꼭짓점 $8 \times \frac18 = 1$, 가운데 1
+Q mc
+q: 액체가 끓는 조건은?
+a: 증기압이 외부 압력과 같아질 때
+w: 증기압이 0 이 될 때
+w: 온도가 100 °C 일 때
+w: 분자간 힘이 사라질 때
+e: 그래서 높은 산에서는 외부 압력이 낮아 100 °C 보다 낮은 온도에서 끓어요.
+Q mc
+q: 상평형 그림에서 **삼중점**은?
+a: 고체·액체·기체가 함께 평형을 이루는 점
+w: 액체와 기체의 구별이 사라지는 점
+w: 끓는점과 녹는점이 같아지는 1 atm 의 점
+w: 고체가 바로 기체가 되는 모든 점
+e: 액체와 기체의 구별이 사라지는 점은 임계점이에요.
+Q mc
+q: 다이아몬드는 어떤 고체일까요?
+a: 공유 그물 고체
+w: 분자성 고체
+w: 이온성 고체
+w: 금속성 고체
+e: 모든 C 가 sp³ 공유 결합으로 이어져 있어서 매우 단단하고 녹는점이 높아요.
+
+## 11 | 물질의 상태 | 용액의 성질
+c: **몰랄농도** $m = \dfrac{\text{용질 mol}}{\text{용매 kg}}$. 온도에 따라 변하지 않아요.
+c: **라울 법칙** $P_\text{용액} = \chi_\text{용매} P^\circ_\text{용매}$. **헨리 법칙** 기체 용해도 $C = kP$
+c: **총괄성**은 입자 수에만 의존: $\Delta T_b = iK_bm$, $\Delta T_f = iK_fm$, $\pi = iMRT$
+c: **반트호프 인자** $i$: 이상적이면 포도당 1, NaCl 2, CaCl₂ 3
+Q in
+q: 이상적인 경우 CaCl₂ 의 반트호프 인자 $i$ 는?
+a: 3
+e: Ca²⁺ 1개 + Cl⁻ 2개
+Q in
+q: 물 1.0 kg 에 포도당 0.50 mol 을 녹이면 어는점은 몇 °C 내려갈까요? ($K_f = 1.86$)
+a: 0.93
+e: $\Delta T_f = 1 \times 1.86 \times 0.50 = 0.93\ ^\circ\text{C}$
+Q mc
+q: 같은 몰랄농도에서 어는점이 가장 낮은 수용액은?
+a: CaCl₂
+w: 포도당
+w: NaCl
+w: 설탕
+e: 입자 수가 가장 많은 쪽이 가장 많이 내려가요 ($i$ = 3).
+Q mc
+q: 비휘발성 용질의 몰분율이 0.10 이고 순수 용매의 증기압이 100 torr 이면 용액의 증기압은?
+a: 90 torr
+w: 10 torr
+w: 100 torr
+w: 110 torr
+e: 용매 몰분율 $0.90 \times 100 = 90$ torr
+Q mc
+q: 탄산음료 뚜껑을 열면 거품이 나는 이유와 관련된 법칙은?
+a: 헨리 법칙
+w: 라울 법칙
+w: 그레이엄 법칙
+w: 헤스 법칙
+e: CO₂ 의 부분압이 낮아지면 녹을 수 있는 양이 줄어 빠져나와요.
+Q mc
+q: 단백질 같은 고분자의 몰질량을 재기에 가장 좋은 총괄성은?
+a: 삼투압
+w: 어는점 내림
+w: 끓는점 오름
+w: 증기압 내림
+e: 아주 묽어도 삼투압은 측정 가능한 크기가 나와요.
+
+## 12 | 속도·평형 | 화학 반응 속도론
+c: **속도 법칙** rate $= k[\text{A}]^m[\text{B}]^n$. 차수 $m, n$ 은 반응식 계수가 아니라 **실험**으로 정해요.
+c: 0차 $[\text{A}] = [\text{A}]_0 - kt$ / 1차 $\ln[\text{A}] = \ln[\text{A}]_0 - kt$ / 2차 $\dfrac{1}{[\text{A}]} = \dfrac{1}{[\text{A}]_0} + kt$
+c: 1차 **반감기** $t_{1/2} = \dfrac{0.693}{k}$ 는 농도와 무관해요.
+c: 아레니우스 $k = Ae^{-E_a/RT}$. **촉매**는 **활성화 에너지**를 낮추지만 $\Delta H$ 와 평형은 그대로예요.
+Q mc
+q: [A] 를 2배로 했더니 속도가 4배가 됐다면 A 에 대한 차수는?
+a: 2
+w: 1
+w: 4
+w: 0
+e: $2^m = 4 \Rightarrow m = 2$
+Q in
+q: 반감기 10 분인 1차 반응에서 30 분 뒤 남은 반응물은 몇 %?
+a: 12.5
+e: 반감기 3번: $(\frac12)^3 = \frac18 = 12.5\%$
+Q mc
+q: 1차 반응에서 직선이 되는 그래프는?
+a: $\ln[\text{A}]$ vs $t$
+w: $[\text{A}]$ vs $t$
+w: $1/[\text{A}]$ vs $t$
+w: $[\text{A}]^2$ vs $t$
+e: 기울기가 $-k$ 예요. 2차는 $1/[\text{A}]$ 가 직선이에요.
+Q in
+q: rate $= k[\text{A}][\text{B}]^2$ 의 전체 반응 차수는?
+a: 3
+e: $1 + 2 = 3$
+Q mc
+q: 1차 반응 속도 상수 $k$ 의 단위는?
+a: s⁻¹
+w: M·s⁻¹
+w: M⁻¹·s⁻¹
+w: 단위가 없다
+e: rate (M/s) $= k$ [A] (M) 이므로 $k$ 는 1/s
+Q mc
+q: 촉매를 넣었을 때 변하는 것은?
+a: 활성화 에너지
+w: 반응 엔탈피 $\Delta H$
+w: 평형 상수 $K$
+w: 생성물의 평형 농도
+e: 정반응과 역반응을 똑같이 빠르게 해서 평형에 더 빨리 도달할 뿐이에요.
+Q mc
+q: 다단계 반응 메커니즘에서 **속도 결정 단계**는?
+a: 가장 느린 단계
+w: 가장 빠른 단계
+w: 첫 번째 단계
+w: 마지막 단계
+e: 전체 속도는 가장 좁은 병목에서 정해져요.
+
+## 13 | 속도·평형 | 화학 평형
+c: $a\text{A} + b\text{B} \rightleftharpoons c\text{C} + d\text{D}$ 에서 $K = \dfrac{[\text{C}]^c[\text{D}]^d}{[\text{A}]^a[\text{B}]^b}$. 순수 고체·액체는 넣지 않아요.
+c: $K_p = K(RT)^{\Delta n}$, $\Delta n$ = 기체 생성물 mol − 기체 반응물 mol
+c: 반응 지수 $Q$: $Q < K$ 면 정반응, $Q > K$ 면 역반응 쪽으로 가요.
+c: **르 샤틀리에 원리**: 가한 변화를 줄이는 쪽으로 평형이 이동해요. 온도만 $K$ 자체를 바꿔요.
+Q mc
+q: 어떤 반응의 평형 상수가 $K$ 일 때 역반응의 평형 상수는?
+a: $1/K$
+w: $-K$
+w: $K^2$
+w: $K$
+e: 계수를 2배 하면 $K^2$, 반으로 하면 $\sqrt K$
+Q mc
+q: CaCO₃(s) ⇌ CaO(s) + CO₂(g) 의 평형 상수 식은?
+a: $K = [\text{CO}_2]$
+w: $K = \dfrac{[\text{CaO}][\text{CO}_2]}{[\text{CaCO}_3]}$
+w: $K = \dfrac{1}{[\text{CO}_2]}$
+w: $K = [\text{CaO}][\text{CO}_2]$
+e: 순수 고체는 농도가 일정해서 식에서 빠져요.
+Q in
+q: H₂ + I₂ ⇌ 2HI 에서 평형 농도가 [H₂] = [I₂] = 0.10 M, [HI] = 0.80 M 이면 $K$ 는?
+a: 64
+e: $\dfrac{0.80^2}{0.10 \times 0.10} = 64$
+Q in
+q: N₂(g) + 3H₂(g) ⇌ 2NH₃(g) 의 $\Delta n$ 은?
+a: -2
+e: $2 - (1 + 3) = -2$ 이므로 $K_p = K(RT)^{-2}$
+Q mc
+q: 위 반응은 발열 반응이에요. NH₃ 를 더 많이 얻으려면?
+a: 압력을 높인다
+w: 온도를 높인다
+w: 촉매를 넣는다
+w: NH₃ 를 더 넣는다
+e: 기체 mol 수가 줄어드는 정반응 쪽으로 이동해요. 촉매는 평형 위치를 못 바꿔요.
+Q mc
+q: $Q > K$ 이면 반응은?
+a: 역반응 쪽으로 진행한다
+w: 정반응 쪽으로 진행한다
+w: 평형 상태다
+w: 진행하지 않는다
+e: 생성물이 너무 많은 상태라 줄이는 쪽으로 가요.
+Q mc
+q: 흡열 반응의 온도를 높이면 $K$ 는?
+a: 커진다
+w: 작아진다
+w: 변하지 않는다
+w: 0 이 된다
+e: 열을 반응물처럼 생각하면, 열을 더하면 정반응 쪽으로 가요.
+
+## 14 | 산·염기 | 산과 염기
+c: 브뢴스테드-로우리: 산 = H⁺ 주개, 염기 = H⁺ 받개. H⁺ 하나 차이 나는 쌍이 **짝산**-**짝염기**
+c: $K_w = [\text{H}^+][\text{OH}^-] = 1.0 \times 10^{-14}$ (25 °C), pH + pOH = 14
+c: 약산: $[\text{H}^+] \approx \sqrt{K_a C}$ (5% 규칙 확인). 짝산·짝염기 사이 $K_aK_b = K_w$
+c: 염의 액성: NH₄Cl (약염기의 짝산) 은 산성, CH₃COONa (약산의 짝염기) 는 염기성, NaCl 은 중성
+Q in
+q: 0.010 M HCl 의 pH 는?
+a: 2
+e: 강산이라 완전히 이온화 → $[\text{H}^+] = 10^{-2}$
+Q in
+q: 0.0010 M NaOH 의 pH 는?
+a: 11
+e: pOH $= 3$, pH $= 14 - 3 = 11$
+Q mc
+q: NH₃ 의 짝산은?
+a: NH₄⁺
+w: NH₂⁻
+w: NH₃⁺
+w: H₃O⁺
+e: 염기가 H⁺ 를 받으면 짝산이 돼요.
+Q mc
+q: 다음 중 강산이 **아닌** 것은?
+a: HF
+w: HCl
+w: HNO₃
+w: HClO₄
+e: HF 는 H–F 결합이 강해서 약산이에요.
+Q in
+q: $K_a = 1.0 \times 10^{-5}$ 인 약산 0.10 M 용액의 pH 는?
+a: 3
+e: $[\text{H}^+] = \sqrt{10^{-5} \times 0.10} = 10^{-3}$. 이온화 1% 라 근사 OK
+Q mc
+q: NH₄Cl 수용액의 액성은?
+a: 산성
+w: 중성
+w: 염기성
+w: 온도에 따라 다르다
+e: NH₄⁺ 가 물에 H⁺ 를 주는 약산이에요. Cl⁻ 는 강산의 짝염기라 영향이 없어요.
+Q mc
+q: 가장 강한 산은?
+a: HClO₄
+w: HClO₃
+w: HClO₂
+w: HClO
+e: 중심 원자에 O 가 많이 붙을수록 짝염기의 음전하가 퍼져서 안정해지고, 산이 강해져요.
+Q in
+q: $K_a = 1.0 \times 10^{-4}$ 인 산의 짝염기 $K_b = 1.0 \times 10^{-n}$ 일 때 $n$ 은?
+a: 10
+e: $K_b = K_w / K_a = 10^{-14} / 10^{-4} = 10^{-10}$
+
+## 15 | 산·염기 | 산-염기 평형
+c: **완충 용액** = 약산 + 짝염기 (또는 약염기 + 짝산). 산이나 염기를 조금 넣어도 pH 가 잘 안 변해요.
+c: 헨더슨-하셀바흐: $\text{pH} = \text{p}K_a + \log\dfrac{[\text{A}^-]}{[\text{HA}]}$
+c: 적정: 강산-강염기 **당량점** pH 7, 약산-강염기 당량점 pH > 7, 반당량점에서 pH = p$K_a$
+c: **지시약**은 변색 범위가 당량점 pH 를 포함하는 것을 골라요.
+Q in
+q: p$K_a = 4.74$ 이고 [A⁻] = [HA] 인 완충 용액의 pH 는?
+a: 4.74
+e: $\log 1 = 0$ 이라 pH = p$K_a$
+Q in
+q: p$K_a = 5.0$, [A⁻]/[HA] = 10 이면 pH 는?
+a: 6
+e: $5.0 + \log 10 = 6.0$
+Q mc
+q: 완충 용액이 되는 조합은?
+a: CH₃COOH + CH₃COONa
+w: HCl + NaCl
+w: NaOH + NaCl
+w: 같은 mol 의 HCl + NaOH
+e: 약산과 그 짝염기가 함께 있어야 해요. HCl 은 강산이라 짝염기 Cl⁻ 가 H⁺ 를 받지 못해요.
+Q mc
+q: 아세트산을 NaOH 로 적정할 때 당량점의 pH 는?
+a: 7 보다 크다
+w: 정확히 7
+w: 7 보다 작다
+w: p$K_a$ 와 같다
+e: 당량점에는 CH₃COO⁻ (염기) 만 남아요.
+Q mc
+q: 약산-강염기 적정에서 반당량점의 pH 는?
+a: p$K_a$
+w: 7
+w: p$K_b$
+w: 14 − p$K_a$
+e: 산의 절반이 짝염기로 바뀌어 [A⁻] = [HA] 예요. 적정 곡선으로 $K_a$ 를 구하는 방법이에요.
+Q mc
+q: 약산을 강염기로 적정할 때 알맞은 지시약은?
+a: 페놀프탈레인 (변색 pH 8.2–10)
+w: 메틸 오렌지 (변색 pH 3.1–4.4)
+w: 메틸 레드 (변색 pH 4.4–6.2)
+w: 어떤 지시약이든 같다
+e: 당량점이 염기성 쪽이니 염기성 범위에서 변하는 지시약이 맞아요.
+
+## 16 | 산·염기 | 용해도와 착이온 평형
+c: **용해도곱** $K_{sp}$: AgCl 은 $K_{sp} = s^2$, CaF₂ 는 $K_{sp} = s(2s)^2 = 4s^3$
+c: 이온곱 $Q > K_{sp}$ 면 침전이 생겨요.
+c: **공통 이온 효과**: 같은 이온이 이미 있으면 용해도가 줄어요.
+c: **착이온** 형성 (예: Ag⁺ + 2NH₃ ⇌ Ag(NH₃)₂⁺) 은 용해도를 크게 늘려요.
+Q mc
+q: Ag₂CrO₄ 의 $K_{sp}$ 를 몰 용해도 $s$ 로 나타내면?
+a: $4s^3$
+w: $s^2$
+w: $2s^3$
+w: $s^3$
+e: $[\text{Ag}^+] = 2s$, $[\text{CrO}_4^{2-}] = s$ → $(2s)^2 s = 4s^3$
+Q in
+q: AgCl 의 $K_{sp} = 1.0 \times 10^{-10}$ 일 때 몰 용해도가 $1.0 \times 10^{-n}$ M 이면 $n$ 은?
+a: 5
+e: $s = \sqrt{10^{-10}} = 10^{-5}$
+Q mc
+q: 0.1 M NaCl 용액에서 AgCl 의 용해도는 순수한 물에서와 비교하면?
+a: 줄어든다
+w: 늘어난다
+w: 같다
+w: 0 이 된다
+e: 공통 이온 Cl⁻ 때문에 평형이 고체 쪽으로 이동해요.
+Q mc
+q: 이온곱 $Q$ 가 $K_{sp}$ 보다 크면?
+a: 침전이 생긴다
+w: 더 녹는다
+w: 평형 상태다
+w: 착이온이 생긴다
+e: 과포화 상태라 고체가 생기며 $Q$ 가 $K_{sp}$ 까지 내려가요.
+Q mc
+q: AgCl 이 진한 암모니아수에 녹는 이유는?
+a: 착이온 Ag(NH₃)₂⁺ 가 생겨 Ag⁺ 가 줄기 때문
+w: NH₃ 가 Cl⁻ 와 침전을 만들기 때문
+w: 용액이 산성이 되기 때문
+w: 온도가 올라가기 때문
+e: Ag⁺ 가 빠지면서 용해 평형이 오른쪽으로 계속 이동해요.
+Q mc
+q: 산성 용액에서 용해도가 크게 늘어나는 것은?
+a: Mg(OH)₂
+w: AgCl
+w: AgBr
+w: AgI
+e: OH⁻ 가 H⁺ 와 반응해 빠져나가요. 할로젠화 이온은 강산의 짝염기라 H⁺ 와 반응하지 않아요.
+
+## 17 | 열역학·전기 | 자발성·엔트로피·자유 에너지
+c: 열역학 제2법칙: 자발 과정에서 우주의 **엔트로피**는 증가해요 ($\Delta S_\text{univ} > 0$).
+c: 깁스 **자유 에너지** $\Delta G = \Delta H - T\Delta S$. $\Delta G < 0$ 이면 자발
+c: $\Delta H < 0, \Delta S > 0$: 항상 자발 / $\Delta H > 0, \Delta S < 0$: 항상 비자발 / 부호가 같으면 온도에 따라 달라져요.
+c: $\Delta G^\circ = -RT\ln K$, $\Delta G = \Delta G^\circ + RT\ln Q$. 평형에서 $\Delta G = 0$
+Q mc
+q: 계의 엔트로피가 증가하는 과정은?
+a: 얼음이 녹는다
+w: 수증기가 응축된다
+w: 2 mol 기체가 반응해 1 mol 기체가 된다
+w: 물이 언다
+e: 고체 → 액체 → 기체 순으로 무질서도(가능한 미시 상태 수)가 커져요.
+Q mc
+q: $\Delta H > 0$, $\Delta S > 0$ 인 반응은?
+a: 고온에서만 자발
+w: 저온에서만 자발
+w: 항상 자발
+w: 항상 비자발
+e: $T\Delta S$ 가 $\Delta H$ 보다 커져야 $\Delta G < 0$ 이에요.
+Q in
+q: $\Delta H = +40$ kJ, $\Delta S = +100$ J/K 인 반응이 자발적으로 되기 시작하는 온도는 몇 K?
+a: 400
+e: $T = \Delta H / \Delta S = 40000 / 100 = 400$ K. 단위(kJ vs J)를 맞추는 게 핵심이에요.
+Q mc
+q: $\Delta G^\circ < 0$ 이면 $K$ 는?
+a: 1 보다 크다
+w: 1 보다 작다
+w: 1 이다
+w: 0 이다
+e: $\ln K = -\Delta G^\circ / RT > 0$
+Q mc
+q: 계가 평형 상태일 때 $\Delta G$ 는?
+a: 0
+w: $\Delta G^\circ$
+w: 음수
+w: 양수
+e: $Q = K$ 가 되어 $\Delta G = \Delta G^\circ + RT\ln K = 0$
+Q mc
+q: 열역학 제3법칙의 내용은?
+a: 0 K 에서 완전한 결정의 엔트로피는 0 이다
+w: 우주의 에너지는 일정하다
+w: 우주의 엔트로피는 증가한다
+w: 열은 차가운 곳에서 뜨거운 곳으로 저절로 흐르지 않는다
+e: 그래서 엔트로피는 절댓값 $S^\circ$ 를 표로 쓸 수 있어요.
+
+## 18 | 열역학·전기 | 전기화학
+c: 갈바니 전지: **산화전극**(anode)에서 산화, **환원전극**(cathode)에서 환원. 전자는 산화전극 → 환원전극
+c: $E^\circ_\text{cell} = E^\circ_\text{환원전극} - E^\circ_\text{산화전극}$. $\Delta G^\circ = -nFE^\circ$, $F = 96485$ C/mol
+c: **네른스트 식** (25 °C): $E = E^\circ - \dfrac{0.0592}{n}\log Q$
+c: 전기분해: 전하량 $q = It$, 전자 mol $= It / F$
+Q in
+q: $E^\circ$(Zn²⁺/Zn) $= -0.76$ V, $E^\circ$(Cu²⁺/Cu) $= +0.34$ V 일 때 다니엘 전지의 $E^\circ_\text{cell}$ (V) 는?
+a: 1.10
+e: $0.34 - (-0.76) = 1.10$ V. Cu 가 환원, Zn 이 산화돼요.
+Q mc
+q: 산화가 일어나는 전극은?
+a: 산화전극 (anode)
+w: 환원전극 (cathode)
+w: 염다리
+w: 두 전극 모두
+e: 이름 그대로예요. 갈바니 전지에서는 산화전극이 (−) 극이에요.
+Q mc
+q: $E^\circ_\text{cell} > 0$ 이면?
+a: $\Delta G^\circ < 0$ 이고 $K > 1$
+w: $\Delta G^\circ > 0$ 이고 $K < 1$
+w: $\Delta G^\circ = 0$ 이고 $K = 1$
+w: $\Delta G^\circ < 0$ 이고 $K < 1$
+e: $\Delta G^\circ = -nFE^\circ$ 와 $\Delta G^\circ = -RT\ln K$ 를 함께 보면 돼요.
+Q mc
+q: **염다리**의 역할은?
+a: 이온이 이동해 두 용액의 전하 균형을 맞춘다
+w: 전자가 이동하는 통로가 된다
+w: 반응 속도를 높이는 촉매다
+w: 전지 전압을 높인다
+e: 전자는 바깥 도선으로, 이온은 염다리로 흘러요.
+Q in
+q: $n = 2$, $E^\circ = 1.10$ V 인 전지의 $\Delta G^\circ$ 는 몇 kJ? ($F = 96485$)
+a: -212.3
+e: $-2 \times 96485 \times 1.10 = -212267\ \text{J} \approx -212\ \text{kJ}$
+Q in
+q: 1.00 A 의 전류를 965 초 흘리면 전자는 몇 mol 이동할까요? ($F = 96500$ 로 계산)
+a: 0.0100 ; 0.01
+e: $q = 1.00 \times 965 = 965$ C, $965 / 96500 = 0.0100$ mol
+Q mc
+q: $Q > 1$ 이면 전지 전위 $E$ 는 $E^\circ$ 에 비해?
+a: 작다
+w: 크다
+w: 같다
+w: 항상 0 이다
+e: $\log Q > 0$ 이라 빼는 항이 양수예요. 전지를 쓸수록 $Q$ 가 커지며 전압이 떨어져요.
+
+## 19 | 서술 화학 | 원자핵
+c: 붕괴 종류: α ($^4_2\text{He}$, $A - 4$, $Z - 2$), β ($^{\ 0}_{-1}\text{e}$, $Z + 1$), 양전자 방출·전자 포획 ($Z - 1$), γ (변화 없음)
+c: 방사성 붕괴는 1차 반응이에요: $t_{1/2} = 0.693 / k$
+c: **질량 결손** $\Delta m$ 이 결합 에너지 $E = \Delta mc^2$ 가 돼요. 핵자당 결합 에너지는 ⁵⁶Fe 근처가 최대
+Q mc
+q: $^{238}_{\ 92}\text{U}$ 가 α 붕괴하면 생기는 핵은?
+a: $^{234}_{\ 90}\text{Th}$
+w: $^{234}_{\ 92}\text{U}$
+w: $^{238}_{\ 93}\text{Np}$
+w: $^{236}_{\ 90}\text{Th}$
+e: 질량수 4, 원자번호 2 감소
+Q mc
+q: β 붕괴에서 원자번호와 질량수는?
+a: 원자번호 +1, 질량수 그대로
+w: 원자번호 −1, 질량수 그대로
+w: 원자번호 −2, 질량수 −4
+w: 둘 다 그대로
+e: 중성자 하나가 양성자 + 전자로 바뀌어요.
+Q in
+q: 반감기 5730 년인 C-14 는 11460 년 뒤 처음 양의 몇 % 가 남을까요?
+a: 25
+e: 반감기 2번: $(\frac12)^2 = 25\%$
+Q mc
+q: 가벼운 핵 두 개가 합쳐지며 에너지를 내는 반응은?
+a: 핵융합
+w: 핵분열
+w: α 붕괴
+w: 전자 포획
+e: 태양의 에너지원이에요. 무거운 핵이 쪼개지는 것은 핵분열이에요.
+Q mc
+q: 양성자에 비해 중성자가 너무 적은 핵이 주로 하는 붕괴는?
+a: 양전자 방출 또는 전자 포획
+w: β 붕괴
+w: γ 방출만
+w: 중성자 흡수
+e: 둘 다 양성자를 중성자로 바꿔서 중성자/양성자 비를 높여요.
+
+## 20 | 서술 화학 | 대표 원소
+c: 1족 알칼리 금속은 물과 반응해 수산화물 + H₂ 를 만들고, 아래로 갈수록 격렬해요.
+c: 할로젠의 산화력: F₂ > Cl₂ > Br₂ > I₂
+c: **동소체**: 같은 원소, 다른 구조. O₂ 와 O₃, 흑연과 다이아몬드
+c: 공업 공정: 하버 공정 N₂ + 3H₂ → 2NH₃, 접촉 공정으로 H₂SO₄
+Q mc
+q: 2Na + 2H₂O → ? 의 생성물은?
+a: 2NaOH + H₂
+w: Na₂O + H₂
+w: 2NaH + O₂
+w: NaOH 만
+e: 수용액이 염기성이 되고 수소 기체가 나와요.
+Q mc
+q: 산화력이 가장 큰 할로젠은?
+a: F₂
+w: Cl₂
+w: Br₂
+w: I₂
+e: 전기음성도가 가장 크고, 표준 환원 전위도 가장 커요 (+2.87 V).
+Q mc
+q: O₂ 와 O₃ 의 관계는?
+a: 동소체
+w: 동위원소
+w: 이성질체
+w: 공명 구조
+e: 같은 원소가 다른 결합 방식으로 이룬 홑원소 물질이에요.
+Q mc
+q: 하버 공정으로 만드는 물질은?
+a: NH₃
+w: H₂SO₄
+w: HNO₃
+w: NaOH
+e: 비료 생산의 출발점이에요. 13장 르 샤틀리에 문제와 이어져요.
+
+## 21 | 서술 화학 | 전이 금속과 배위 화학
+c: 착물: 중심 금속 + **리간드**. 결합한 원자 수 = **배위수**. 여러 자리로 무는 리간드는 **킬레이트** (en 은 두 자리)
+c: **결정장** 이론 (팔면체): d 오비탈이 낮은 $t_{2g}$ 3개와 높은 $e_g$ 2개로 $\Delta$ 만큼 갈라져요.
+c: 분광화학 계열: CN⁻ > en > NH₃ > H₂O > F⁻ > Cl⁻. $\Delta$ 가 크면 **저스핀**, 작으면 고스핀
+c: 착물은 흡수한 빛의 보색으로 보여요.
+Q in
+q: [Co(NH₃)₆]³⁺ 에서 Co 의 산화수는?
+a: 3 ; +3
+e: NH₃ 는 중성 리간드라 전체 전하가 그대로 Co 의 산화수예요.
+Q in
+q: [Fe(CN)₆]⁴⁻ 에서 Fe 의 산화수는?
+a: 2 ; +2
+e: $x + 6(-1) = -4 \Rightarrow x = +2$
+Q in
+q: [Co(en)₃]³⁺ 의 배위수는?
+a: 6
+e: en 은 두 자리 리간드라 3 × 2 = 6
+Q mc
+q: 저스핀 착물을 만들기 쉬운 리간드는?
+a: CN⁻
+w: Cl⁻
+w: F⁻
+w: H₂O
+e: 강한장 리간드라 $\Delta$ 가 커서 전자가 $t_{2g}$ 에 먼저 짝지어 들어가요.
+Q mc
+q: 팔면체 결정장에서 에너지가 높은 오비탈 집합은?
+a: $e_g$ ($d_{z^2}$, $d_{x^2-y^2}$)
+w: $t_{2g}$ ($d_{xy}$, $d_{xz}$, $d_{yz}$)
+w: 다섯 개 모두 같다
+w: $d_{xy}$ 하나만
+e: $e_g$ 는 축 방향을 향해서 리간드와 정면으로 부딪혀요.
+Q in
+q: Fe²⁺ (d⁶) 가 강한장 팔면체 착물을 이루면 홀전자는 몇 개?
+a: 0
+e: 저스핀: $t_{2g}^6$ 로 모두 짝지어 반자성이에요. 약한장이면 $t_{2g}^4e_g^2$ 로 홀전자 4개예요.
+
+## 22 | 서술 화학 | 유기·생체 분자
+c: 알케인 $\text{C}_n\text{H}_{2n+2}$, 알켄 $\text{C}_n\text{H}_{2n}$, 알카인 $\text{C}_n\text{H}_{2n-2}$. 메테인, 에테인, 프로페인, 뷰테인, 펜테인…
+c: **작용기**: –OH 알코올, –CHO 알데하이드, C=O (가운데) 케톤, –COOH 카복실산, –COO– 에스터, –NH₂ 아민
+c: **이성질체**: 구조 이성질체 (연결 순서가 다름), 기하 이성질체 (cis/trans, C=C 회전이 안 돼서 생김)
+c: 고분자: 첨가 중합 (폴리에틸렌), 축합 중합 (나일론, 물이 빠짐). 단백질은 아미노산이 **펩타이드 결합**으로 이어진 것
+Q mc
+q: C₅H₁₂ 의 이름은?
+a: 펜테인
+w: 뷰테인
+w: 헥세인
+w: 펜텐
+e: $n = 5$ 알케인 ($2 \times 5 + 2 = 12$)
+Q in
+q: 뷰테인 C₄H₁₀ 의 구조 이성질체는 몇 개?
+a: 2
+e: 노말 뷰테인과 2-메틸프로페인 (아이소뷰테인)
+Q mc
+q: –COOH 작용기를 가진 화합물은?
+a: 카복실산
+w: 알코올
+w: 에스터
+w: 케톤
+e: 아세트산 CH₃COOH 가 대표적이에요.
+Q mc
+q: cis/trans 이성질체가 있는 것은?
+a: 2-뷰텐
+w: 1-뷰텐
+w: 에텐
+w: 프로펜
+e: C=C 양쪽 탄소에 각각 서로 다른 두 그룹이 붙어 있어야 해요.
+Q mc
+q: 알코올과 카복실산이 반응하면?
+a: 에스터 + 물
+w: 에터 + 물
+w: 알데하이드 + 수소
+w: 아민 + 물
+e: 에스터화 (축합) 반응이에요.
+Q mc
+q: 단백질에서 아미노산끼리 이어주는 결합은?
+a: 펩타이드 결합
+w: 글리코사이드 결합
+w: 수소 결합
+w: 이온 결합
+e: –COOH 와 –NH₂ 사이에서 물이 빠지며 생기는 아마이드 결합이에요.
+</script>
+<script type="application/json" id="glossary">[{"t": "유효숫자", "d": "측정값에서 의미 있는 자릿수예요. 확실한 숫자 전부와 마지막 어림 숫자 하나까지 세요."}, {"t": "원자번호", "d": "원자핵 속 양성자 수 $Z$예요. 원소의 종류를 정해요."}, {"t": "질량수", "d": "양성자 수 + 중성자 수 $A$예요. 원자량(평균 질량)과는 달라요."}, {"t": "동위원소", "d": "양성자 수는 같고 중성자 수가 다른 원자예요. 예: ¹²C 와 ¹⁴C"}, {"t": "몰질량", "d": "물질 1 mol 의 질량(g/mol)이에요. 화학식 속 원자량을 모두 더하면 돼요."}, {"t": "실험식", "d": "원자 수를 가장 간단한 정수비로 나타낸 화학식이에요. 포도당 C₆H₁₂O₆ 의 실험식은 CH₂O"}, {"t": "한계 반응물", "d": "반응 중 가장 먼저 다 떨어지는 반응물이에요. 생성물의 최대량(이론 수득량)을 정해요."}, {"t": "수득률", "d": "실제로 얻은 양 ÷ 이론 수득량 × 100 (%)이에요."}, {"t": "몰농도", "d": "용액 1 L 에 녹아 있는 용질의 mol 수(M = mol/L)예요. 온도가 바뀌면 부피가 변해 값도 조금 변해요."}, {"t": "알짜 이온 반응식", "d": "구경꾼 이온을 빼고 실제로 반응에 참여하는 입자만 쓴 반응식이에요."}, {"t": "산화수", "d": "전자를 모두 전기음성도가 큰 쪽에 준다고 가정했을 때 원자가 갖는 가상의 전하예요. 산화되면 증가, 환원되면 감소해요."}, {"t": "분압", "d": "혼합 기체에서 한 성분이 혼자 그 부피를 차지할 때 나타낼 압력이에요. 전체 압력 × 몰분율"}, {"t": "반데르발스", "d": "실제 기체 상태 방정식 $[P + a(n/V)^2](V - nb) = nRT$. $a$ 는 인력, $b$ 는 분자 부피 보정이에요."}, {"t": "엔탈피", "d": "$H = E + PV$. 일정 압력에서 주고받은 열이 엔탈피 변화 $\\Delta H$ 예요."}, {"t": "비열", "d": "물질 1 g 의 온도를 1 °C 올리는 데 필요한 열이에요. 물은 4.18 J/(g·°C)"}, {"t": "헤스 법칙", "d": "엔탈피는 상태함수라서 반응을 여러 단계로 나눠도 $\\Delta H$ 의 합은 같다는 법칙이에요."}, {"t": "양자수", "d": "전자의 상태를 나타내는 네 수 $n, \\ell, m_\\ell, m_s$ 예요. 각각 크기·모양·방향·스핀"}, {"t": "파울리 배타 원리", "d": "한 원자 안의 두 전자는 네 양자수가 모두 같을 수 없어요. 그래서 오비탈 하나에 스핀이 반대인 전자 2개까지만 들어가요."}, {"t": "훈트 규칙", "d": "에너지가 같은 오비탈에는 전자가 짝짓기 전에 스핀을 나란히 하고 하나씩 먼저 들어가요."}, {"t": "이온화 에너지", "d": "기체 상태 원자에서 전자 하나를 떼어내는 데 필요한 에너지예요. 주기율표 오른쪽 위로 갈수록 커요."}, {"t": "전기음성도", "d": "결합한 원자가 공유 전자쌍을 끌어당기는 정도예요. F 가 가장 커요 (4.0)."}, {"t": "형식 전하", "d": "원자가 전자 − 비공유 전자 − ½ × 공유 전자. 0 에 가까운 루이스 구조가 더 그럴듯해요."}, {"t": "VSEPR", "d": "원자가 껍질 전자쌍 반발 이론. 중심 원자 주위 전자 영역들이 서로 최대한 멀어지게 배치된다고 보고 분자 모양을 예측해요."}, {"t": "혼성", "d": "원자 오비탈을 섞어 같은 모양·에너지의 새 오비탈(sp, sp², sp³ 등)을 만드는 것이에요."}, {"t": "결합 차수", "d": "(결합 오비탈 전자 − 반결합 오비탈 전자) ÷ 2. 클수록 결합이 강하고 짧아요. 0 이면 분자가 안정하지 않아요."}, {"t": "상자성", "d": "홀전자가 있어 자기장에 끌리는 성질이에요. 홀전자가 없으면 반자성이에요."}, {"t": "런던 분산력", "d": "순간적으로 생긴 쌍극자가 이웃에 쌍극자를 유도해 생기는 약한 인력이에요. 모든 분자에 있고 분자가 클수록 세져요."}, {"t": "수소 결합", "d": "N, O, F 에 붙은 H 와 이웃 분자의 N, O, F 비공유쌍 사이의 강한 쌍극자 인력이에요."}, {"t": "증기압", "d": "닫힌 용기에서 액체와 평형을 이룬 증기의 압력이에요. 온도가 오르면 커지고 분자간 힘이 크면 작아요."}, {"t": "삼중점", "d": "고체, 액체, 기체 세 상이 함께 평형을 이루는 온도·압력이에요."}, {"t": "몰랄농도", "d": "용매 1 kg 당 용질 mol 수(m)예요. 질량 기준이라 온도와 무관해요."}, {"t": "라울 법칙", "d": "용액 위 용매의 증기압 = 용매 몰분율 × 순수 용매의 증기압"}, {"t": "헨리 법칙", "d": "기체의 용해도는 그 기체의 부분압에 비례한다 ($C = kP$)는 법칙이에요."}, {"t": "총괄성", "d": "용질의 종류와 상관없이 입자 수에만 의존하는 성질이에요. 증기압 내림, 끓는점 오름, 어는점 내림, 삼투압"}, {"t": "반트호프 인자", "d": "용질 1 mol 이 녹아 실제로 만드는 입자 mol 수 $i$ 예요. 이온쌍 때문에 실제 값은 이상값보다 조금 작아요."}, {"t": "삼투압", "d": "반투막을 사이에 두고 용매가 용액 쪽으로 들어오는 것을 막는 데 필요한 압력 $\\pi = iMRT$ 예요."}, {"t": "속도 법칙", "d": "반응 속도를 반응물 농도의 거듭제곱으로 나타낸 식이에요. 차수는 실험으로만 정해져요."}, {"t": "반감기", "d": "반응물 농도가 처음의 절반이 되는 데 걸리는 시간이에요. 1차 반응은 $0.693/k$ 로 일정해요."}, {"t": "촉매", "d": "반응 경로를 바꿔 활성화 에너지를 낮추고, 반응 뒤에 그대로 남는 물질이에요."}, {"t": "활성화 에너지", "d": "반응이 일어나려면 넘어야 하는 에너지 장벽 $E_a$ 예요. 작을수록 반응이 빨라요."}, {"t": "속도 결정 단계", "d": "여러 단계 반응에서 가장 느린 단계예요. 전체 속도 법칙을 결정해요."}, {"t": "르 샤틀리에 원리", "d": "평형 상태에 농도·압력·온도 변화를 주면 그 변화를 줄이는 쪽으로 평형이 이동한다는 원리예요."}, {"t": "짝산", "d": "염기가 H⁺ 하나를 받아서 된 물질이에요. 예: NH₃ → NH₄⁺"}, {"t": "짝염기", "d": "산이 H⁺ 하나를 내주고 남은 물질이에요. 예: CH₃COOH → CH₃COO⁻"}, {"t": "완충 용액", "d": "약산과 짝염기(또는 약염기와 짝산)가 함께 있어 pH 변화를 막아주는 용액이에요."}, {"t": "당량점", "d": "적정에서 넣은 산과 염기의 mol 이 반응식 비율대로 정확히 같아진 점이에요."}, {"t": "지시약", "d": "pH 에 따라 색이 바뀌는 약산이에요. 변색 범위 ≈ 지시약의 p$K_a$ ± 1"}, {"t": "용해도곱", "d": "난용성 염의 용해 평형 상수 $K_{sp}$ 예요. 고체는 식에서 빠지므로 이온 농도의 곱이에요."}, {"t": "공통 이온 효과", "d": "평형에 관여하는 이온이 이미 들어 있으면 평형이 그 이온을 줄이는 쪽으로 이동하는 현상이에요."}, {"t": "착이온", "d": "중심 금속 이온에 리간드가 배위 결합한 이온이에요. 예: Ag(NH₃)₂⁺"}, {"t": "엔트로피", "d": "계가 가질 수 있는 미시 상태 수의 척도 $S$ 예요. 에너지가 얼마나 퍼져 있는지를 나타내요."}, {"t": "자유 에너지", "d": "깁스 자유 에너지 $G = H - TS$. 일정 온도·압력에서 $\\Delta G < 0$ 이면 자발적이에요."}, {"t": "산화전극", "d": "산화가 일어나는 전극(anode)이에요. 갈바니 전지에서는 (−) 극이에요."}, {"t": "환원전극", "d": "환원이 일어나는 전극(cathode)이에요. 갈바니 전지에서는 (+) 극이에요."}, {"t": "염다리", "d": "두 반쪽 전지를 이어 이온이 이동하게 해서 전하 균형을 유지하는 장치예요."}, {"t": "네른스트 식", "d": "표준이 아닌 농도에서 전지 전위를 구하는 식 $E = E^\\circ - \\frac{0.0592}{n}\\log Q$ (25 °C)"}, {"t": "질량 결손", "d": "핵을 이루는 핵자 질량의 합과 실제 핵 질량의 차이예요. 이 질량이 결합 에너지($\\Delta mc^2$)가 돼요."}, {"t": "동소체", "d": "같은 원소로 이루어졌지만 구조가 다른 홑원소 물질이에요. 예: 흑연과 다이아몬드"}, {"t": "리간드", "d": "중심 금속에 비공유 전자쌍을 내주며 결합하는 분자나 이온이에요. 예: NH₃, CN⁻, H₂O"}, {"t": "배위수", "d": "중심 금속에 직접 결합한 리간드 원자의 수예요. 6 이면 보통 팔면체"}, {"t": "킬레이트", "d": "한 리간드가 여러 자리로 금속을 집게처럼 무는 것이에요. 예: en (에틸렌다이아민), EDTA"}, {"t": "결정장", "d": "리간드의 음전하가 d 오비탈 에너지를 갈라놓는다고 보는 모형이에요. 갈라진 폭이 $\\Delta$"}, {"t": "저스핀", "d": "$\\Delta$ 가 짝짓기 에너지보다 커서 전자가 아래 오비탈에서 먼저 짝지은 상태예요. 홀전자가 적어요."}, {"t": "작용기", "d": "분자의 화학적 성질을 결정하는 원자 묶음이에요. 예: –OH, –COOH, –NH₂"}, {"t": "이성질체", "d": "분자식은 같지만 원자 배열이 다른 화합물이에요."}, {"t": "펩타이드 결합", "d": "한 아미노산의 –COOH 와 다른 아미노산의 –NH₂ 가 물을 내놓으며 만든 –CO–NH– 결합이에요."}]</script>
+<script>
+(function () {
+  const DRIVE = {};
+  const DAILY_GOAL = 30;
+  const BOX_DAYS = [0, 1, 3, 7, 16, 35];
+  const LS_KEY = "chem-daily-v1";
+
+  // ---------- course parsing ----------
+  function parseCourse(text) {
+    const lessons = [];
+    let L = null, Q = null;
+    for (const raw of text.split("\n")) {
+      const line = raw.trim();
+      if (!line) continue;
+      if (line.startsWith("## ")) {
+        const [id, unit, title] = line.slice(3).split(" | ").map(s => s.trim());
+        L = { id, unit, title, concept: [], qs: [] };
+        lessons.push(L); Q = null; continue;
+      }
+      if (line.startsWith("Q ")) {
+        Q = { type: line.slice(2).trim(), q: "", a: [], w: [], s: [], e: "" };
+        Q.id = L.id + "-" + (L.qs.length + 1);
+        L.qs.push(Q); continue;
+      }
+      const m = line.match(/^([cqawse]):\s?(.*)$/);
+      if (!m) continue;
+      const [, k, v] = m;
+      if (k === "c") L.concept.push(v);
+      else if (k === "q") Q.q = v;
+      else if (k === "e") Q.e = v;
+      else if (k === "a") Q.type === "in" ? Q.a.push(...v.split(" ; ").map(s => s.trim())) : Q.a.push(v);
+      else Q[k].push(v);
+    }
+    return lessons;
+  }
+  const LESSONS = parseCourse(document.getElementById("course").textContent);
+  const QMAP = {};
+  LESSONS.forEach(l => l.qs.forEach(q => { QMAP[q.id] = Object.assign(q, { lesson: l }); }));
+
+  // ---------- state & persistence ----------
+  const today = () => { const d = new Date(); return Math.floor((d.getTime() - d.getTimezoneOffset() * 60000) / 86400000); };
+  const blank = () => ({ xp: 0, streak: 0, lastDay: null, dayXp: 0, dayKey: null, lessons: {}, cards: {}, updatedAt: 0 });
+  let S = blank();
+  try { const raw = localStorage.getItem(LS_KEY); if (raw) S = Object.assign(blank(), JSON.parse(raw)); } catch (e) {}
+
+  let remote = null, saveTimer = null, saving = Promise.resolve();
+  function persist() {
+    S.updatedAt = Date.now();
+    try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch (e) {}
+    if (!remote) return;
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      const body = JSON.parse(JSON.stringify(S));
+      saving = saving.then(() => remote.set(body)).then(() => setSync("진도가 계정에 저장됐어요"), () => setSync("저장하지 못했어요. 이 브라우저에는 남아 있어요"));
+    }, 600);
+  }
+  function setSync(t) { document.getElementById("sync").textContent = t; }
+
+  async function connect() {
+    if (!window.claude || !window.claude.use) return;
+    try {
+      const [db, user] = await Promise.all([claude.use("db"), claude.use("user")]);
+      if (!db || !user) return;
+      const uid = await user.id();
+      if (!uid) return;
+      const ref = db.doc("data/users/" + uid + "/progress");
+      const snap = await ref.get();
+      if (snap.exists) {
+        const r = snap.data();
+        if ((r.updatedAt || 0) > (S.updatedAt || 0)) {
+          S = Object.assign(blank(), JSON.parse(JSON.stringify(r)));
+          try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch (e) {}
+          renderHome();
+        }
+      }
+      remote = ref;
+      setSync("진도가 계정에 저장돼요. 다른 기기에서도 이어서 할 수 있어요");
+      if (!snap.exists && S.updatedAt) persist();
+    } catch (e) { /* stay local */ }
+  }
+
+  function rollDay() {
+    const t = today();
+    if (S.dayKey !== t) { S.dayKey = t; S.dayXp = 0; }
+  }
+  function streakAlive() { return S.lastDay !== null && today() - S.lastDay <= 1; }
+  function touchStreak() {
+    const t = today();
+    if (S.lastDay === t) return;
+    S.streak = (S.lastDay === t - 1) ? S.streak + 1 : 1;
+    S.lastDay = t;
+  }
+  function dueCards() {
+    const t = today();
+    return Object.keys(S.cards).filter(id => QMAP[id] && S.cards[id].d <= t);
+  }
+  function grade(id, correct) {
+    const c = S.cards[id] || { b: 0, d: today() };
+    c.b = correct ? Math.min(c.b + 1, BOX_DAYS.length - 1) : 0;
+    c.d = today() + BOX_DAYS[c.b];
+    S.cards[id] = c;
+  }
+
+  // ---------- helpers ----------
+  const $ = id => document.getElementById(id);
+  const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const GLOSS = JSON.parse(document.getElementById("glossary").textContent);
+  const GIDX = {}; GLOSS.forEach((g, i) => { GIDX[g.t] = i; });
+  const TERM_RE = new RegExp("(" + GLOSS.map(g => g.t).sort((a, b) => b.length - a.length).map(t => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|") + ")", "g");
+  let seenTerms = new Set();
+  function linkTerms(text) {
+    return text.replace(TERM_RE, t => {
+      if (seenTerms.has(t)) return t;
+      seenTerms.add(t);
+      return '<span class="term" role="button" tabindex="0" data-g="' + GIDX[t] + '">' + t + '</span>';
+    });
+  }
+  const md = s => esc(s).split(/(\$\$[\s\S]*?\$\$|\$[^$]*\$)/).map((seg, i) => i % 2 ? seg : linkTerms(seg)).join("").replace(/\*\*(.+?)\*\*/g, '<strong class="hl">$1</strong>');
+  function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+  function typeset(el) {
+    const run = () => { if (window.MathJax && MathJax.typesetPromise) { try { MathJax.typesetClear && MathJax.typesetClear([el]); } catch (e) {} MathJax.typesetPromise([el]).catch(() => {}); } };
+    if (window.MathJax && MathJax.startup && MathJax.startup.promise) MathJax.startup.promise.then(run); else setTimeout(run, 400);
+  }
+  function parseNum(s) {
+    s = s.replace(/\s+/g, "").replace(/−/g, "-");
+    const f = s.match(/^(-?\d+(?:\.\d+)?)\/(-?\d+(?:\.\d+)?)$/);
+    if (f) return parseFloat(f[1]) / parseFloat(f[2]);
+    return /^-?\d+(\.\d+)?$/.test(s) ? parseFloat(s) : NaN;
+  }
+  function checkInput(q, val) {
+    const norm = s => s.replace(/\s+/g, "").replace(/−/g, "-").toLowerCase();
+    if (q.a.some(a => norm(a) === norm(val))) return true;
+    const v = parseNum(val);
+    return !isNaN(v) && q.a.some(a => { const n = parseNum(a); if (isNaN(n)) return false; const tol = /\./.test(a) ? Math.abs(n) * 0.01 : 1e-9; return Math.abs(n - v) <= tol + 1e-12; });
+  }
+
+  // ---------- home ----------
+  const CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>';
+  const CROSS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg>';
+  const CHEV = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>';
+  const mins = l => Math.max(2, Math.round(l.qs.length * 0.5 + 1));
+  function renderHome() {
+    rollDay();
+    $("st-xp").textContent = S.xp;
+    const alive = streakAlive();
+    $("st-streak-n").textContent = alive ? S.streak : 0;
+    $("st-streak").classList.toggle("off", !(alive && S.lastDay === today()));
+    const frac = Math.min(1, S.dayXp / DAILY_GOAL);
+    $("ring-bar").style.strokeDashoffset = (169.6 * (1 - frac)).toFixed(1);
+    $("ring").classList.toggle("full", frac >= 1);
+    $("ring-n").textContent = S.dayXp;
+
+    const next = LESSONS.find(l => !S.lessons[l.id]);
+    const heroL = next || LESSONS[LESSONS.length - 1];
+    $("hero-eyebrow").textContent = next ? (Object.keys(S.lessons).length ? "이어서 학습" : "첫 레슨") : "모든 레슨 완료 · 다시 풀기";
+    $("hero-title").textContent = heroL.id + "장 " + heroL.title;
+    $("hero-meta").textContent = heroL.unit + " · " + heroL.qs.length + "문제 · 약 " + mins(heroL) + "분";
+    $("hero-btn").onclick = () => startLesson(heroL);
+
+    const due = dueCards().length;
+    $("review-sub").textContent = due ? due + "문제가 기다리고 있어요" : "틀린 문제가 생기면 여기 모여요";
+    $("review-btn").disabled = due === 0;
+
+    const units = [];
+    LESSONS.forEach(l => { let u = units.find(x => x.name === l.unit); if (!u) units.push(u = { name: l.unit, ls: [] }); u.ls.push(l); });
+    const host = $("units");
+    host.innerHTML = "";
+    units.forEach(u => {
+      const done = u.ls.filter(l => S.lessons[l.id]).length;
+      const sec = document.createElement("section");
+      sec.className = "unit";
+      sec.innerHTML = '<div class="unit-head"><h2>' + esc(u.name) + '</h2><span>' + done + '/' + u.ls.length + '</span></div>' +
+        '<div class="unit-bar"><i style="width:' + Math.round(done / u.ls.length * 100) + '%"></i></div><ol class="steps"></ol>';
+      const list = sec.querySelector(".steps");
+      u.ls.forEach(l => {
+        const rec = S.lessons[l.id];
+        const isNext = next && l.id === next.id;
+        const li = document.createElement("li");
+        if (rec) li.className = "was-done";
+        const sub = isNext ? "다음 레슨 · 약 " + mins(l) + "분" : rec ? "정답률 " + rec.best + "% · " + rec.n + "회 완료" : l.qs.length + "문제";
+        li.innerHTML = '<button type="button" class="row' + (rec ? " done" : "") + (isNext ? " next" : "") + '"><span class="disc">' + (rec ? CHECK : l.id) +
+          '</span><span class="tx"><b>' + l.id + '장 ' + esc(l.title) + '</b><span>' + sub + '</span></span>' + CHEV + '</button>';
+        li.firstChild.addEventListener("click", () => startLesson(l));
+        list.appendChild(li);
+      });
+      host.appendChild(sec);
+    });
+  }
+
+  // ---------- session ----------
+  let sess = null;
+  function startLesson(l) {
+    sess = { kind: "lesson", lesson: l, steps: [{ t: "concept" }].concat(l.qs.map(q => ({ t: "q", q }))), i: 0, total: l.qs.length + 1, firstTry: {}, correct: 0, xp: 0, retries: {} };
+    openSession();
+  }
+  function startReview() {
+    const ids = shuffle(dueCards()).slice(0, 12);
+    if (!ids.length) return;
+    sess = { kind: "review", steps: ids.map(id => ({ t: "q", q: QMAP[id] })), i: 0, total: ids.length, firstTry: {}, correct: 0, xp: 0, retries: {} };
+    openSession();
+  }
+  function openSession() {
+    $("home").hidden = true; $("lesson").hidden = false;
+    document.body.style.overflow = "hidden";
+    showStep();
+  }
+  function closeSession() {
+    sess = null;
+    $("lesson").hidden = true; $("home").hidden = false;
+    document.body.style.overflow = "";
+    renderHome();
+    window.scrollTo(0, 0);
+  }
+  $("quit").addEventListener("click", closeSession);
+  $("review-btn").addEventListener("click", startReview);
+
+  function setProgress() {
+    const doneCount = Math.min(sess.i, sess.total);
+    $("prog-fill").style.width = Math.round(doneCount / sess.total * 100) + "%";
+  }
+  function sheet(html, cls) {
+    const sh = $("sheet");
+    sh.className = "sheet" + (cls ? " " + cls : "");
+    $("sheet-inner").innerHTML = html;
+    typeset(sh);
+  }
+
+  function showStep() {
+    setProgress();
+    const stage = $("stage");
+    $("lesson-body").scrollTop = 0;
+    const step = sess.steps[sess.i];
+    if (!step) return finish();
+    seenTerms = new Set();
+    stage.className = "wrap rise";
+    void stage.offsetWidth;
+    if (step.t === "concept") {
+      const l = sess.lesson;
+      stage.innerHTML = '<article class="concept"><span class="eyebrow">' + l.id + '장 · 핵심 정리</span><h2>' + esc(l.title) + '</h2><ol>' +
+        l.concept.map(c => '<li>' + md(c) + '</li>').join("") + '</ol>' +
+        (DRIVE[l.id] ? '<a href="https://drive.google.com/file/d/' + DRIVE[l.id] + '/view" target="_blank" rel="noopener">교재 PDF 열기 →</a>' : "") + '</article>';
+      sheet('<button class="btn wide" id="go" type="button">문제 풀기</button>');
+      $("go").addEventListener("click", () => { sess.i++; showStep(); });
+      typeset(stage);
+      return;
+    }
+    renderQuestion(step.q, stage);
+  }
+
+  function renderQuestion(q, stage) {
+    const label = sess.kind === "review" ? "복습 · " + q.lesson.id + "장 " + q.lesson.title : q.lesson.id + "장";
+    const typeLabel = { mc: "고르기", in: "직접 입력", ord: "순서 맞추기" }[q.type];
+    let html = '<span class="eyebrow">' + esc(label) + ' · ' + typeLabel + '</span><p class="qtext">' + md(q.q) + '</p>';
+    let getAnswer = null;
+    if (q.type === "mc") {
+      const opts = shuffle(q.a.map(t => ({ t, ok: true })).concat(q.w.map(t => ({ t, ok: false }))));
+      html += '<div class="opts" id="opts" role="radiogroup">' + opts.map((o, i) => '<button type="button" class="opt" role="radio" aria-checked="false" data-i="' + i + '"><span class="k">' + (i + 1) + '</span><span class="t">' + md(o.t) + '</span></button>').join("") + '</div>';
+      stage.innerHTML = html;
+      let sel = -1;
+      stage.querySelectorAll(".opt").forEach(b => b.addEventListener("click", () => {
+        if ($("opts").classList.contains("locked")) return;
+        sel = +b.dataset.i;
+        stage.querySelectorAll(".opt").forEach(x => { x.classList.toggle("sel", x === b); x.setAttribute("aria-checked", x === b); });
+        $("check").disabled = false;
+      }));
+      getAnswer = () => {
+        const ok = opts[sel].ok;
+        $("opts").classList.add("locked");
+        stage.querySelectorAll(".opt").forEach((x, i) => { if (opts[i].ok) x.classList.add("right"); else if (i === sel) x.classList.add("wrong"); x.classList.remove("sel"); });
+        return ok;
+      };
+    } else if (q.type === "in") {
+      html += '<input class="answer-in" id="ans" inputmode="text" autocomplete="off" placeholder="답 입력" aria-label="답"><div class="hint">정수, 음수(-3), 분수(1/2), 소수 모두 돼요. 소수 답은 1% 오차까지 정답이에요.</div>';
+      stage.innerHTML = html;
+      const inp = $("ans");
+      inp.addEventListener("input", () => { $("check").disabled = !inp.value.trim(); });
+      inp.addEventListener("keydown", e => { if (e.key === "Enter" && inp.value.trim() && !$("check").disabled) $("check").click(); });
+      setTimeout(() => inp.focus({ preventScroll: true }), 50);
+      getAnswer = () => { inp.readOnly = true; return checkInput(q, inp.value); };
+    } else {
+      const pool = shuffle(q.s.map((t, i) => ({ t, i })));
+      html += '<div class="slots" id="slots"></div><div class="pool" id="pool">' + pool.map((p, k) => '<button type="button" class="chip" data-k="' + k + '"><span class="t">' + md(p.t) + '</span></button>').join("") + '</div>';
+      stage.innerHTML = html;
+      const order = [];
+      const slots = $("slots");
+      const redraw = () => {
+        slots.innerHTML = order.map((k, n) => '<button type="button" class="chip" data-k="' + k + '"><span class="n">' + (n + 1) + '</span><span class="t">' + md(pool[k].t) + '</span></button>').join("");
+        stage.querySelectorAll("#pool .chip").forEach(c => c.classList.toggle("used", order.includes(+c.dataset.k)));
+        slots.querySelectorAll(".chip").forEach(c => c.addEventListener("click", () => { if (slots.dataset.locked) return; order.splice(order.indexOf(+c.dataset.k), 1); redraw(); }));
+        $("check").disabled = order.length !== pool.length;
+        typeset(slots);
+      };
+      stage.querySelectorAll("#pool .chip").forEach(c => c.addEventListener("click", () => { if (slots.dataset.locked) return; const k = +c.dataset.k; if (!order.includes(k)) { order.push(k); redraw(); } }));
+      getAnswer = () => { slots.dataset.locked = "1"; return order.every((k, n) => pool[k].i === n); };
+    }
+    typeset(stage);
+    sheet('<button class="btn wide" id="check" type="button" disabled>확인</button>');
+    $("check").addEventListener("click", () => {
+      const ok = getAnswer();
+      onAnswer(q, ok);
+    });
+  }
+
+  function onAnswer(q, ok) {
+    const first = !(q.id in sess.firstTry);
+    if (first) {
+      sess.firstTry[q.id] = ok;
+      grade(q.id, ok);
+      if (ok) { sess.correct++; sess.xp += 2; }
+    } else if (ok) { sess.xp += 1; }
+    if (!ok) {
+      sess.retries[q.id] = (sess.retries[q.id] || 0) + 1;
+      if (sess.retries[q.id] <= 2) { sess.steps.push({ t: "q", q }); sess.total++; }
+    }
+    let ansHtml = "";
+    if (!ok) {
+      if (q.type === "in") ansHtml = '<p class="explain"><b>정답:</b> ' + md(q.a[0]) + '</p>';
+      if (q.type === "ord") ansHtml = '<p class="explain"><b>올바른 순서:</b><br>' + q.s.map((s, i) => (i + 1) + ". " + md(s)).join("<br>") + '</p>';
+    }
+    const retryNote = !ok && sess.retries[q.id] <= 2 ? " 이 문제는 레슨 끝에 다시 나와요." : "";
+    sheet('<p class="verdict"><i>' + (ok ? CHECK : CROSS) + '</i>' + (ok ? "정답이에요" : "아쉬워요") + '</p>' + ansHtml + (q.e ? '<p class="explain">' + md(q.e) + retryNote + '</p>' : (retryNote ? '<p class="explain">' + retryNote + '</p>' : "")) +
+      '<button class="btn wide ' + (ok ? "ok" : "bad") + '" id="next" type="button">계속</button>', ok ? "ok" : "bad");
+    const nx = $("next");
+    nx.focus({ preventScroll: true });
+    nx.addEventListener("click", () => { sess.i++; showStep(); });
+  }
+
+  function finish() {
+    rollDay();
+    const asked = Object.keys(sess.firstTry).length;
+    const acc = asked ? Math.round(sess.correct / asked * 100) : 100;
+    let bonus = 0;
+    if (sess.kind === "lesson") {
+      bonus = acc === 100 ? 10 : 5;
+      const r = S.lessons[sess.lesson.id] || { n: 0, best: 0 };
+      r.n++; r.best = Math.max(r.best, acc);
+      S.lessons[sess.lesson.id] = r;
+    } else bonus = 3;
+    const gained = sess.xp + bonus;
+    S.xp += gained; S.dayXp += gained;
+    touchStreak();
+    persist();
+    $("prog-fill").style.width = "100%";
+    const stage = $("stage");
+    const title = sess.kind === "review" ? "복습 완료" : acc === 100 ? "완벽해요" : "레슨 완료";
+    const sub = sess.kind === "review" ? "맞힌 문제는 더 긴 간격 뒤에 다시 나와요." : acc === 100 ? "한 번도 안 틀렸어요. 보너스 10 XP." : "틀린 문제는 복습 목록에 들어갔어요.";
+    stage.innerHTML = '<div class="finish"><div class="badge">' + CHECK + '</div><h2>' + title + '</h2><p>' + sub + '</p><div class="tiles">' +
+      '<div class="tile xp"><b>+' + gained + '</b><span>XP</span></div>' +
+      '<div class="tile acc"><b>' + acc + '%</b><span>첫 시도 정답률</span></div>' +
+      '<div class="tile st"><b>' + S.streak + '일</b><span>연속 학습</span></div></div></div>';
+    sheet('<button class="btn wide" id="done" type="button">계속</button>');
+    $("done").addEventListener("click", closeSession);
+  }
+
+  document.addEventListener("keydown", e => {
+    if (!sess) return;
+    if (/^[1-9]$/.test(e.key) && document.activeElement && document.activeElement.id !== "ans") {
+      const b = document.querySelector('#opts:not(.locked) .opt[data-i="' + (+e.key - 1) + '"]');
+      if (b) b.click();
+    }
+    if (e.key === "Enter" && (!document.activeElement || !/^(BUTTON|INPUT|A)$/.test(document.activeElement.tagName))) {
+      const b = $("check") || $("next") || $("go") || $("done");
+      if (b && !b.disabled && document.activeElement !== b) { e.preventDefault(); b.click(); }
+    }
+  });
+
+  function openGloss(i) {
+    const g = GLOSS[i];
+    $("gloss-term").textContent = g.t === "계(order)" ? "계 (order)" : g.t;
+    $("gloss-def").innerHTML = esc(g.d);
+    $("gloss").hidden = false;
+    typeset($("gloss-def"));
+    $("gloss-close").focus({ preventScroll: true });
+  }
+  function closeGloss() { $("gloss").hidden = true; }
+  document.addEventListener("click", e => {
+    const t = e.target.closest && e.target.closest(".term");
+    if (t) { e.stopPropagation(); e.preventDefault(); openGloss(+t.dataset.g); }
+  }, true);
+  document.addEventListener("keydown", e => {
+    const t = e.target.closest && e.target.closest(".term");
+    if (t && (e.key === "Enter" || e.key === " ")) { e.stopPropagation(); e.preventDefault(); openGloss(+t.dataset.g); return; }
+    if (e.key === "Escape" && !$("gloss").hidden) { e.stopPropagation(); closeGloss(); }
+  }, true);
+  $("gloss-close").addEventListener("click", closeGloss);
+  $("gloss").addEventListener("click", e => { if (e.target.id === "gloss") closeGloss(); });
+
+  renderHome();
+  connect();
+})();
+</script>
