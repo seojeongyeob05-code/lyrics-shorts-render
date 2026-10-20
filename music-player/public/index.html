@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My Music</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎵</text></svg>">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- 로그인 / 최초 계정 만들기 -->
+  <section id="auth" class="auth" hidden>
+    <form id="auth-form" class="auth-card">
+      <h1>🎵 My Music</h1>
+      <p id="auth-desc" class="muted"></p>
+      <label>아이디<input name="username" autocomplete="username" required></label>
+      <label>비밀번호<input name="password" type="password" autocomplete="current-password" required minlength="8"></label>
+      <p id="auth-error" class="error" role="alert"></p>
+      <button class="btn primary" type="submit" id="auth-submit">로그인</button>
+    </form>
+  </section>
+
+  <div id="app" class="app" hidden>
+    <aside class="sidebar">
+      <div class="logo">🎵 My Music</div>
+      <nav>
+        <button class="nav-item" data-view="library">라이브러리</button>
+      </nav>
+      <div class="side-head">
+        <span>플레이리스트</span>
+        <button class="icon-btn small" id="new-playlist" title="새 플레이리스트">＋</button>
+      </div>
+      <ul id="playlist-nav" class="playlist-nav"></ul>
+      <div class="side-foot">
+        <span id="username" class="muted"></span>
+        <button class="link" id="logout">로그아웃</button>
+      </div>
+    </aside>
+
+    <main class="main" id="main">
+      <header class="view-head">
+        <div>
+          <p class="eyebrow" id="view-kind"></p>
+          <h2 id="view-title"></h2>
+          <p class="muted" id="view-meta"></p>
+        </div>
+        <div class="view-actions" id="view-actions"></div>
+      </header>
+      <div id="track-list" class="track-list" role="list"></div>
+    </main>
+
+    <aside class="queue" id="queue" hidden>
+      <div class="queue-head">
+        <h3>재생 대기열</h3>
+        <button class="link" id="queue-clear">다음 곡 비우기</button>
+      </div>
+      <div id="queue-list" class="queue-list"></div>
+    </aside>
+
+    <footer class="player">
+      <div class="now">
+        <div class="cover" id="now-cover"></div>
+        <div class="now-text">
+          <div class="now-title" id="now-title">재생 중인 곡 없음</div>
+          <div class="now-artist muted" id="now-artist"></div>
+        </div>
+      </div>
+      <div class="controls">
+        <div class="buttons">
+          <button class="icon-btn" id="btn-shuffle" title="셔플"></button>
+          <button class="icon-btn" id="btn-prev" title="이전 곡"></button>
+          <button class="icon-btn play" id="btn-play" title="재생"></button>
+          <button class="icon-btn" id="btn-next" title="다음 곡"></button>
+          <button class="icon-btn" id="btn-repeat" title="반복"></button>
+        </div>
+        <div class="seek">
+          <span id="time-cur">0:00</span>
+          <input type="range" id="seek" min="0" max="0" step="0.1" value="0" aria-label="재생 위치">
+          <span id="time-dur">0:00</span>
+        </div>
+      </div>
+      <div class="extras">
+        <button class="icon-btn" id="btn-mute" title="음소거"></button>
+        <input type="range" id="volume" min="0" max="1" step="0.01" value="1" aria-label="볼륨">
+        <button class="icon-btn" id="btn-queue" title="재생 대기열"></button>
+      </div>
+    </footer>
+  </div>
+
+  <div id="menu" class="menu" hidden></div>
+  <div id="dropzone" class="dropzone" hidden><div>여기에 음원 파일을 놓으세요</div></div>
+  <div id="toast" class="toast" hidden></div>
+  <input type="file" id="file-input" accept=".mp3,.flac,.m4a,.aac,.ogg,.opus,.wav,.webm,audio/*" multiple hidden>
+
+  <dialog id="dialog" class="dialog">
+    <form method="dialog" id="dialog-form">
+      <h3 id="dialog-title"></h3>
+      <div id="dialog-body"></div>
+      <div class="dialog-actions">
+        <!-- Enter 키가 첫 번째 제출 버튼(확인)을 누르도록 확인을 먼저 두고 CSS로 순서를 뒤집는다 -->
+        <button class="btn primary" value="ok" id="dialog-ok">확인</button>
+        <button class="btn" value="cancel" formnovalidate>취소</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="app.js" type="module"></script>
+</body>
+</html>

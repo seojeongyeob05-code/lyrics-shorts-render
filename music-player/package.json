@@ -1,0 +1,21 @@
+{
+  "name": "music-player",
+  "version": "0.1.0",
+  "private": true,
+  "description": "내 음원 파일을 올려 브라우저에서 듣는 개인 음악 스트리밍 서버",
+  "type": "module",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning server/index.js",
+    "dev": "node --disable-warning=ExperimentalWarning --watch server/index.js",
+    "test": "node --disable-warning=ExperimentalWarning --test \"test/**/*.test.js\""
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "dependencies": {
+    "express": "^5.3.0",
+    "multer": "^2.4.0",
+    "music-metadata": "^12.2.3"
+  }
+}

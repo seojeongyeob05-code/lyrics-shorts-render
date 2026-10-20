@@ -1,0 +1,14 @@
+services:
+  music:
+    build: .
+    container_name: my-music
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      MAX_UPLOAD_MB: "200"
+      # HTTPS 리버스 프록시(Caddy, Nginx 등) 뒤에서 쓸 때 켜세요.
+      # COOKIE_SECURE: "true"
+      # TRUST_PROXY: "true"
+    volumes:
+      - ./data:/data
