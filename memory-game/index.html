@@ -1,0 +1,779 @@
+<title>다시, 5시 20분</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Sans+KR:wght@400;500;700&family=Overpass:wght@700;800&family=Overpass+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: a floor plan of one building lobby beside a dialogue column; the plan dims toward dusk as the 6 PM closing nears. */
+:root {
+  --bg: #e7eaf1;
+  --panel: #f6f7fa;
+  --ink: #1a1f2e;
+  --muted: #586074;
+  --line: #ccd2de;
+  --amber: #d98b1c;
+  --sign: #1c6a50;
+  --sign-ink: #f2f6f1;
+  --danger: #b4423a;
+  --ok: #2c7a4c;
+  --wall: #394054;
+  --hall: #dedbd1;
+  --room-security: #c3d2e8;
+  --room-cafe: #e6d2bb;
+  --room-restroom: #cde2dc;
+  --room-mail: #d9d1e7;
+  --room-gym: #e3d9c4;
+  --dusk: #171c48;
+  --me: #e9eefb;
+  --npc: #ffffff;
+  --f-display: 'Bricolage Grotesque', 'IBM Plex Sans KR', system-ui, sans-serif;
+  --f-body: 'IBM Plex Sans KR', system-ui, sans-serif;
+  --f-sign: 'Overpass', 'Arial Narrow', 'IBM Plex Sans KR', sans-serif;
+  --f-mono: 'Overpass Mono', ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f121a; --panel: #171b26; --ink: #e6e8ef; --muted: #99a0b3; --line: #2a3142;
+    --amber: #eeaa45; --sign: #2c8c69; --sign-ink: #effaf3; --danger: #e0685e; --ok: #5cbf83;
+    --wall: #05070c; --hall: #2b2d33;
+    --room-security: #26344a; --room-cafe: #3c3127; --room-restroom: #22392f; --room-mail: #322b40; --room-gym: #3a3527;
+    --dusk: #04061a; --me: #1f2a44; --npc: #1d2230;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f121a; --panel: #171b26; --ink: #e6e8ef; --muted: #99a0b3; --line: #2a3142;
+  --amber: #eeaa45; --sign: #2c8c69; --sign-ink: #effaf3; --danger: #e0685e; --ok: #5cbf83;
+  --wall: #05070c; --hall: #2b2d33;
+  --room-security: #26344a; --room-cafe: #3c3127; --room-restroom: #22392f; --room-mail: #322b40; --room-gym: #3a3527;
+  --dusk: #04061a; --me: #1f2a44; --npc: #1d2230;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 16px 24px;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, input:focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; }
+.app { max-width: 1120px; margin: 0 auto; display: grid; gap: 16px; }
+
+header.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; }
+.brand h1 { font-family: var(--f-display); font-weight: 800; font-size: clamp(1.6rem, 4vw, 2.3rem); line-height: 1; margin: 0; letter-spacing: -0.02em; text-wrap: balance; }
+.brand p { margin: 6px 0 0; color: var(--muted); font-size: 0.85rem; }
+.hud { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.clock { font-family: var(--f-mono); font-weight: 700; font-size: 1.5rem; font-variant-numeric: tabular-nums; padding: 4px 12px; border-radius: 6px; background: var(--ink); color: var(--bg); }
+.clock.late { background: var(--danger); color: #fff; }
+.loop { font-family: var(--f-mono); font-size: 0.8rem; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
+.ghost { border: 1px solid var(--line); background: var(--panel); padding: 6px 12px; border-radius: 6px; font-size: 0.85rem; }
+.ghost:hover { border-color: var(--muted); }
+
+.goal { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--amber); border-radius: 6px; padding: 10px 14px; display: grid; gap: 2px; }
+.goal strong { font-weight: 700; }
+.goal .meta { color: var(--muted); font-size: 0.85rem; }
+.goal .wallet b { color: var(--ink); }
+
+main.play { display: grid; gap: 16px; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); align-items: start; }
+@media (max-width: 860px) { main.play { grid-template-columns: minmax(0, 1fr); } }
+
+/* --- map --- */
+.mapwrap { display: grid; gap: 10px; min-width: 0; }
+.map { position: relative; width: 100%; max-width: 100%; aspect-ratio: 15 / 12; container-type: inline-size; border-radius: 6px; overflow: hidden; background: var(--wall); user-select: none; }
+.tiles { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(15, 1fr); grid-template-rows: repeat(12, 1fr); }
+.t { background: var(--wall); }
+.t.hall { background: var(--hall); }
+.t.door { background: var(--hall); box-shadow: inset 0 0 0 0.35cqw var(--amber); }
+.t.security { background: var(--room-security); }
+.t.cafe { background: var(--room-cafe); }
+.t.restroom { background: var(--room-restroom); }
+.t.mail { background: var(--room-mail); }
+.t.gym { background: var(--room-gym); }
+.t.entry { background: var(--hall); box-shadow: inset 0 -0.6cqw 0 var(--sign); }
+.label { position: absolute; display: grid; place-items: start center; padding-top: 0.6cqw; pointer-events: none; }
+.label span { font-family: var(--f-sign); font-weight: 800; font-size: 1.85cqw; line-height: 1.05; letter-spacing: 0.04em; text-align: center; background: var(--sign); color: var(--sign-ink); padding: 0.4cqw 0.8cqw; border-radius: 0.5cqw; max-width: 96%; white-space: pre-line; }
+.sprite { position: absolute; width: calc(100% / 15); height: calc(100% / 12); display: grid; place-items: center; font-size: 4.1cqw; line-height: 1; transition: left 0.12s, top 0.12s; pointer-events: none; }
+.sprite.you::after { content: ""; position: absolute; inset: 8%; border-radius: 50%; border: 0.45cqw solid var(--amber); }
+.sprite.near { filter: drop-shadow(0 0 0.8cqw var(--amber)); }
+.dusk { position: absolute; inset: 0; background: var(--dusk); opacity: 0; pointer-events: none; transition: opacity 0.6s; }
+@media (prefers-reduced-motion: reduce) { .sprite, .dusk { transition: none; } }
+
+.pad { display: grid; grid-template-columns: repeat(3, 44px); grid-template-rows: repeat(2, 40px); gap: 6px; justify-content: center; }
+.pad button { border: 1px solid var(--line); background: var(--panel); border-radius: 6px; font-size: 1.1rem; }
+.pad .up { grid-column: 2; }
+.pad .left { grid-column: 1; grid-row: 2; }
+.pad .down { grid-column: 2; grid-row: 2; }
+.pad .right { grid-column: 3; grid-row: 2; }
+.hint { color: var(--muted); font-size: 0.8rem; text-align: center; margin: 0; }
+
+/* --- dialogue --- */
+.talk { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; min-width: 0; height: min(640px, 78vh); }
+@media (max-width: 860px) { .talk { height: 520px; } }
+.talk .who { padding: 10px 14px; border-bottom: 1px solid var(--line); font-size: 0.85rem; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; }
+.talk .who b { color: var(--ink); }
+.log { overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.msg { max-width: 92%; padding: 7px 11px; border-radius: 8px; overflow-wrap: anywhere; }
+.msg .name { display: block; font-size: 0.72rem; color: var(--muted); letter-spacing: 0.04em; }
+.msg.npc { background: var(--npc); border: 1px solid var(--line); align-self: flex-start; }
+.msg.npc .en { font-weight: 500; }
+.msg.me { background: var(--me); align-self: flex-end; }
+.msg.gesture { align-self: flex-end; font-style: italic; color: var(--muted); background: transparent; border: 1px dashed var(--line); }
+.msg.place { align-self: stretch; max-width: 100%; background: var(--sign); color: var(--sign-ink); font-family: var(--f-sign); font-weight: 700; letter-spacing: 0.02em; }
+.msg.place .name { color: var(--sign-ink); opacity: 0.75; }
+.msg.sys { align-self: center; max-width: 100%; font-size: 0.82rem; color: var(--muted); text-align: center; background: transparent; padding: 2px 6px; }
+.msg .ko { display: block; margin-top: 4px; padding-top: 4px; border-top: 1px dashed var(--line); color: var(--muted); font-size: 0.85rem; }
+
+.controls { border-top: 1px solid var(--line); padding: 10px 12px 12px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.say { display: flex; gap: 6px; }
+.say input { flex: 1; min-width: 0; padding: 9px 11px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); font: inherit; }
+.say button { padding: 0 14px; border: 0; border-radius: 6px; background: var(--ink); color: var(--bg); font-weight: 700; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--line); background: var(--bg); border-radius: 999px; padding: 4px 10px; font-size: 0.8rem; white-space: nowrap; }
+.chip:hover { border-color: var(--muted); }
+.chip.tool { border-color: var(--amber); }
+.chip small { color: var(--muted); font-family: var(--f-mono); margin-left: 4px; }
+.pointer[hidden] { display: none; }
+.pointer { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px; border: 1px dashed var(--amber); border-radius: 6px; }
+.pointer p { margin: 0; width: 100%; font-size: 0.8rem; color: var(--muted); }
+
+/* --- overlays --- */
+.overlay { position: fixed; inset: 0; background: color-mix(in srgb, var(--dusk) 70%, transparent); display: grid; place-items: center; padding: 16px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); z-index: 20; }
+.sheet { background: var(--panel); color: var(--ink); border-radius: 10px; width: min(620px, 100%); max-height: 88vh; overflow-y: auto; padding: 22px; display: grid; gap: 14px; }
+.sheet h2 { font-family: var(--f-display); font-weight: 800; font-size: 1.6rem; margin: 0; line-height: 1.1; text-wrap: balance; }
+.sheet p { margin: 0; }
+.sheet .lead { color: var(--muted); }
+.primary { border: 0; background: var(--amber); color: #1a1408; font-weight: 700; padding: 10px 16px; border-radius: 6px; justify-self: start; }
+.miss { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.miss li { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; display: grid; gap: 4px; }
+.tag { font-family: var(--f-mono); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.05em; padding: 1px 7px; border-radius: 4px; justify-self: start; }
+.tag.무관 { background: color-mix(in srgb, var(--muted) 20%, transparent); }
+.tag.정반대 { background: color-mix(in srgb, var(--danger) 22%, transparent); color: var(--danger); }
+.tag.거의 { background: color-mix(in srgb, var(--ok) 22%, transparent); color: var(--ok); }
+.tag.한국어 { background: color-mix(in srgb, var(--amber) 25%, transparent); }
+.miss .act { font-size: 0.85rem; color: var(--muted); }
+.vocab { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.vocab div { border: 1px solid var(--line); border-radius: 6px; padding: 6px 9px; font-size: 0.85rem; }
+.vocab b { font-family: var(--f-sign); letter-spacing: 0.02em; }
+.vocab .st { float: right; }
+.vocab .mean { display: block; color: var(--muted); font-size: 0.8rem; }
+.legend { font-size: 0.8rem; color: var(--muted); }
+.phr { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.phr li { font-size: 0.9rem; }
+.phr .arrow { color: var(--muted); }
+.phr em { font-style: normal; font-weight: 700; color: var(--ok); }
+.how { display: grid; gap: 6px; margin: 0; padding-left: 18px; font-size: 0.9rem; }
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <h1>다시, 5시 20분</h1>
+      <p>영어로만 돌아가는 건물에서 같은 오후를 되풀이하며 배우는 게임</p>
+    </div>
+    <div class="hud">
+      <span class="loop" id="loopLabel">1회차</span>
+      <span class="clock" id="clock">5:20 PM</span>
+      <button class="ghost" id="journalBtn" type="button">단어 도감</button>
+    </div>
+  </header>
+
+  <section class="goal" aria-live="polite">
+    <strong>목표: 경비실로 가서 지갑을 무사히 되찾기</strong>
+    <span class="meta wallet" id="walletDesc">당신의 지갑: <b>갈색</b> · 안에 <b>학생증</b></span>
+    <span class="meta">경비실은 오후 6시에 문을 닫습니다. 걷기·말하기·몸짓·번역기 모두 시간이 흘러요.</span>
+  </section>
+
+  <main class="play">
+    <div class="mapwrap">
+      <div class="map" id="map" aria-label="건물 1층 지도">
+        <div class="tiles" id="tiles"></div>
+        <div id="labels"></div>
+        <div id="sprites"></div>
+        <div class="dusk" id="dusk"></div>
+      </div>
+      <div class="pad" aria-label="이동">
+        <button class="up" type="button" data-dir="0,-1" aria-label="위로">↑</button>
+        <button class="left" type="button" data-dir="-1,0" aria-label="왼쪽으로">←</button>
+        <button class="down" type="button" data-dir="0,1" aria-label="아래로">↓</button>
+        <button class="right" type="button" data-dir="1,0" aria-label="오른쪽으로">→</button>
+      </div>
+      <p class="hint">방향키 또는 WASD로 이동 (한 칸에 30초). 사람 옆에 서면 말을 걸 수 있어요.</p>
+    </div>
+
+    <section class="talk">
+      <div class="who"><span>대화 상대: <b id="whoName">없음</b></span><span id="whereName">로비</span></div>
+      <div class="log" id="log" aria-live="polite"></div>
+      <div class="controls">
+        <form class="say" id="sayForm" autocomplete="off">
+          <input id="sayInput" type="text" placeholder="영어로 말해보세요 (문법은 신경 쓰지 마세요)" aria-label="할 말">
+          <button type="submit">말하기</button>
+        </form>
+        <div class="chips" id="gestures"></div>
+        <div class="pointer" id="pointer" hidden></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true"></div>
+</div>
+
+<script>
+(() => {
+const W = 15, H = 12;
+const MAP = [
+  "###############",
+  "#aaa#bbbbb#ccc#",
+  "#aaa#bbbbb#ccc#",
+  "#aaa#bbbbb#ccc#",
+  "##1####2####3##",
+  "#dd#.......#ee#",
+  "#dd4.......5ee#",
+  "#dd#.......#ee#",
+  "####.......####",
+  "####.......####",
+  "####.......####",
+  "#######.#######",
+];
+const DOOR = { '1': 'a', '2': 'b', '3': 'c', '4': 'd', '5': 'e' };
+const SLOTS = {
+  a: { npc: [2, 2], box: [1, 1, 3, 3], dir: 'ahead on your left', dirKo: '앞쪽 왼편', side: 'L', point: 'ahead and to the left' },
+  b: { npc: [7, 2], box: [5, 1, 5, 3], dir: 'straight ahead', dirKo: '곧장 앞', side: 'C', point: 'straight ahead' },
+  c: { npc: [12, 2], box: [11, 1, 3, 3], dir: 'ahead on your right', dirKo: '앞쪽 오른편', side: 'R', point: 'ahead and to the right' },
+  d: { npc: [1, 6], box: [1, 5, 2, 3], dir: 'on your left', dirKo: '왼편', side: 'L', point: 'to the left' },
+  e: { npc: [13, 6], box: [12, 5, 2, 3], dir: 'on your right', dirKo: '오른편', side: 'R', point: 'to the right' },
+};
+const ROOMS = {
+  security: { sign: 'SECURITY\nOFFICE', name: 'SECURITY OFFICE', ko: '경비실',
+    place: ['SECURITY OFFICE — Lost and found. Office hours: 9 AM to 6 PM.', '경비실 — 분실물 보관. 운영 시간: 오전 9시~오후 6시.'] },
+  cafe: { sign: 'DAILY GRIND\nCOFFEE', name: 'DAILY GRIND', ko: '카페',
+    place: ['DAILY GRIND — Fresh coffee all day. Order at the counter.', '데일리 그라인드 — 하루 종일 신선한 커피. 카운터에서 주문하세요.'] },
+  restroom: { sign: 'RESTROOM', name: 'RESTROOM', ko: '화장실',
+    place: ['RESTROOM — Please keep it clean.', '화장실 — 깨끗하게 사용해 주세요.'] },
+  mail: { sign: 'MAIL\nROOM', name: 'MAIL ROOM', ko: '우편물실',
+    place: ['MAIL ROOM — Residents only. Packages are picked up at 7 PM.', '우편물실 — 입주민 전용. 택배는 오후 7시에 수거합니다.'] },
+  gym: { sign: 'GYM', name: 'GYM', ko: '헬스장',
+    place: ['GYM — Open 6 AM to 10 PM. Please wipe the machines after use.', '헬스장 — 오전 6시~오후 10시. 사용 후 기구를 닦아 주세요.'] },
+};
+const COLORS = { black: '검은색', brown: '갈색', red: '빨간색', blue: '파란색' };
+const CONTENTS = {
+  card: { en: 'student ID card', ko: '학생증', model: "There's a student ID card inside." },
+  photo: { en: 'family photo', ko: '가족사진', model: "There's a family photo inside." },
+  ticket: { en: 'concert ticket', ko: '콘서트 표', model: "There's a concert ticket inside." },
+};
+const OBJECTS = {
+  hall: [
+    { icon: '🪴', ko: '화분', color: 'green', en: 'the plant' },
+    { icon: '🪑', ko: '나무 벤치', color: 'brown', en: 'the bench' },
+    { icon: '🧹', ko: '청소부의 앞치마', color: 'blue', en: 'her apron' },
+  ],
+  security: [
+    { icon: '🧢', ko: '경비원의 모자', color: 'black', en: 'my cap' },
+    { icon: '📦', ko: '책상 위 상자', color: 'brown', en: 'the box' },
+    { icon: '🧯', ko: '소화기', color: 'red', en: 'the fire extinguisher' },
+    { icon: '💺', ko: '의자', color: 'blue', en: 'the chair' },
+  ],
+  cafe: [
+    { icon: '☕', ko: '머그컵', color: 'red', en: 'the mug' },
+    { icon: '🫘', ko: '원두 자루', color: 'brown', en: 'the coffee beans' },
+    { icon: '🧑‍🍳', ko: '직원의 앞치마', color: 'black', en: 'my apron' },
+  ],
+};
+const GESTURES = [
+  { id: 'pocket', label: '주머니 뒤지며 당황하기', act: '(주머니를 뒤지며 당황한 표정을 짓는다)', intents: ['lost'] },
+  { id: 'square', label: '네모 접는 시늉', act: '(손으로 작은 네모를 그리고 반으로 접는 시늉을 한다)', intents: ['wallet'] },
+  { id: 'point', label: '가리키기', act: '', intents: [] },
+  { id: 'card', label: '카드 내미는 시늉', act: '(카드를 꺼내 내미는 시늉을 한다)', intents: ['c:card'] },
+  { id: 'photo', label: '사진 보여주는 시늉', act: '(작은 사진을 들어 보이는 시늉을 한다)', intents: ['c:photo'] },
+  { id: 'ticket', label: '표 내미는 시늉', act: '(공연 표를 찢는 시늉을 한다)', intents: ['c:ticket'] },
+  { id: 'bow', label: '고개 숙여 인사', act: '(고개를 숙여 인사한다)', intents: ['greet', 'thanks'] },
+  { id: 'confused', label: '😕 갸웃하기', act: '(고개를 갸웃한다. 다시 말해달라는 뜻이다)', intents: ['confused'] },
+];
+// Words tracked in the journal: [english, korean meaning]
+const VOCAB = [
+  ['security office', '경비실'], ['security', '보안, 경비'], ['office', '사무실'], ['wallet', '지갑'], ['lost', '잃어버린'],
+  ['found', '찾았다, 발견했다'], ['lost and found', '분실물 보관소'], ['left', '왼쪽'], ['right', '오른쪽'], ['straight ahead', '곧장 앞으로'],
+  ['color', '색깔'], ['black', '검은색'], ['brown', '갈색'], ['red', '빨간색'], ['blue', '파란색'], ['look like', '~처럼 생기다'],
+  ['inside', '안에'], ['card', '카드'], ['photo', '사진'], ['ticket', '표'], ['restroom', '화장실'], ['mail', '우편'],
+  ['gym', '헬스장'], ['package', '택배, 소포'], ['help', '돕다'], ['closed', '문을 닫은'],
+];
+// Grandma explains words in easy English (never in Korean)
+const GLOSSARY = {
+  security: 'SECURITY means keeping people and things safe. The guard works for security!',
+  office: 'An OFFICE is a small room where someone works. Like a desk room.',
+  wallet: "A WALLET is the little thing you keep your money and cards in. In your pocket!",
+  left: 'LEFT is this side, dear. (She lifts her left hand.) Not this one. (She lifts her right hand.)',
+  right: 'RIGHT is this side. (She lifts her right hand.) The other one is left.',
+  straight: "STRAIGHT AHEAD means don't turn. Just walk forward, like this. (She points in front of her.)",
+  ahead: 'AHEAD means in front of you. Look forward, dear!',
+  color: 'COLOR is like... red, blue, black. My scarf is purple. That is its color.',
+  inside: 'INSIDE means in it. My tea is inside my cup!',
+  card: 'A CARD is small, flat, and hard. Like your bus card or your student card.',
+  photo: 'A PHOTO is a picture. I keep a photo of my grandson in my bag!',
+  ticket: 'A TICKET lets you go in. For a movie or a concert.',
+  lost: "LOST means you can't find it anymore. Oh, I lose my glasses every day!",
+  found: 'FOUND means someone saw it and picked it up. Good news!',
+  mail: 'MAIL is letters and packages. The MAIL ROOM has boxes for everyone.',
+  restroom: 'The RESTROOM is the toilet, dear.',
+  gym: 'A GYM is where young people run and lift heavy things. Not for me!',
+  describe: 'DESCRIBE means tell what it looks like. Big? Small? What color?',
+  look: '"What does it LOOK LIKE?" means: tell me about it. What color? Big or small?',
+  package: 'A PACKAGE is a box that comes in the mail.',
+  closed: 'CLOSED means the door is shut. No one is working.',
+};
+
+const START = 17 * 3600 + 20 * 60, END = 18 * 3600;
+const COST = { move: 30, say: 60, gesture: 90, confused: 60, translate: 150, coffee: 180 };
+const NPC_INFO = {
+  guard: { icon: '👮', name: 'Security guard', ko: '경비원' },
+  janitor: { icon: '🧹', name: 'Janitor', ko: '청소부' },
+  grandma: { icon: '👵', name: 'Mrs. Park', ko: '옆집 할머니' },
+  barista: { icon: '🧑‍🍳', name: 'Barista', ko: '카페 직원' },
+};
+
+// ---------- storage ----------
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
+let journal = store.get('ag520.journal', {});
+let totalLoops = store.get('ag520.loops', 0);
+function mark(word, field) {
+  const j = journal[word] || (journal[word] = {});
+  if (!j[field]) { j[field] = true; store.set('ag520.journal', journal); }
+}
+function scanSeen(text) {
+  const t = text.toLowerCase();
+  for (const [w] of VOCAB) if (new RegExp('\\b' + w + '\\b').test(t)) mark(w, 'seen');
+}
+function scanKnown(text) {
+  const t = text.toLowerCase();
+  for (const [w] of VOCAB) if (new RegExp('\\b' + w + '\\b').test(t)) { mark(w, 'seen'); mark(w, 'known'); }
+}
+
+// ---------- helpers ----------
+const $ = id => document.getElementById(id);
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const cap = s => s[0].toUpperCase() + s.slice(1);
+const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function clockStr(t) {
+  const h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60);
+  return `${h > 12 ? h - 12 : h}:${String(m).padStart(2, '0')} PM`;
+}
+
+// ---------- loop state ----------
+let S = null;
+function newLoop() {
+  const prevSec = S ? S.slotOf.security : null;
+  let order;
+  do { order = shuffle(Object.keys(ROOMS)); } while (prevSec && order[['a','b','c','d','e'].indexOf(prevSec)] === 'security');
+  const roomAt = {}, slotOf = {};
+  ['a', 'b', 'c', 'd', 'e'].forEach((s, i) => { roomAt[s] = order[i]; slotOf[order[i]] = s; });
+  totalLoops += 1; store.set('ag520.loops', totalLoops);
+  S = {
+    loop: S ? S.loop + 1 : 1, t: START, x: 7, y: 11, zone: 'hall', roomAt, slotOf,
+    color: pick(Object.keys(COLORS)), content: pick(Object.keys(CONTENTS)),
+    guardStage: 0, janitorTold: false, janitorAsked: false,
+    mistakes: [], visited: new Set(), greeted: new Set(), phrases: [], done: false, lastNpc: null,
+  };
+  S.npcs = {
+    janitor: [5, 8], grandma: [9, 10],
+    guard: SLOTS[slotOf.security].npc, barista: SLOTS[slotOf.cafe].npc,
+  };
+  $('log').innerHTML = '';
+  renderStatic();
+  render();
+  $('walletDesc').innerHTML = `당신의 지갑: <b>${COLORS[S.color]}</b> · 안에 <b>${CONTENTS[S.content].ko}</b>`;
+  sys(S.loop === 1 ? '오후 5시 20분. 방금 전까지 있던 건물 로비로 돌아왔다.' : '…눈을 떠보니 다시 오후 5시 20분, 건물 입구였다. 그런데 어딘가 배치가 달라 보인다.');
+  place('MAPLE COURT — Welcome, residents and guests.', '메이플 코트 — 입주민과 방문객 여러분, 환영합니다.');
+}
+
+// ---------- rendering ----------
+function tileClass(x, y) {
+  const ch = MAP[y][x];
+  if (ch === '#') return 't';
+  if (DOOR[ch]) return 't door';
+  if (SLOTS[ch]) return 't ' + S.roomAt[ch];
+  if (y === H - 1) return 't entry';
+  return 't hall';
+}
+function renderStatic() {
+  const tiles = $('tiles'); tiles.innerHTML = '';
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const d = document.createElement('div'); d.className = tileClass(x, y); tiles.appendChild(d);
+  }
+  const labels = $('labels'); labels.innerHTML = '';
+  for (const s in SLOTS) {
+    const [bx, by, bw, bh] = SLOTS[s].box;
+    const el = document.createElement('div'); el.className = 'label';
+    Object.assign(el.style, { left: bx / W * 100 + '%', top: by / H * 100 + '%', width: bw / W * 100 + '%', height: bh / H * 100 + '%' });
+    el.innerHTML = `<span>${ROOMS[S.roomAt[s]].sign}</span>`;
+    labels.appendChild(el);
+  }
+}
+function render() {
+  const sp = $('sprites'); sp.innerHTML = '';
+  const near = nearNpc();
+  const add = (x, y, icon, cls) => {
+    const d = document.createElement('div'); d.className = 'sprite ' + (cls || '');
+    d.style.left = x / W * 100 + '%'; d.style.top = y / H * 100 + '%'; d.textContent = icon; sp.appendChild(d);
+  };
+  for (const id in S.npcs) { const [x, y] = S.npcs[id]; add(x, y, NPC_INFO[id].icon, near === id ? 'near' : ''); }
+  add(S.x, S.y, '🧑', 'you');
+  $('clock').textContent = clockStr(S.t);
+  $('clock').classList.toggle('late', END - S.t <= 600);
+  $('dusk').style.opacity = Math.min(0.5, (S.t - START) / (END - START) * 0.5);
+  $('loopLabel').textContent = `${S.loop}회차`;
+  $('whoName').textContent = near ? `${NPC_INFO[near].name} (${NPC_INFO[near].ko})` : '없음';
+  $('whereName').textContent = S.zone === 'hall' ? '로비' : ROOMS[S.roomAt[S.zone]].name;
+}
+function push(kind, html) {
+  const d = document.createElement('div'); d.className = 'msg ' + kind; d.innerHTML = html;
+  $('log').appendChild(d); $('log').scrollTop = $('log').scrollHeight; return d;
+}
+const sys = text => push('sys', esc(text));
+function place(en, ko) { scanSeen(en); const el = push('place', `<span class="name">표지판</span>${esc(en)}`); S.lastNpc = { en, ko, el }; }
+function npcSay(id, en, ko) {
+  scanSeen(en);
+  const el = push('npc', `<span class="name">${NPC_INFO[id].icon} ${NPC_INFO[id].name}</span><span class="en">${esc(en)}</span>`);
+  S.lastNpc = { en, ko, el };
+}
+
+// ---------- world ----------
+function npcAt(x, y) { for (const id in S.npcs) { const [nx, ny] = S.npcs[id]; if (nx === x && ny === y) return id; } return null; }
+function nearNpc() {
+  for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) { const id = npcAt(S.x + dx, S.y + dy); if (id) return id; }
+  return null;
+}
+function zoneAt(x, y) { const ch = MAP[y][x]; return DOOR[ch] || (SLOTS[ch] ? ch : 'hall'); }
+function spend(sec) { S.t += sec; render(); if (S.t >= END && !S.done && !S.won) setTimeout(fail, 450); }
+
+function move(dx, dy) {
+  if (S.done || !overlayClosed()) return;
+  const nx = S.x + dx, ny = S.y + dy;
+  if (nx < 0 || ny < 0 || nx >= W || ny >= H || MAP[ny][nx] === '#' || npcAt(nx, ny)) return;
+  S.x = nx; S.y = ny;
+  const z = zoneAt(nx, ny);
+  if (z !== S.zone) { S.zone = z; if (z !== 'hall') enterRoom(z); }
+  closePointer();
+  spend(COST.move);
+  const n = nearNpc();
+  if (n && !S.greeted.has(n) && !S.done) { S.greeted.add(n); greet(n); }
+}
+
+function enterRoom(slot) {
+  const key = S.roomAt[slot], room = ROOMS[key];
+  place(room.place[0], room.place[1]);
+  if (key === 'security' || S.visited.has(key)) { S.visited.add(key); return; }
+  S.visited.add(key);
+  const sec = S.slotOf.security;
+  if (S.janitorTold) {
+    const opp = (SLOTS[sec].side === 'L' && SLOTS[slot].side === 'R') || (SLOTS[sec].side === 'R' && SLOTS[slot].side === 'L');
+    if (opp) miss('정반대', `${room.name}에 들어감`,
+      `청소부는 "It's ${SLOTS[sec].dir}."라고 했어요. ${SLOTS[sec].dir}는 '${SLOTS[sec].dirKo}'예요. 당신은 반대쪽에 있는 ${room.name}(${room.ko})에 들어갔어요.`,
+      [SLOTS[sec].side === 'L' ? 'left' : 'right']);
+    else miss('무관', `${room.name}에 들어감`,
+      `청소부가 알려준 방향은 "${SLOTS[sec].dir}"(${SLOTS[sec].dirKo})였어요. 간판의 ${room.name}은 '${room.ko}'예요. 경비실은 SECURITY OFFICE라고 적혀 있어요.`, ['security office']);
+  } else {
+    miss('무관', `${room.name}에 들어감`, `간판의 ${room.name}은 '${room.ko}'예요. 경비실은 SECURITY OFFICE라고 적혀 있어요.`, ['security office']);
+  }
+}
+
+function miss(cat, act, explain, words) { S.mistakes.push({ cat, act, explain, at: clockStr(S.t), words: words || [] }); }
+
+// ---------- understanding ----------
+function parse(text) {
+  const t = ' ' + text.toLowerCase().replace(/[^a-z0-9' ]/g, ' ') + ' ';
+  const has = re => re.test(t);
+  const out = new Set();
+  if (/[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(text)) out.add('korean');
+  if (has(/\b(hi|hello|hey|excuse me|good (afternoon|evening))\b/)) out.add('greet');
+  if (has(/\b(lost|lose|losing|missing|cant find|can't find|dropped|forgot)\b/)) out.add('lost');
+  if (has(/\b(wallet|purse)\b/)) out.add('wallet');
+  if (has(/\bwhere\b/)) out.add('where');
+  if (has(/\bhelp\b/)) out.add('help');
+  if (has(/\b(security|guard|office|lost and found)\b/)) out.add('security');
+  if (has(/\b(thank|thanks|thx)\b/)) out.add('thanks');
+  if (has(/\b(yes|yeah|yep|yup|ok|okay)\b/)) out.add('yes');
+  if (has(/^\s*(no|nope)\b/)) out.add('no');
+  if (has(/\b(coffee|latte|americano|tea|espresso|cappuccino)\b/)) out.add('coffee');
+  for (const c of ['black', 'brown', 'red', 'blue', 'white', 'green', 'yellow', 'pink', 'purple', 'gray', 'grey', 'orange']) if (has(new RegExp('\\b' + c + '\\b'))) out.add('k:' + c);
+  if (has(/\b(card|id|student)\b/)) out.add('c:card');
+  if (has(/\b(photo|picture|pic|photograph)\b/)) out.add('c:photo');
+  if (has(/\b(ticket|concert)\b/)) out.add('c:ticket');
+  if (has(/\b(money|cash|dollar|dollars|won)\b/)) out.add('c:money');
+  for (const w in GLOSSARY) if (has(new RegExp('\\b' + w + '\\b'))) out.add('g:' + w);
+  return out;
+}
+const colorsIn = I => [...I].filter(i => i.startsWith('k:')).map(i => i.slice(2));
+const contentsIn = I => [...I].filter(i => i.startsWith('c:')).map(i => i.slice(2));
+
+function greet(id) {
+  if (id === 'guard') npcSay(id, 'Hi there. Can I help you?', '안녕하세요. 도와드릴까요?');
+  if (id === 'janitor') { S.janitorAsked = true; npcSay(id, 'Oh, hi! You look worried. Did you lose something?', '어머, 안녕! 걱정스러워 보이네. 뭐 잃어버렸어?'); }
+  if (id === 'grandma') npcSay(id, "Hello, sweetie! If you hear a word you don't know, just tell me the word. I'll explain it.", '안녕, 얘야! 모르는 말을 들으면 그 단어만 말해주렴. 내가 설명해줄게.');
+  if (id === 'barista') npcSay(id, "Hey! What can I get started for you today? We've got a pumpkin spice special going on!", '안녕하세요! 오늘 뭐로 시작해 드릴까요? 호박 스파이스 스페셜 진행 중이에요!');
+}
+
+// Each responder returns [en, ko, understood:boolean]
+const R = {
+  guard(I, raw) {
+    const say = (en, ko, ok = true) => [en, ko, ok];
+    if (I.has('korean')) { miss('한국어', `"${raw}"`, '경비원은 한국어를 못 알아들어요. 영어 단어 하나나 몸짓으로 시도해보세요.'); return say("Sorry? I don't understand.", '네? 못 알아듣겠어요.', false); }
+    const colors = colorsIn(I), contents = contentsIn(I);
+    if (S.guardStage === 0) {
+      if (I.has('wallet')) {
+        S.guardStage = 1; S.phrases.push([raw, 'I lost my wallet.']);
+        if (colors.includes(S.color)) return R.guardColor(I, raw, true);
+        return say('A wallet? Yes, people brought in a few today. What does it look like? What color is it?', '지갑이요? 네, 오늘 몇 개 들어왔어요. 어떻게 생겼어요? 무슨 색이에요?');
+      }
+      if (I.has('confused')) return say('(He spreads his hands.) Can I... help you? You lost something?', '(두 손을 펼치며) 도와... 드릴까요? 뭐 잃어버렸어요?');
+      if (I.has('lost') || I.has('help')) return say('Oh, you lost something? What did you lose? Your phone? Your wallet? Your keys?', '아, 뭘 잃어버렸어요? 뭘요? 휴대폰? 지갑? 열쇠?');
+      if (I.has('greet')) return say('Hi. Is there something I can help you with?', '안녕하세요. 도와드릴 일 있나요?');
+      miss('무관', `"${raw}"`, '경비원은 "Can I help you?"(도와드릴까요?)라고 물었어요. 무엇을 잃어버렸는지, 즉 wallet(지갑)이라고 말하거나 네모 접는 시늉을 했어야 해요.', ['wallet', 'help']);
+      return say("Sorry, I'm not sure what you mean. Do you need help?", '죄송한데 무슨 말인지 모르겠어요. 도움이 필요하세요?', false);
+    }
+    if (S.guardStage === 1) {
+      if (colors.length) return R.guardColor(I, raw);
+      if (I.has('confused')) return say('Your wallet. The color. (He points at things around the room.) Black? Brown? Red? Blue?', '지갑이요. 색깔이요. (방 안의 물건들을 가리키며) 검은색? 갈색? 빨간색? 파란색?');
+      if (contents.length) return say("Okay, but we have three wallets here. What color is yours?", '알겠어요, 근데 여기 지갑이 세 개라서요. 당신 건 무슨 색이에요?');
+      if (I.has('yes') || I.has('no')) {
+        miss('무관', `"${raw}"`, '"What color is it?"는 "무슨 색이에요?"라는 질문이에요. yes나 no로는 답할 수 없어요. 색깔을 말하거나, 같은 색 물건을 가리켜보세요.', ['color', 'look like']);
+        return say("Uh... what color? I need to know which one is yours.", '어... 무슨 색이요? 어느 게 당신 건지 알아야 해요.', false);
+      }
+      miss('무관', `"${raw}"`, '경비원은 "What does it look like? What color is it?"(어떻게 생겼어요? 무슨 색이에요?)라고 물었어요. 색깔을 말해야 했어요.', ['color', 'look like']);
+      return say("I'm sorry, I can't just give it to anyone. What color is your wallet?", '죄송하지만 아무한테나 드릴 순 없어요. 지갑이 무슨 색이에요?', false);
+    }
+    if (S.guardStage === 2) return R.guardContent(I, raw);
+    return say('Have a good evening!', '좋은 저녁 보내세요!');
+  },
+  guardColor(I, raw, combined) {
+    const colors = colorsIn(I);
+    if (colors.includes(S.color)) {
+      S.guardStage = 2; S.phrases.push([raw, `It's ${S.color}.`]);
+      if (contentsIn(I).includes(S.content)) return R.guardContent(I, raw);
+      const via = I.has('pointed') ? `${cap(S.color)}, like ${I.pointedEn}? ` : `${cap(S.color)}? `;
+      return [`${combined ? 'A wallet... ' : ''}${via}Okay, there's a ${S.color} one here. And what's inside it?`, `${combined ? '지갑… ' : ''}${COLORS[S.color]}이요? 네, ${COLORS[S.color]} 지갑이 하나 있네요. 그럼 안에 뭐가 들었어요?`, true];
+    }
+    const c = colors[0];
+    miss('거의 맞음', `"${raw}"`, `색깔로 답한 건 좋았어요! 하지만 당신 지갑은 ${COLORS[S.color]}(${S.color})이에요. 당신은 ${c}(${COLORS[c] || '다른 색'})이라고 했어요.`, [S.color, 'color']);
+    return [`Hmm, a ${c} one? No, we don't have a ${c} wallet. Are you sure?`, `음, ${COLORS[c] || c} 지갑이요? 아뇨, ${COLORS[c] || c} 지갑은 없어요. 확실해요?`, true];
+  },
+  guardContent(I, raw) {
+    const contents = contentsIn(I);
+    if (contents.includes(S.content)) {
+      S.guardStage = 3; S.won = true; S.phrases.push([raw, CONTENTS[S.content].model]);
+      setTimeout(win, 700);
+      return [`A ${CONTENTS[S.content].en}? Let me check... Yep, here it is! Here's your wallet. Be careful next time!`, `${CONTENTS[S.content].ko}이요? 확인해볼게요… 네, 여기 있네요! 지갑 여기요. 다음엔 조심하세요!`, true];
+    }
+    if (I.has('confused')) return ["Inside the wallet. What's in it? (He mimes opening a wallet.) A card? A photo? A ticket?", '지갑 안에요. 뭐가 들었어요? (지갑을 여는 시늉을 하며) 카드? 사진? 표?', true];
+    if (contents.includes('money')) return ["There's a little cash in all of them. Anything else inside? Something only you would know?", '전부 현금이 조금씩 들어 있어요. 다른 건요? 당신만 알 만한 거요.', true];
+    if (contents.length) {
+      const c = contents[0];
+      miss('거의 맞음', `"${raw}"`, `안에 든 걸 말한 건 좋았어요! 하지만 당신 지갑에는 ${CONTENTS[S.content].ko}(${CONTENTS[S.content].en})이 들어 있어요.`, [S.content, 'inside']);
+      return [`Hmm, no ${CONTENTS[c].en} in this one. What else is inside?`, `음, 이 지갑엔 ${CONTENTS[c].ko}이 없네요. 안에 또 뭐가 있어요?`, true];
+    }
+    if (I.has('yes') || I.has('no')) {
+      miss('무관', `"${raw}"`, '"What\'s inside?"는 "안에 뭐가 들었어요?"라는 질문이에요. 안에 든 물건을 말하거나 시늉으로 보여줬어야 해요.', ['inside']);
+      return ["Sorry, I mean what's inside the wallet?", '아니, 지갑 안에 뭐가 들었냐고요.', false];
+    }
+    miss('무관', `"${raw}"`, '경비원은 "What\'s inside it?"(안에 뭐가 들었어요?)라고 물었어요. 학생증(card), 사진(photo), 표(ticket) 같은 걸 말해야 했어요.', ['inside']);
+    return ["I need to be sure it's yours. What's inside it?", '당신 건지 확실히 해야 해요. 안에 뭐가 들었어요?', false];
+  },
+  janitor(I, raw) {
+    const sec = SLOTS[S.slotOf.security];
+    if (I.has('korean')) { miss('한국어', `"${raw}"`, '청소부는 한국어를 못 알아들어요.'); return ["Sorry, honey, I don't understand.", '미안, 못 알아듣겠어.', false]; }
+    if (I.has('confused')) {
+      if (S.janitorTold) return [`(She points ${sec.point}.) Wallet... security office. That way!`, `(${sec.dirKo}을 가리키며) 지갑… 경비실. 저쪽!`, true];
+      return ['(She pats her own pockets.) You... lost... something?', '(자기 주머니를 두드리며) 너… 뭐… 잃어버렸어?', true];
+    }
+    if (I.has('wallet') || I.has('lost') || I.has('where') || I.has('help') || I.has('security') || (I.has('yes') && S.janitorAsked)) {
+      S.janitorTold = true;
+      return [`Oh! Someone found a wallet this morning. They took it to the security office. It's ${sec.dir}.`, `아! 오늘 아침에 누가 지갑을 주웠어. 경비실에 맡겼대. ${sec.dirKo}에 있어.`, true];
+    }
+    if (I.has('coffee')) return [`Coffee? The Daily Grind is ${SLOTS[S.slotOf.cafe].dir}.`, `커피? 데일리 그라인드는 ${SLOTS[S.slotOf.cafe].dirKo}에 있어.`, true];
+    if (I.has('greet') || I.has('thanks')) return [I.has('thanks') ? "You're welcome, sweetie!" : 'Hi! Do you need something?', I.has('thanks') ? '천만에!' : '안녕! 뭐 필요해?', true];
+    return ["Sorry, honey, I didn't catch that.", '미안, 잘 못 들었어.', false];
+  },
+  grandma(I, raw) {
+    if (I.has('korean')) return ["Oh, I'm sorry, dear. I don't speak Korean. Try one English word, slowly!", '어머, 미안하구나. 난 한국어를 못 해. 영어 단어 하나를 천천히 말해보렴!', false];
+    const g = [...I].find(i => i.startsWith('g:'));
+    if (g) { const w = g.slice(2); const en = GLOSSARY[w]; scanKnown(w); return [en, '(할머니가 쉬운 영어로 설명해준다)', true]; }
+    if (I.has('lost') || I.has('wallet')) return ['Oh dear! When people find lost things here, they take them to the guard. Look for the door that says SECURITY OFFICE.', '어머나! 여기선 누가 물건을 주우면 경비원한테 맡긴단다. SECURITY OFFICE라고 적힌 문을 찾아보렴.', true];
+    if (I.has('confused')) return ["Just say one word you don't know, dear. Like... 'office'?", "모르는 단어 하나만 말해보렴. 예를 들면… 'office'?", true];
+    if (I.has('thanks')) return ["Anytime, sweetie. Good luck!", '언제든지, 얘야. 행운을 빈다!', true];
+    if (I.has('greet')) return ["Hello again! Take your time, dear.", '또 왔구나! 천천히 하렴.', true];
+    return ["Hmm? Tell me just one word you don't know, dear.", '응? 모르는 단어 하나만 말해주렴.', false];
+  },
+  barista(I, raw) {
+    if (I.has('korean')) return ["Sorry—what? I don't speak... that. What can I get you?", '네? 그 말은… 못 해요. 뭐 드릴까요?', false];
+    if (I.has('wallet') || I.has('lost')) {
+      return [`Oh no! Lost-and-found stuff goes to the security office, I think. It's ${SLOTS[S.slotOf.security].dir}. Sure you don't want a latte first?`, `어머! 분실물은 경비실로 가는 것 같아요. ${SLOTS[S.slotOf.security].dirKo}에 있어요. 라테 먼저 안 드실래요?`, true];
+    }
+    if (I.has('coffee') || I.has('yes')) {
+      S.t += COST.coffee;
+      miss('무관', '커피를 주문함', '목표와 상관없이 커피를 샀어요. 맛은 있었지만 3분이 흘렀어요. 카페 직원은 늘 뭔가를 팔려고 해요!');
+      return ['One pumpkin spice latte, coming right up! ... Here you go! Have a great one!', '호박 스파이스 라테 하나 바로 나갑니다! … 여기요! 좋은 하루 되세요!', true];
+    }
+    if (I.has('confused')) return ['Sorry! What. Can. I. Get. You? (She taps the menu.) Coffee?', '죄송해요! 뭐. 드릴. 까요? (메뉴판을 톡톡 치며) 커피?', true];
+    if (I.has('greet')) return ["Hi hi! What'll it be?", '안녕하세요! 뭐로 하실래요?', true];
+    return ["Sorry, it's super busy right now. What can I get you?", '죄송해요, 지금 너무 바빠서요. 뭐 드릴까요?', false];
+  },
+};
+
+function act(I, raw, cost, meText, meKind) {
+  if (S.done || !overlayClosed()) return;
+  const id = nearNpc();
+  if (!id) { sys('말을 걸 사람이 없어요. 사람 옆으로 가보세요.'); return; }
+  push(meKind, esc(meText));
+  const [en, ko, ok] = R[id](I, raw);
+  npcSay(id, en, ko);
+  if (ok && meKind === 'me') {
+    const t = raw.toLowerCase();
+    for (const [w] of VOCAB) if (new RegExp('\\b' + w + '\\b').test(t)) { mark(w, 'seen'); mark(w, 'used'); }
+  }
+  spend(cost);
+}
+
+// ---------- controls ----------
+$('sayForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const raw = $('sayInput').value.trim();
+  if (!raw) return;
+  $('sayInput').value = '';
+  act(parse(raw), raw, COST.say, raw, 'me');
+});
+
+const gBox = $('gestures');
+for (const g of GESTURES) {
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'chip';
+  b.innerHTML = `${esc(g.label)}<small>${g.id === 'confused' ? '1분' : '1분 30초'}</small>`;
+  b.addEventListener('click', () => {
+    if (g.id === 'point') return openPointer();
+    act(new Set(g.intents), '몸짓: ' + g.label, g.id === 'confused' ? COST.confused : COST.gesture, g.act, 'gesture');
+  });
+  gBox.appendChild(b);
+}
+const tr = document.createElement('button'); tr.type = 'button'; tr.className = 'chip tool';
+tr.innerHTML = '📱 번역기<small>2분 30초</small>';
+tr.addEventListener('click', () => {
+  if (S.done || !overlayClosed()) return;
+  const L = S.lastNpc;
+  if (!L || L.translated) { sys(L ? '이미 번역한 말이에요.' : '번역할 말이 아직 없어요.'); return; }
+  L.translated = true; scanKnown(L.en);
+  const k = document.createElement('span'); k.className = 'ko'; k.textContent = '📱 ' + L.ko; L.el.appendChild(k);
+  $('log').scrollTop = $('log').scrollHeight;
+  spend(COST.translate);
+});
+gBox.appendChild(tr);
+
+function openPointer() {
+  if (S.done) return;
+  const box = $('pointer');
+  const zoneKey = S.zone === 'hall' ? 'hall' : S.roomAt[S.zone];
+  const objs = OBJECTS[zoneKey] || OBJECTS.hall;
+  box.innerHTML = '<p>무엇을 가리킬까요? (1분 30초)</p>';
+  for (const o of objs) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = `${o.icon} ${o.ko}`;
+    b.addEventListener('click', () => {
+      closePointer();
+      const I = new Set(['k:' + o.color, 'pointed']); I.pointedEn = o.en;
+      act(I, `몸짓: ${o.ko} 가리키기`, COST.gesture, `(${o.ko}을(를) 가리킨다)`, 'gesture');
+    });
+    box.appendChild(b);
+  }
+  const x = document.createElement('button'); x.type = 'button'; x.className = 'chip'; x.textContent = '취소';
+  x.addEventListener('click', closePointer); box.appendChild(x);
+  box.hidden = false;
+}
+function closePointer() { $('pointer').hidden = true; }
+
+document.querySelectorAll('.pad button').forEach(b => b.addEventListener('click', () => {
+  const [dx, dy] = b.dataset.dir.split(',').map(Number); move(dx, dy);
+}));
+document.addEventListener('keydown', e => {
+  if (e.target === $('sayInput')) return;
+  const k = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0], w: [0, -1], s: [0, 1], a: [-1, 0], d: [1, 0] }[e.key];
+  if (k) { e.preventDefault(); move(k[0], k[1]); }
+});
+
+// ---------- overlays ----------
+const overlayClosed = () => $('overlay').hidden;
+function show(html, onReady) { $('sheet').innerHTML = html; $('overlay').hidden = false; onReady && onReady(); }
+function hide() { $('overlay').hidden = true; }
+
+function intro() {
+  show(`
+    <h2>다시, 5시 20분</h2>
+    <p>길을 걷던 중 문득 지갑이 없다는 걸 깨달았다. 방금 전까지 머물던 건물로 돌아왔지만, 누군가 분실물인 줄 알고 경비실에 맡겨둔 것 같다.</p>
+    <p><b>목표: 경비실로 가서 지갑을 무사히 되찾기.</b> 경비실은 오후 6시에 닫는다.</p>
+    <ul class="how">
+      <li>이 건물의 간판과 사람들의 말은 전부 <b>영어</b>예요. 한국어는 통하지 않아요.</li>
+      <li>문법은 신경 쓰지 마세요. <b>통하면 장땡</b>이에요.</li>
+      <li>말이 안 나오면 <b>몸짓</b>을, 정 모르겠으면 <b>번역기</b>를 쓰세요. 대신 시간이 더 들어요.</li>
+      <li>옆집 할머니(👵)에게 모르는 단어를 말하면 쉬운 영어로 설명해줘요.</li>
+      <li>6시가 되면 <b>주마등</b>이 스치고, 같은 오후 5시 20분으로 돌아가요. 매번 배치가 조금씩 달라져요.</li>
+    </ul>
+    <button class="primary" id="go" type="button">오후 5시 20분으로</button>`, () => $('go').addEventListener('click', () => { hide(); $('sayInput').focus(); }));
+}
+
+function fail() {
+  if (S.done || S.won) return; S.done = true;
+  const items = S.mistakes.slice();
+  if (S.guardStage === 0 && !S.mistakes.some(m => m.words.includes('security office'))) {
+    items.push({ cat: '무관', act: '경비실에 도착하지 못함', explain: '경비실은 간판에 SECURITY OFFICE라고 적혀 있어요. security는 보안·경비, office는 사무실이에요. 모르면 청소부(🧹)에게 물어보거나 할머니(👵)에게 단어를 물어보세요.', at: '6:00 PM', words: ['security office', 'security', 'office'] });
+  }
+  if (S.guardStage === 1 && !items.some(m => m.words.includes('color'))) {
+    items.push({ cat: '무관', act: '경비원의 질문에 답하지 못함', explain: '"What does it look like? What color is it?"는 "어떻게 생겼어요? 무슨 색이에요?"예요. 같은 색 물건을 가리키기만 해도 통했어요.', at: '6:00 PM', words: ['color', 'look like'] });
+  }
+  if (S.guardStage === 2 && !items.some(m => m.words.includes('inside'))) {
+    items.push({ cat: '무관', act: '안에 든 것을 말하지 못함', explain: `"What's inside it?"는 "안에 뭐가 들었어요?"예요. ${CONTENTS[S.content].ko}은 ${CONTENTS[S.content].en}이고, 시늉으로도 보여줄 수 있었어요.`, at: '6:00 PM', words: ['inside'] });
+  }
+  items.forEach(m => m.words.forEach(w => { mark(w, 'seen'); mark(w, 'known'); }));
+  const list = items.map(m => `<li><span class="tag ${m.cat.split(' ')[0]}">${m.cat}</span><span class="act">${m.at} · ${esc(m.act)}</span><span>${esc(m.explain)}</span></li>`).join('');
+  show(`
+    <h2>6:00 PM. 경비실 불이 꺼졌다.</h2>
+    <p class="lead">…눈앞에 오늘 오후가 주마등처럼 스친다.</p>
+    <ul class="miss">${list || '<li>이번 판에는 기록된 실수가 없어요. 조금만 더 빨랐으면!</li>'}</ul>
+    <p class="lead">주마등에서 뜻을 알게 된 단어는 도감에 💡로 기록돼요. 다음 회차에서는 방 배치와 지갑 생김새가 바뀌어요.</p>
+    <button class="primary" id="again" type="button">다시, 5시 20분</button>`, () => $('again').addEventListener('click', () => { hide(); newLoop(); }));
+}
+
+function win() {
+  if (S.done) return; S.done = true;
+  const used = Math.round((S.t - START) / 60);
+  const phr = S.phrases.map(([said, model]) => `<li>"${esc(said)}" <span class="arrow">→ 더 자연스럽게</span> <em>${esc(model)}</em></li>`).join('');
+  show(`
+    <h2>지갑을 되찾았다!</h2>
+    <p class="lead">${S.loop}회차 · ${used}분 사용 · 실수 ${S.mistakes.length}번</p>
+    <p>당신의 말은 통했어요. 다음엔 이렇게 말해보세요.</p>
+    <ul class="phr">${phr || '<li>몸짓만으로 해냈어요! 다음엔 한 단어라도 영어로 말해보세요.</li>'}</ul>
+    <button class="primary" id="again" type="button">새로운 오후 시작</button>`, () => $('again').addEventListener('click', () => { hide(); S = null; newLoop(); }));
+}
+
+function showJournal() {
+  const st = w => { const j = journal[w] || {}; return j.used ? '✋' : j.known ? '💡' : j.seen ? '👀' : ''; };
+  const cells = VOCAB.filter(([w]) => journal[w] && journal[w].seen).map(([w, ko]) => {
+    const j = journal[w];
+    return `<div><span class="st">${st(w)}</span><b>${esc(w)}</b><span class="mean">${j.known || j.used ? esc(ko) : '뜻: ???'}</span></div>`;
+  }).join('');
+  const n = VOCAB.filter(([w]) => journal[w] && journal[w].seen).length;
+  show(`
+    <h2>단어 도감</h2>
+    <p class="lead">지금까지 ${n}개의 단어를 만났어요 · 누적 ${totalLoops}회차</p>
+    <p class="legend">👀 본 적 있음 · 💡 뜻을 알게 됨 (번역기, 할머니, 주마등) · ✋ 직접 써서 통함</p>
+    <div class="vocab">${cells || '<p>아직 만난 단어가 없어요. 건물 안을 돌아다녀 보세요.</p>'}</div>
+    <button class="primary" id="close" type="button">닫기</button>`, () => $('close').addEventListener('click', hide));
+}
+$('journalBtn').addEventListener('click', () => { if (overlayClosed()) showJournal(); });
+$('overlay').addEventListener('keydown', e => { if (e.key === 'Escape' && $('close')) hide(); });
+
+newLoop();
+intro();
+})();
+</script>
