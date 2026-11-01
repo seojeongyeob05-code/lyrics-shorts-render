@@ -1346,6 +1346,8 @@ e: –COOH 와 –NH₂ 사이에서 물이 빠지며 생기는 아마이드 결
     });
   }
   const md = s => esc(s).split(/(\$\$[\s\S]*?\$\$|\$[^$]*\$)/).map((seg, i) => i % 2 ? seg : linkTerms(seg)).join("").replace(/\*\*(.+?)\*\*/g, '<strong class="hl">$1</strong>');
+  // Answer options and order chips are buttons: a glossary link inside one would swallow the tap, so they get no term links.
+  const mdPlain = s => esc(s).replace(/\*\*(.+?)\*\*/g, '<strong class="hl">$1</strong>');
   function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
   function typeset(el) {
     const run = () => { if (window.MathJax && MathJax.typesetPromise) { try { MathJax.typesetClear && MathJax.typesetClear([el]); } catch (e) {} MathJax.typesetPromise([el]).catch(() => {}); } };
@@ -1484,7 +1486,7 @@ e: –COOH 와 –NH₂ 사이에서 물이 빠지며 생기는 아마이드 결
     let getAnswer = null;
     if (q.type === "mc") {
       const opts = shuffle(q.a.map(t => ({ t, ok: true })).concat(q.w.map(t => ({ t, ok: false }))));
-      html += '<div class="opts" id="opts" role="radiogroup">' + opts.map((o, i) => '<button type="button" class="opt" role="radio" aria-checked="false" data-i="' + i + '"><span class="k">' + (i + 1) + '</span><span class="t">' + md(o.t) + '</span></button>').join("") + '</div>';
+      html += '<div class="opts" id="opts" role="radiogroup">' + opts.map((o, i) => '<button type="button" class="opt" role="radio" aria-checked="false" data-i="' + i + '"><span class="k">' + (i + 1) + '</span><span class="t">' + mdPlain(o.t) + '</span></button>').join("") + '</div>';
       stage.innerHTML = html;
       let sel = -1;
       stage.querySelectorAll(".opt").forEach(b => b.addEventListener("click", () => {
@@ -1509,12 +1511,12 @@ e: –COOH 와 –NH₂ 사이에서 물이 빠지며 생기는 아마이드 결
       getAnswer = () => { inp.readOnly = true; return checkInput(q, inp.value); };
     } else {
       const pool = shuffle(q.s.map((t, i) => ({ t, i })));
-      html += '<div class="slots" id="slots"></div><div class="pool" id="pool">' + pool.map((p, k) => '<button type="button" class="chip" data-k="' + k + '"><span class="t">' + md(p.t) + '</span></button>').join("") + '</div>';
+      html += '<div class="slots" id="slots"></div><div class="pool" id="pool">' + pool.map((p, k) => '<button type="button" class="chip" data-k="' + k + '"><span class="t">' + mdPlain(p.t) + '</span></button>').join("") + '</div>';
       stage.innerHTML = html;
       const order = [];
       const slots = $("slots");
       const redraw = () => {
-        slots.innerHTML = order.map((k, n) => '<button type="button" class="chip" data-k="' + k + '"><span class="n">' + (n + 1) + '</span><span class="t">' + md(pool[k].t) + '</span></button>').join("");
+        slots.innerHTML = order.map((k, n) => '<button type="button" class="chip" data-k="' + k + '"><span class="n">' + (n + 1) + '</span><span class="t">' + mdPlain(pool[k].t) + '</span></button>').join("");
         stage.querySelectorAll("#pool .chip").forEach(c => c.classList.toggle("used", order.includes(+c.dataset.k)));
         slots.querySelectorAll(".chip").forEach(c => c.addEventListener("click", () => { if (slots.dataset.locked) return; order.splice(order.indexOf(+c.dataset.k), 1); redraw(); }));
         $("check").disabled = order.length !== pool.length;
