@@ -152,6 +152,7 @@ main.play { display: grid; gap: 16px; grid-template-columns: minmax(0, 1.15fr) m
 .tag.무관 { background: color-mix(in srgb, var(--muted) 20%, transparent); }
 .tag.정반대 { background: color-mix(in srgb, var(--danger) 22%, transparent); color: var(--danger); }
 .tag.거의 { background: color-mix(in srgb, var(--ok) 22%, transparent); color: var(--ok); }
+.tag.놓친 { background: color-mix(in srgb, var(--sign) 22%, transparent); color: var(--sign); }
 .tag.한국어 { background: color-mix(in srgb, var(--amber) 25%, transparent); }
 .miss .act { font-size: 0.85rem; color: var(--muted); }
 .vocab { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
@@ -300,6 +301,7 @@ const VOCAB = [
   ['color', '색깔'], ['black', '검은색'], ['brown', '갈색'], ['red', '빨간색'], ['blue', '파란색'], ['look like', '~처럼 생기다'],
   ['inside', '안에'], ['card', '카드'], ['photo', '사진'], ['ticket', '표'], ['restroom', '화장실'], ['mail', '우편'],
   ['gym', '헬스장'], ['package', '택배, 소포'], ['help', '돕다'], ['closed', '문을 닫은'],
+  ['patrol', '순찰'], ['rounds', '순찰 (한 바퀴 돌기)'], ['back', '돌아온'], ['quarter', '15분 (한 시간의 4분의 1)'],
 ];
 // Grandma explains words in easy English (never in Korean)
 const GLOSSARY = {
@@ -324,9 +326,16 @@ const GLOSSARY = {
   look: '"What does it LOOK LIKE?" means: tell me about it. What color? Big or small?',
   package: 'A PACKAGE is a box that comes in the mail.',
   closed: 'CLOSED means the door is shut. No one is working.',
+  patrol: 'PATROL means walking around to check that everything is safe. The guard does it every evening!',
+  rounds: '"On my rounds" means walking around the building to check things. Like a patrol.',
+  quarter: 'A QUARTER is one of four parts. A quarter of an hour is 15 minutes. "A quarter to six" is 5:45!',
+  back: '"I\'ll be BACK" means I\'ll come here again. Like when I go shopping and come home.',
 };
 
 const START = 17 * 3600 + 20 * 60, END = 18 * 3600;
+// Daily routine: who is where, and when. The same every loop, so knowing it is progress.
+const PATROL = [17 * 3600 + 35 * 60, 17 * 3600 + 45 * 60];
+const JANITOR_MOVES = 17 * 3600 + 40 * 60, GRANDMA_LEAVES = 17 * 3600 + 50 * 60;
 const COST = { move: 30, say: 60, gesture: 90, confused: 60, translate: 150, coffee: 180 };
 const NPC_INFO = {
   guard: { icon: '👮', name: 'Security guard', ko: '경비원' },
@@ -451,7 +460,37 @@ function nearNpc() {
   return null;
 }
 function zoneAt(x, y) { const ch = MAP[y][x]; return DOOR[ch] || (SLOTS[ch] ? ch : 'hall'); }
-function spend(sec) { S.t += sec; render(); if (S.t >= END && !S.done && !S.won) setTimeout(fail, 450); }
+function spend(sec) { S.t += sec; updateSchedule(); render(); if (S.t >= END && !S.done && !S.won) setTimeout(fail, 450); }
+
+function updateSchedule() {
+  const t = S.t, P = S.npcs, near = nearNpc();
+  const free = ([x, y]) => !(S.x === x && S.y === y);
+  const office = SLOTS[S.slotOf.security].npc;
+  if (!S.guardOnPatrol && !S.patrolDone && S.guardStage < 3 && t >= PATROL[0] && t < PATROL[1] && near !== 'guard') {
+    P.guard = free([10, 9]) ? [10, 9] : [4, 9];
+    S.guardOnPatrol = true; S.greeted.delete('guard');
+    if (S.zone === S.slotOf.security) {
+      sys('경비원이 시계를 보더니 사무실 문에 팻말을 걸고 나간다.');
+      officeSign();
+    } else sys('어디선가 문이 철컥 잠기는 소리가 들린다.');
+  }
+  if (t >= PATROL[1] && !S.patrolDone) {
+    S.patrolDone = true;
+    if (S.guardOnPatrol && free(office)) { P.guard = office; S.guardOnPatrol = false; S.greeted.delete('guard'); sys('경비원이 순찰을 마치고 사무실로 돌아간다.'); }
+  }
+  if (S.guardOnPatrol && S.patrolDone && free(office)) { P.guard = office; S.guardOnPatrol = false; S.greeted.delete('guard'); }
+  const wc = SLOTS[S.slotOf.restroom].npc;
+  if (!S.janitorMoved && t >= JANITOR_MOVES && near !== 'janitor' && free(wc)) {
+    P.janitor = wc; S.janitorMoved = true; sys('청소부가 대걸레를 챙겨 RESTROOM 쪽으로 간다.');
+  }
+  if (P.grandma && t >= GRANDMA_LEAVES && near !== 'grandma') {
+    delete P.grandma; sys('할머니가 "Oh, my TV show!" 하며 서둘러 집으로 돌아간다.');
+  }
+}
+function officeSign() {
+  S.sawPatrol = true;
+  place('SECURITY OFFICE — On patrol. Back at 5:45 PM.', '경비실 — 순찰 중. 오후 5시 45분에 돌아옵니다.');
+}
 
 function move(dx, dy) {
   if (S.done || !overlayClosed()) return;
@@ -468,7 +507,8 @@ function move(dx, dy) {
 
 function enterRoom(slot) {
   const key = S.roomAt[slot], room = ROOMS[key];
-  place(room.place[0], room.place[1]);
+  if (key === 'security' && S.guardOnPatrol) officeSign();
+  else place(room.place[0], room.place[1]);
   if (key === 'security' || S.visited.has(key)) { S.visited.add(key); return; }
   S.visited.add(key);
   const sec = S.slotOf.security;
@@ -514,7 +554,11 @@ const colorsIn = I => [...I].filter(i => i.startsWith('k:')).map(i => i.slice(2)
 const contentsIn = I => [...I].filter(i => i.startsWith('c:')).map(i => i.slice(2));
 
 function greet(id) {
-  if (id === 'guard') npcSay(id, 'Hi there. Can I help you?', '안녕하세요. 도와드릴까요?');
+  if (id === 'guard') {
+    if (S.guardOnPatrol) { S.sawPatrol = true; npcSay(id, "Oh, hi. I'm on my rounds right now. I'll be back in my office at a quarter to six.", '아, 안녕하세요. 지금 순찰 중이에요. 6시 15분 전(5시 45분)에 사무실로 돌아갈게요.'); }
+    else if (S.patrolDone && S.guardStage === 0) npcSay(id, 'Sorry for the wait! Can I help you?', '기다리게 해서 죄송해요! 도와드릴까요?');
+    else npcSay(id, 'Hi there. Can I help you?', '안녕하세요. 도와드릴까요?');
+  }
   if (id === 'janitor') { S.janitorAsked = true; npcSay(id, 'Oh, hi! You look worried. Did you lose something?', '어머, 안녕! 걱정스러워 보이네. 뭐 잃어버렸어?'); }
   if (id === 'grandma') npcSay(id, "Hello, sweetie! If you hear a word you don't know, just tell me the word. I'll explain it.", '안녕, 얘야! 모르는 말을 들으면 그 단어만 말해주렴. 내가 설명해줄게.');
   if (id === 'barista') npcSay(id, "Hey! What can I get started for you today? We've got a pumpkin spice special going on!", '안녕하세요! 오늘 뭐로 시작해 드릴까요? 호박 스파이스 스페셜 진행 중이에요!');
@@ -525,6 +569,12 @@ const R = {
   guard(I, raw) {
     const say = (en, ko, ok = true) => [en, ko, ok];
     if (I.has('korean')) { miss('한국어', `"${raw}"`, '경비원은 한국어를 못 알아들어요. 영어 단어 하나나 몸짓으로 시도해보세요.'); return say("Sorry? I don't understand.", '네? 못 알아듣겠어요.', false); }
+    if (S.guardOnPatrol) {
+      S.sawPatrol = true;
+      if (I.has('confused')) return say('(He taps his watch, then points toward his office.) Office. Five... forty-five. Back soon!', '(시계를 톡톡 치고 사무실 쪽을 가리키며) 사무실. 5시… 45분. 곧 돌아가요!');
+      if (I.has('wallet') || I.has('lost')) return say("A lost wallet? It's locked in my office. Come back at a quarter to six, okay?", '잃어버린 지갑이요? 제 사무실에 잠겨 있어요. 6시 15분 전(5시 45분)에 다시 오세요, 알겠죠?');
+      return say("I'm on my rounds right now. See you at the office at a quarter to six.", '지금 순찰 중이에요. 6시 15분 전(5시 45분)에 사무실에서 봬요.');
+    }
     const colors = colorsIn(I), contents = contentsIn(I);
     if (S.guardStage === 0) {
       if (I.has('wallet')) {
@@ -717,6 +767,7 @@ function intro() {
       <li>문법은 신경 쓰지 마세요. <b>통하면 장땡</b>이에요.</li>
       <li>말이 안 나오면 <b>몸짓</b>을, 정 모르겠으면 <b>번역기</b>를 쓰세요. 대신 시간이 더 들어요.</li>
       <li>옆집 할머니(👵)에게 모르는 단어를 말하면 쉬운 영어로 설명해줘요.</li>
+      <li>사람들은 각자 <b>일과대로</b> 움직여요. 시간이 지나면 있던 사람이 자리를 비우기도 해요.</li>
       <li>6시가 되면 <b>주마등</b>이 스치고, 같은 오후 5시 20분으로 돌아가요. 매번 배치가 조금씩 달라져요.</li>
     </ul>
     <button class="primary" id="go" type="button">오후 5시 20분으로</button>`, () => $('go').addEventListener('click', () => { hide(); $('sayInput').focus(); }));
@@ -733,6 +784,9 @@ function fail() {
   }
   if (S.guardStage === 2 && !items.some(m => m.words.includes('inside'))) {
     items.push({ cat: '무관', act: '안에 든 것을 말하지 못함', explain: `"What's inside it?"는 "안에 뭐가 들었어요?"예요. ${CONTENTS[S.content].ko}은 ${CONTENTS[S.content].en}이고, 시늉으로도 보여줄 수 있었어요.`, at: '6:00 PM', words: ['inside'] });
+  }
+  if (S.sawPatrol) {
+    items.push({ cat: '놓친 정보', act: '경비원의 순찰 시간', explain: '"Back at 5:45 PM"은 "오후 5시 45분에 돌아옴"이에요. "a quarter to six"(6시 15분 전)도 5시 45분이라는 뜻이에요. 경비원은 매일 5:35부터 5:45까지 순찰을 돌아요. 그 전에 도착하거나, 그 시간에 맞춰 돌아오세요.', at: '6:00 PM', words: ['back', 'quarter', 'patrol', 'rounds'] });
   }
   items.forEach(m => m.words.forEach(w => { mark(w, 'seen'); mark(w, 'known'); }));
   const list = items.map(m => `<li><span class="tag ${m.cat.split(' ')[0]}">${m.cat}</span><span class="act">${m.at} · ${esc(m.act)}</span><span>${esc(m.explain)}</span></li>`).join('');
