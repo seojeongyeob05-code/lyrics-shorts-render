@@ -7,7 +7,7 @@
 ## 단계
 
 - [x] 1. LRC 파서 + 타이밍 모델 (`shorts/lrc.py`)
-- [ ] 2. 프레임 렌더러: Pillow로 한 프레임 그리기 (배경, 현재 줄, 다음 줄)
+- [x] 2. 프레임 렌더러: Pillow로 한 프레임 그리기 (배경, 현재 줄, 다음 줄)
 - [ ] 3. 한글 폰트 처리 + 긴 줄 자동 줄바꿈
 - [ ] 4. ffmpeg 파이프로 프레임 스트리밍 → mp4 + 음원 합치기
 - [ ] 5. CLI: `python -m shorts render song.lrc --audio a.mp3 --bg bg.jpg --start 0:45 --duration 30`
