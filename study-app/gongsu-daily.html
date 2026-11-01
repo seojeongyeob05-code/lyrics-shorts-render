@@ -1,0 +1,1670 @@
+<title>공수 데일리</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['$', '$']], displayMath: [['$$', '$$']] },
+  svg: { fontCache: 'global' },
+  options: { enableMenu: false },
+  startup: { typeset: false }
+};
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js" async></script>
+<style>
+/* Layout: one calm 520px column. Home = "continue" card on top, then each unit as a vertical timeline of lessons. Lesson = full-screen, question on top, action bar pinned to the bottom. */
+:root {
+  --bg: #F4F5F7;
+  --surface: #FFFFFF;
+  --sunken: #EEF0F3;
+  --ink: #15181D;
+  --ink-2: #3A404A;
+  --muted: #737B87;
+  --line: #E2E5EA;
+  --accent: #2456D3;
+  --accent-ink: #FFFFFF;
+  --accent-soft: #E9EFFC;
+  --ok: #15803D;
+  --ok-soft: #E7F6EC;
+  --bad: #C2341F;
+  --bad-soft: #FCEBE7;
+  --flame: #EA6A12;
+  --radius: 16px;
+  --f-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0F1114; --surface: #181B20; --sunken: #20242A; --ink: #ECEEF1; --ink-2: #C3C8D0; --muted: #8B93A0;
+    --line: #2A2F37; --accent: #7EA2FF; --accent-ink: #0C1424; --accent-soft: #1C2742; --ok: #4ADE80; --ok-soft: #12291C;
+    --bad: #FF8A73; --bad-soft: #2E1814; --flame: #FB923C; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0F1114; --surface: #181B20; --sunken: #20242A; --ink: #ECEEF1; --ink-2: #C3C8D0; --muted: #8B93A0;
+  --line: #2A2F37; --accent: #7EA2FF; --accent-ink: #0C1424; --accent-soft: #1C2742; --ok: #4ADE80; --ok-soft: #12291C;
+  --bad: #FF8A73; --bad-soft: #2E1814; --flame: #FB923C; color-scheme: dark;
+}
+html, body { min-height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+button { font: inherit; color: inherit; cursor: pointer; background: none; border: 0; padding: 0; }
+button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wrap { box-sizing: border-box; width: 100%; max-width: 520px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+
+/* top bar */
+.topbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.topbar .wrap { display: flex; align-items: center; gap: 8px; padding-block: 14px; }
+.brand { flex: 1; min-width: 0; font-weight: 700; font-size: 17px; letter-spacing: -0.02em; }
+.pill { display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 11px 0 9px; border-radius: 99px; background: var(--surface); border: 1px solid var(--line); font-family: var(--f-mono); font-weight: 600; font-size: 14px; }
+.pill svg { width: 16px; height: 16px; }
+.pill.streak { color: var(--flame); }
+.pill.streak.off { color: var(--muted); }
+.pill.xp { color: var(--accent); }
+
+/* home */
+main.home { padding-block: 4px 64px; display: grid; gap: 28px; }
+.eyebrow { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; color: var(--muted); }
+.hero { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 20px; display: grid; gap: 18px; }
+.hero-top { display: flex; gap: 16px; align-items: center; }
+.hero-txt { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.hero h1 { margin: 0; font-size: 22px; line-height: 1.3; font-weight: 700; letter-spacing: -0.03em; text-wrap: balance; }
+.hero .meta { margin: 0; color: var(--muted); font-size: 14px; }
+.ring { flex: none; width: 64px; height: 64px; position: relative; }
+.ring svg { width: 64px; height: 64px; transform: rotate(-90deg); }
+.ring circle { fill: none; stroke-width: 6; }
+.ring .track { stroke: var(--sunken); }
+.ring .bar { stroke: var(--accent); stroke-linecap: round; transition: stroke-dashoffset .5s; }
+.ring.full .bar { stroke: var(--ok); }
+.ring span { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; font-size: 11px; line-height: 1.15; color: var(--muted); }
+.ring span b { display: block; font-family: var(--f-mono); font-size: 15px; color: var(--ink); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 52px; padding: 0 22px; border-radius: 14px; font-weight: 600; font-size: 16px; background: var(--accent); color: var(--accent-ink); transition: filter .15s, transform .1s; }
+.btn:hover { filter: brightness(1.06); }
+.btn:active { transform: scale(.985); }
+.btn:disabled { background: var(--sunken); color: var(--muted); cursor: default; filter: none; transform: none; }
+.btn.wide { width: 100%; }
+.btn.ok { background: var(--ok); color: var(--surface); }
+.btn.bad { background: var(--bad); color: var(--surface); }
+.review { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+.review .ic { flex: none; width: 40px; height: 40px; border-radius: 12px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; }
+.review .ic svg { width: 20px; height: 20px; }
+.review .tx { flex: 1; min-width: 0; display: grid; line-height: 1.35; }
+.review .tx b { font-weight: 600; }
+.review .tx span { font-size: 13px; color: var(--muted); }
+.review:disabled { cursor: default; }
+.review:disabled .ic { background: var(--sunken); color: var(--muted); }
+.chev { flex: none; width: 18px; height: 18px; color: var(--muted); }
+
+.unit { display: grid; gap: 12px; }
+.unit-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding-inline: 4px; }
+.unit-head h2 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }
+.unit-head span { font-family: var(--f-mono); font-size: 13px; color: var(--muted); }
+.unit-bar { height: 4px; border-radius: 99px; background: var(--line); overflow: hidden; margin-inline: 4px; }
+.unit-bar i { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
+.steps { list-style: none; margin: 0; padding: 6px 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.steps li { position: relative; }
+.steps li + li::before { content: ""; position: absolute; left: 33px; top: -10px; height: 20px; width: 2px; background: var(--line); }
+.steps li.was-done + li::before { background: var(--accent); }
+.row { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 10px 16px; border-radius: 12px; }
+.row:hover { background: var(--sunken); }
+.disc { position: relative; z-index: 1; flex: none; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-family: var(--f-mono); font-weight: 600; font-size: 13px; color: var(--muted); background: var(--surface); border: 2px solid var(--line); }
+.disc svg { width: 18px; height: 18px; }
+.row.done .disc { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.row.next .disc { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+.row .tx { flex: 1; min-width: 0; display: grid; line-height: 1.35; }
+.row .tx b { font-weight: 500; font-size: 15px; color: var(--ink); }
+.row .tx span { font-size: 12.5px; color: var(--muted); }
+.row.next .tx b { font-weight: 700; }
+.row.next .tx span { color: var(--accent); font-weight: 600; }
+.sync { font-size: 12px; color: var(--muted); text-align: center; margin: 0; }
+
+/* lesson screen */
+.lesson { position: fixed; inset: 0; z-index: 20; background: var(--bg); display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px); }
+.lesson-top { display: flex; align-items: center; gap: 14px; padding-block: 14px; flex: none; }
+.x { width: 36px; height: 36px; flex: none; border-radius: 10px; display: grid; place-items: center; color: var(--muted); }
+.x:hover { background: var(--sunken); color: var(--ink); }
+.x svg { width: 20px; height: 20px; }
+.prog { flex: 1; height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.prog i { display: block; height: 100%; background: var(--accent); border-radius: 99px; transition: width .35s; }
+.lesson-body { flex: 1; overflow-y: auto; }
+.lesson-body .wrap { display: grid; gap: 20px; align-content: start; padding-block: 12px 28px; }
+.qtext { font-size: 20px; line-height: 1.55; font-weight: 600; letter-spacing: -0.02em; margin: 0; overflow-x: auto; }
+.concept { display: grid; gap: 14px; }
+.concept h2 { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.03em; text-wrap: balance; }
+.concept ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; counter-reset: c; }
+.concept li { counter-increment: c; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px 14px 48px; position: relative; overflow-x: auto; color: var(--ink-2); }
+.concept li::before { content: counter(c); position: absolute; left: 16px; top: 15px; width: 22px; height: 22px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font: 600 12px/22px var(--f-mono); text-align: center; }
+.concept strong { color: var(--ink); font-weight: 700; }
+.concept a { justify-self: start; color: var(--accent); font-size: 14px; font-weight: 600; text-decoration: none; }
+.concept a:hover { text-decoration: underline; }
+.opts { display: grid; gap: 10px; }
+.opt { text-align: left; border: 1.5px solid var(--line); background: var(--surface); border-radius: 14px; padding: 14px 16px; display: flex; gap: 14px; align-items: center; min-width: 0; transition: border-color .12s, background .12s; }
+.opt:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.opt .k { flex: none; width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid var(--line); display: grid; place-items: center; font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
+.opt .t { min-width: 0; overflow-x: auto; }
+.opt.sel { border-color: var(--accent); background: var(--accent-soft); }
+.opt.sel .k { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+.opt.right { border-color: var(--ok); background: var(--ok-soft); }
+.opt.right .k { border-color: var(--ok); background: var(--ok); color: var(--surface); }
+.opt.wrong { border-color: var(--bad); background: var(--bad-soft); }
+.opt.wrong .k { border-color: var(--bad); background: var(--bad); color: var(--surface); }
+.opts.locked .opt { cursor: default; }
+.opts.locked .opt:not(.right):not(.wrong) { opacity: .55; }
+.answer-in { width: 100%; box-sizing: border-box; font: 500 20px var(--f-mono); padding: 14px 16px; border-radius: 14px; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); }
+.answer-in:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 4px var(--accent-soft); }
+.hint { font-size: 13px; color: var(--muted); margin-top: -10px; }
+.slots { min-height: 56px; border-radius: 14px; border: 1.5px dashed var(--line); padding: 8px; display: grid; gap: 8px; align-content: start; }
+.slots:empty { display: grid; place-items: center; }
+.slots:empty::before { content: "아래에서 단계를 순서대로 눌러주세요"; color: var(--muted); font-size: 14px; }
+.pool { display: grid; gap: 8px; }
+.chip { text-align: left; border: 1.5px solid var(--line); background: var(--surface); border-radius: 12px; padding: 11px 14px; display: flex; gap: 12px; align-items: baseline; min-width: 0; font-size: 15px; }
+.chip .t { min-width: 0; overflow-x: auto; }
+.chip .n { font-family: var(--f-mono); font-size: 12px; color: var(--accent); font-weight: 600; flex: none; }
+.slots .chip { border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); }
+.chip.used { visibility: hidden; }
+
+.sheet { flex: none; background: var(--bg); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); transition: background .15s; }
+.sheet .wrap { padding-block: 16px; display: grid; gap: 12px; }
+.sheet.ok { background: var(--ok-soft); border-color: transparent; }
+.sheet.bad { background: var(--bad-soft); border-color: transparent; }
+.verdict { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 18px; font-weight: 700; }
+.verdict i { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; color: var(--surface); }
+.verdict i svg { width: 16px; height: 16px; }
+.sheet.ok .verdict { color: var(--ok); } .sheet.ok .verdict i { background: var(--ok); }
+.sheet.bad .verdict { color: var(--bad); } .sheet.bad .verdict i { background: var(--bad); }
+.explain { margin: 0; font-size: 15px; color: var(--ink-2); overflow-x: auto; max-height: 34vh; overflow-y: auto; }
+.explain b { color: var(--ink); }
+
+.finish { text-align: center; display: grid; gap: 10px; justify-items: center; padding-block: 48px 8px; }
+.finish .badge { width: 72px; height: 72px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; margin-bottom: 8px; }
+.finish .badge svg { width: 34px; height: 34px; }
+.finish h2 { font-size: 28px; font-weight: 700; letter-spacing: -0.03em; margin: 0; }
+.finish p { margin: 0; color: var(--muted); }
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; margin-top: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.tile { padding: 16px 6px; display: grid; gap: 2px; }
+.tile + .tile { border-left: 1px solid var(--line); }
+.tile b { font-family: var(--f-mono); font-size: 22px; font-weight: 600; }
+.tile span { font-size: 12px; color: var(--muted); }
+.tile.xp b { color: var(--accent); }
+.tile.acc b { color: var(--ok); }
+.tile.st b { color: var(--flame); }
+.term { cursor: help; text-decoration: underline dotted; text-decoration-color: color-mix(in srgb, var(--accent) 70%, transparent); text-decoration-thickness: 2px; text-underline-offset: 4px; border-radius: 4px; }
+.term:hover { background: var(--accent-soft); }
+.gloss { position: fixed; inset: 0; z-index: 40; background: rgba(10, 14, 20, 0.42); display: flex; align-items: flex-end; justify-content: center; }
+.gloss-card { box-sizing: border-box; width: 100%; max-width: 520px; background: var(--surface); border-radius: 20px 20px 0 0; padding: 14px max(20px, env(safe-area-inset-right, 0px)) calc(24px + env(safe-area-inset-bottom, 0px)) max(20px, env(safe-area-inset-left, 0px)); display: grid; gap: 6px; animation: rise .2s ease-out; }
+.gloss-head { display: flex; align-items: center; justify-content: space-between; }
+.gloss-head .x { margin-right: -8px; }
+.gloss h3 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+.gloss p { margin: 0; color: var(--ink-2); overflow-x: auto; }
+.gsearch { flex: 1; min-width: 0; height: 40px; box-sizing: border-box; padding: 0 14px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-size: 15px; }
+.gsearch:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+.gcount { margin: 0; font-size: 13px; color: var(--muted); }
+.gl { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.gl div { padding: 14px 16px; display: grid; gap: 4px; }
+.gl div + div { border-top: 1px solid var(--line); }
+.gl dt { font-weight: 700; letter-spacing: -0.01em; }
+.gl dd { margin: 0; color: var(--ink-2); font-size: 15px; overflow-x: auto; }
+.gempty { padding: 24px 16px; color: var(--muted); text-align: center; }
+mjx-container { font-size: 106% !important; }
+mjx-container[display="true"] { margin: .4em 0 !important; overflow-x: auto; overflow-y: hidden; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+@keyframes rise { from { transform: translateY(6px); opacity: .4 } to { transform: none; opacity: 1 } }
+.rise { animation: rise .2s ease-out; }
+</style>
+
+<header class="topbar">
+  <div class="wrap">
+    <div class="brand">공수 데일리</div>
+    <span class="pill streak off" id="st-streak" title="연속 학습일"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c1 3.5-1.5 5-1.5 7.5 0 1.2.8 2 1.8 2 1.5 0 2.2-1.4 1.7-3.3C17 10 19 13 19 15.5 19 19.6 15.9 22 12 22s-7-2.4-7-6.5C5 10.6 10 8 12 2z"/></svg><span id="st-streak-n">0</span></span>
+    <span class="pill xp" title="총 XP"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/></svg><span id="st-xp">0</span></span>
+  </div>
+</header>
+
+<main class="home wrap" id="home">
+  <section class="hero" aria-label="이어서 학습">
+    <div class="hero-top">
+      <div class="hero-txt">
+        <span class="eyebrow" id="hero-eyebrow">이어서 학습</span>
+        <h1 id="hero-title">01강 변수분리</h1>
+        <p class="meta" id="hero-meta">1계 ODE · 6문제 · 약 3분</p>
+      </div>
+      <div class="ring" id="ring" title="오늘 목표">
+        <svg viewBox="0 0 64 64" aria-hidden="true"><circle class="track" cx="32" cy="32" r="27"/><circle class="bar" id="ring-bar" cx="32" cy="32" r="27" stroke-dasharray="169.6" stroke-dashoffset="169.6"/></svg>
+        <span><b id="ring-n">0</b>/30 XP</span>
+      </div>
+    </div>
+    <button class="btn wide" id="hero-btn" type="button">레슨 시작</button>
+  </section>
+  <button class="review" id="review-btn" type="button">
+    <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></span>
+    <span class="tx"><b>틀린 문제 복습</b><span id="review-sub">복습할 문제가 없어요</span></span>
+    <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+  </button>
+  <button class="review" id="glist-btn" type="button">
+    <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 21V5"/><path d="M9 8h6"/></svg></span>
+    <span class="tx"><b>용어집</b><span id="glist-sub">전문용어 모아보기</span></span>
+    <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+  </button>
+  <div id="units" style="display:grid;gap:28px"></div>
+  <p class="sync" id="sync">진도는 이 브라우저에 저장 중</p>
+</main>
+
+<div class="gloss" id="gloss" hidden role="dialog" aria-modal="true" aria-labelledby="gloss-term">
+  <div class="gloss-card">
+    <div class="gloss-head"><span class="eyebrow">용어 설명</span><button class="x" id="gloss-close" type="button" aria-label="닫기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+    <h3 id="gloss-term"></h3>
+    <p id="gloss-def"></p>
+  </div>
+</div>
+
+<section class="lesson" id="glist" hidden aria-label="용어집">
+  <div class="wrap lesson-top">
+    <button class="x" id="glist-close" type="button" aria-label="용어집 닫기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    <input class="gsearch" id="gsearch" type="search" placeholder="용어 검색 (예: 론스키안)" aria-label="용어 검색" autocomplete="off">
+  </div>
+  <div class="lesson-body" id="glist-body"><div class="wrap"><p class="gcount" id="gcount"></p><dl class="gl" id="gl"></dl></div></div>
+</section>
+
+<section class="lesson" id="lesson" hidden>
+  <div class="wrap lesson-top">
+    <button class="x" id="quit" type="button" aria-label="레슨 나가기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    <div class="prog" aria-hidden="true"><i id="prog-fill" style="width:0%"></i></div>
+  </div>
+  <div class="lesson-body" id="lesson-body"><div class="wrap" id="stage"></div></div>
+  <div class="sheet" id="sheet"><div class="wrap" id="sheet-inner"></div></div>
+</section>
+
+<script type="text/plain" id="course">
+## 00 | 시작하기 | 미분방정식 기본 용어
+c: **계(order)**는 식에 나오는 가장 높은 도함수의 차수예요. $y''$까지 있으면 2계예요.
+c: **선형 ODE**는 $y$와 그 도함수가 모두 1차이고, 서로 곱해지지 않는 식이에요.
+c: 임의상수가 남아 있으면 **일반해**, 초기조건으로 상수를 정하면 **특수해**예요. $n$계 ODE의 일반해에는 상수가 $n$개 있어요.
+Q mc
+q: $y'' + 3y' = \sin x$ 는 몇 계 ODE일까요?
+a: 2계
+w: 1계
+w: 3계
+w: 0계
+e: 가장 높은 도함수가 $y''$이므로 2계예요.
+Q mc
+q: 다음 중 **선형** ODE는?
+a: $y'' + x^2 y = e^x$
+w: $y' = y^2$
+w: $y\,y'' = 1$
+w: $y' + \sin y = 0$
+e: $x^2$처럼 $x$에 대한 계수는 아무리 복잡해도 괜찮아요. $y^2$, $y\,y''$, $\sin y$는 $y$에 대해 비선형이에요.
+Q mc
+q: 일반해 $y = Ce^{2x}$ 에 초기조건 $y(0) = 3$ 을 적용한 특수해는?
+a: $y = 3e^{2x}$
+w: $y = e^{6x}$
+w: $y = 3 + e^{2x}$
+w: $y = e^{2x} + 2$
+e: $x=0$을 넣으면 $C e^{0} = C = 3$이에요.
+Q in
+q: 3계 ODE의 일반해에는 임의상수가 몇 개 있을까요? (숫자로 입력)
+a: 3
+e: $n$계 ODE의 일반해에는 임의상수가 $n$개 있어요.
+
+## 01 | 1계 ODE | 변수분리
+c: 핵심 3단계: ① $y'$을 $\dfrac{dy}{dx}$로 바꾸기 ② $y$는 $y$끼리, $x$는 $x$끼리 모으기 ③ 양변 적분하기
+c: 적분하면 적분상수가 반드시 생겨요. $e^{C}$ 같은 상수 덩어리는 다시 $C$로 **덮어씌워서** 상수를 하나로 정리해요.
+c: 꼭 외워둘 결과: $y' = ky \;\Rightarrow\; y = Ce^{kx}$
+Q mc
+q: $y' = ky$ ($k$는 상수)의 일반해는?
+a: $y = Ce^{kx}$
+w: $y = kx + C$
+w: $y = Ce^{x/k}$
+w: $y = e^{kx} + C$
+e: $\dfrac{dy}{y} = k\,dx \Rightarrow \ln|y| = kx + C \Rightarrow y = Ce^{kx}$. 강의에서 꼭 외우라고 한 결과예요.
+Q mc
+q: $y' = 2xy$ 의 일반해는?
+a: $y = Ce^{x^2}$
+w: $y = Ce^{2x}$
+w: $y = x^2 + C$
+w: $y = Ce^{x^2/2}$
+e: $\dfrac{dy}{y} = 2x\,dx \Rightarrow \ln|y| = x^2 + C \Rightarrow y = Ce^{x^2}$
+Q mc
+q: $y' = 1 + y^2$ 의 일반해는?
+a: $y = \tan(x + C)$
+w: $y = \arctan x + C$
+w: $y = Ce^{x} - 1$
+w: $y = \tan x + C$
+e: $\dfrac{dy}{1+y^2} = dx \Rightarrow \arctan y = x + C \Rightarrow y = \tan(x+C)$. 상수는 괄호 안에 있어야 해요.
+Q ord
+q: $y' = xy^2$ 를 푸는 순서대로 쌓아보세요.
+s: $\dfrac{dy}{dx} = xy^2$ 로 쓴다
+s: $\dfrac{dy}{y^2} = x\,dx$ 로 변수를 분리한다
+s: 양변 적분: $-\dfrac{1}{y} = \dfrac{x^2}{2} + C$
+s: 상수를 덮어씌워 $y = -\dfrac{2}{x^2 + C}$
+e: $-\dfrac1y = \dfrac{x^2 + 2C}{2}$ 에서 $2C$를 다시 $C$로 덮어씌웠어요.
+Q in
+q: $y' = 3y,\; y(0) = 2$ 의 해를 $y = 2e^{kx}$ 로 쓸 때 $k$는?
+a: 3
+e: $y = Ce^{3x}$ 이고 $y(0) = C = 2$ 이므로 $y = 2e^{3x}$, 즉 $k = 3$이에요.
+Q mc
+q: $\displaystyle\int \frac{1}{y}\,dy$ 의 결과로 옳은 것은?
+a: $\ln|y| + C$
+w: $\ln y^2 + C$
+w: $-\dfrac{1}{y^2} + C$
+w: $e^{y} + C$
+e: 절댓값을 빼먹지 않도록 주의해요. 이 절댓값은 나중에 $\pm e^{C}$를 $C$로 덮어씌우면서 사라져요.
+
+## 02 | 1계 ODE | 치환 변수분리
+c: **1차식 꼴** $y' = f(ax + by + c)$: $u = ax + by + c$ 로 치환하면 $u' = a + b\,f(u)$ 가 되어 변수분리가 돼요.
+c: **동차형** $y' = f\!\left(\dfrac{y}{x}\right)$: $u = \dfrac{y}{x}$, 즉 $y = ux$ 로 두면 $y' = u + xu'$ 이에요.
+Q mc
+q: $y' = (x + y)^2$ 에서 $u = x + y$ 로 치환하면 어떤 식이 될까요?
+a: $u' = 1 + u^2$
+w: $u' = u^2$
+w: $u' = 1 - u^2$
+w: $u' = u^2 - 1$
+e: $u' = 1 + y' = 1 + u^2$. 이후 $\arctan u = x + C$ 로 풀려요.
+Q mc
+q: 동차형 풀이에서 $y = ux$ 로 두면 $y'$은?
+a: $u + xu'$
+w: $u'$
+w: $xu'$
+w: $u + u'$
+e: 곱의 미분: $(ux)' = u'x + u$
+Q mc
+q: 다음 중 동차형 $y' = f(y/x)$ 으로 쓸 수 있는 것은?
+a: $y' = \dfrac{x^2 + y^2}{xy}$
+w: $y' = x + y^2$
+w: $y' = e^{x}y$
+w: $y' = \sin x + y$
+e: 분자·분모를 $x^2$으로 나누면 $\dfrac{1 + (y/x)^2}{y/x}$ 가 돼요.
+Q mc
+q: $y' = \dfrac{y}{x} + \dfrac{x}{y}$ 의 일반해는?
+a: $y^2 = 2x^2\ln|x| + Cx^2$
+w: $y^2 = x^2 + C$
+w: $y = x\ln|x| + Cx$
+w: $y^2 = 2\ln|x| + C$
+e: $u + xu' = u + \dfrac1u \Rightarrow u\,du = \dfrac{dx}{x} \Rightarrow \dfrac{u^2}{2} = \ln|x| + C$. $u = y/x$ 를 넣고 정리해요.
+
+## 03 | 1계 ODE | 완전 상미분방정식
+c: $M(x,y)\,dx + N(x,y)\,dy = 0$ 에서 $\dfrac{\partial M}{\partial y} = \dfrac{\partial N}{\partial x}$ 이면 **완전**이에요.
+c: 그러면 $F_x = M,\; F_y = N$ 인 $F$가 있고, 해는 $F(x,y) = C$ 예요.
+Q mc
+q: 완전방정식 판정 조건은?
+a: $\dfrac{\partial M}{\partial y} = \dfrac{\partial N}{\partial x}$
+w: $\dfrac{\partial M}{\partial x} = \dfrac{\partial N}{\partial y}$
+w: $M = N$
+w: $\dfrac{\partial M}{\partial y} = -\dfrac{\partial N}{\partial x}$
+e: $F_{xy} = F_{yx}$ 이어야 하므로 $M_y = N_x$ 예요.
+Q in
+q: $(3x^2 + ky)\,dx + (2x + \cos y)\,dy = 0$ 이 완전방정식이 되려면 $k$는?
+a: 2
+e: $M_y = k$, $N_x = 2$ 이므로 $k = 2$.
+Q mc
+q: $(2xy + 3)\,dx + (x^2 - 1)\,dy = 0$ 의 해는?
+a: $x^2y + 3x - y = C$
+w: $x^2y + 3x = C$
+w: $x^2y - y = C$
+w: $2xy + 3x - y = C$
+e: $M_y = N_x = 2x$ 로 완전. $F = \int M\,dx = x^2y + 3x + h(y)$, $F_y = x^2 + h' = x^2 - 1 \Rightarrow h = -y$.
+Q ord
+q: 완전방정식 풀이 순서를 쌓아보세요.
+s: $M_y = N_x$ 인지 확인한다
+s: $F = \int M\,dx + h(y)$ 를 만든다
+s: $F_y = N$ 에서 $h'(y)$ 를 구한다
+s: 해를 $F(x,y) = C$ 로 쓴다
+e: $\int N\,dy + g(x)$ 로 시작해도 같은 결과가 나와요.
+
+## 04 | 1계 ODE | 적분인자
+c: 완전이 아닐 때 적분인자 $\mu$를 곱해서 완전으로 만들어요.
+c: $\dfrac{M_y - N_x}{N}$ 이 $x$만의 함수이면 $\mu(x) = e^{\int \frac{M_y - N_x}{N}dx}$
+c: $\dfrac{N_x - M_y}{M}$ 이 $y$만의 함수이면 $\mu(y) = e^{\int \frac{N_x - M_y}{M}dy}$
+Q mc
+q: 적분인자를 곱하는 목적은?
+a: 방정식을 완전방정식으로 만들기 위해
+w: 방정식의 계를 낮추기 위해
+w: 방정식을 선형으로 바꾸기 위해
+w: 초기조건을 없애기 위해
+e: 곱한 뒤 $(\mu M)_y = (\mu N)_x$ 가 성립하도록 만드는 게 목표예요.
+Q mc
+q: $(x^2 + y^2 + x)\,dx + xy\,dy = 0$ 에서 $\dfrac{M_y - N_x}{N}$ 은?
+a: $\dfrac{1}{x}$
+w: $\dfrac{1}{y}$
+w: $y$
+w: $x$
+e: $M_y = 2y$, $N_x = y$ 이므로 $\dfrac{2y - y}{xy} = \dfrac1x$
+Q mc
+q: 위 식의 적분인자 $\mu$는?
+a: $x$
+w: $\dfrac{1}{x}$
+w: $e^{x}$
+w: $\ln x$
+e: $\mu = e^{\int \frac1x dx} = e^{\ln x} = x$
+Q mc
+q: 적분인자 $x$를 곱한 뒤 얻는 해는?
+a: $\dfrac{x^4}{4} + \dfrac{x^2y^2}{2} + \dfrac{x^3}{3} = C$
+w: $\dfrac{x^3}{3} + xy^2 + \dfrac{x^2}{2} = C$
+w: $x^4 + x^2y^2 = C$
+w: $\dfrac{x^2y^2}{2} = C$
+e: $(x^3 + xy^2 + x^2)\,dx + x^2y\,dy = 0$ 은 완전이고, $x$에 대해 적분하면 바로 나와요.
+Q mc
+q: $y\,dx - x\,dy = 0$ 의 적분인자가 될 수 있는 것은?
+a: $\dfrac{1}{y^2}$
+w: $y^2$
+w: $x + y$
+w: $e^{x}$
+e: $\dfrac{y\,dx - x\,dy}{y^2} = d\!\left(\dfrac{x}{y}\right)$ 이에요. $\dfrac{1}{x^2}$, $\dfrac{1}{xy}$ 도 적분인자예요.
+
+## 05 | 1계 ODE | 선형 상미분방정식
+c: 표준형 $y' + p(x)\,y = q(x)$ 로 정리해요.
+c: 적분인자 $\mu = e^{\int p\,dx}$ 를 곱하면 $(\mu y)' = \mu q$ 이고, $y = \dfrac{1}{\mu}\left[\int \mu q\,dx + C\right]$ 예요.
+Q mc
+q: $y' + \dfrac{1}{x}\,y = x$ 의 적분인자는?
+a: $x$
+w: $\ln x$
+w: $e^{x}$
+w: $\dfrac{1}{x}$
+e: $\mu = e^{\int \frac1x dx} = x$
+Q mc
+q: 위 식의 일반해는?
+a: $y = \dfrac{x^2}{3} + \dfrac{C}{x}$
+w: $y = \dfrac{x^3}{3} + C$
+w: $y = x^2 + Cx$
+w: $y = \dfrac{x^2}{2} + \dfrac{C}{x}$
+e: $(xy)' = x^2 \Rightarrow xy = \dfrac{x^3}{3} + C$
+Q mc
+q: $y' + 2y = 4$ 의 일반해는?
+a: $y = 2 + Ce^{-2x}$
+w: $y = 4 + Ce^{-2x}$
+w: $y = 2 + Ce^{2x}$
+w: $y = 4x + C$
+e: $(e^{2x}y)' = 4e^{2x} \Rightarrow e^{2x}y = 2e^{2x} + C$
+Q in
+q: $y' + 2y = 4$ 의 해에서 $\displaystyle\lim_{x\to\infty} y$ 는?
+a: 2
+e: $Ce^{-2x} \to 0$ 이므로 $y \to 2$. 이런 값을 정상상태 값이라고 해요.
+Q ord
+q: 1계 선형 ODE 풀이 순서를 쌓아보세요.
+s: $y' + p(x)y = q(x)$ 표준형으로 정리한다
+s: $\mu = e^{\int p\,dx}$ 를 구한다
+s: $(\mu y)' = \mu q$ 를 적분한다
+s: 양변을 $\mu$로 나눠 $y$를 구한다
+e: 표준형에서 $y'$의 계수가 1이어야 공식이 맞아요.
+
+## 06 | 1계 ODE | 베르누이 방정식
+c: $y' + p(x)\,y = q(x)\,y^n$ ($n \ne 0, 1$) 꼴이에요.
+c: $u = y^{1-n}$ 로 치환하면 $u' + (1-n)p\,u = (1-n)q$ 라는 **선형** ODE가 돼요.
+Q mc
+q: $y' + y = y^3$ 에서 사용할 치환은?
+a: $u = y^{-2}$
+w: $u = y^{3}$
+w: $u = y^{2}$
+w: $u = y^{-3}$
+e: $n = 3$ 이므로 $u = y^{1-3} = y^{-2}$
+Q mc
+q: 위 치환 후 얻는 선형 ODE는?
+a: $u' - 2u = -2$
+w: $u' + 2u = 2$
+w: $u' - 2u = 2$
+w: $u' + u = 1$
+e: $1 - n = -2$ 이므로 $u' + (-2)(1)u = (-2)(1)$
+Q mc
+q: $y' + y = y^3$ 의 일반해는?
+a: $y^{-2} = 1 + Ce^{2x}$
+w: $y^{2} = 1 + Ce^{2x}$
+w: $y^{-2} = 1 + Ce^{-2x}$
+w: $y^{-2} = Ce^{2x}$
+e: $u' - 2u = -2$ 의 해는 $u = 1 + Ce^{2x}$ 이고 $u = y^{-2}$ 예요.
+Q in
+q: $y' - y = x\,y^4$ 에서 치환 $u = y^{k}$ 의 $k$는?
+a: -3
+e: $k = 1 - n = 1 - 4 = -3$
+Q mc
+q: 베르누이 꼴에서 $n = 0$ 또는 $n = 1$ 이면?
+a: 치환 없이 바로 1계 선형 ODE로 풀 수 있다
+w: 해가 존재하지 않는다
+w: 반드시 리카티 방정식이 된다
+w: 2계 ODE가 된다
+e: $n = 0$ 이면 그대로 선형, $n = 1$ 이면 $y' = (q - p)y$ 로 선형이에요.
+
+## 07 | 1계 ODE | 리카티 방정식
+c: $y' = p(x) + q(x)\,y + r(x)\,y^2$ 꼴이에요.
+c: 특수해 $y_1$ 하나를 알면 $y = y_1 + \dfrac{1}{v}$ 로 치환해서 $v$에 대한 **선형** ODE로 바꿔요.
+Q mc
+q: 리카티 방정식의 일반형은?
+a: $y' = p(x) + q(x)y + r(x)y^2$
+w: $y' + p(x)y = q(x)y^n$
+w: $y'' + p(x)y' + q(x)y = 0$
+w: $M\,dx + N\,dy = 0$
+e: 두 번째는 베르누이 방정식이에요.
+Q mc
+q: 특수해 $y_1$을 알 때 사용하는 치환은?
+a: $y = y_1 + \dfrac{1}{v}$
+w: $y = y_1 v$
+w: $y = v^{-2}$
+w: $y = y_1 + v^2$
+e: $y = y_1 + u$ 로 두면 $u$에 대한 베르누이($n = 2$)가 되고, 거기에 $u = 1/v$ 를 쓴 것과 같아요.
+Q mc
+q: $y' = y^2 - \dfrac{2}{x^2}$ 의 특수해는?
+a: $y_1 = \dfrac{1}{x}$
+w: $y_1 = x$
+w: $y_1 = \dfrac{2}{x}$
+w: $y_1 = x^2$
+e: $y = a/x$ 를 대입하면 $-a = a^2 - 2$, 즉 $a = 1$ 또는 $a = -2$ 예요.
+Q mc
+q: $y_1 = \dfrac1x$ 로 $y = y_1 + \dfrac1v$ 를 대입하면?
+a: $v' + \dfrac{2}{x}v = -1$
+w: $v' - \dfrac{2}{x}v = 1$
+w: $v' + \dfrac{1}{x}v = 1$
+w: $v' = v^2$
+e: 일반적으로 $v' = -(q + 2ry_1)v - r$ 이고, 여기서 $q = 0,\; r = 1$ 이에요.
+
+## 08 | 1계 ODE | 활용: 토리첼리 법칙
+c: 구멍으로 나가는 물의 속도는 **토리첼리 법칙** $v = \sqrt{2gh}$ 예요.
+c: 단면적 $A$인 탱크, 구멍 면적 $a$: $A\dfrac{dh}{dt} = -a\sqrt{2gh}$. 변수분리하면 $\sqrt{h}$ 가 시간에 대해 일정하게 줄어요.
+Q mc
+q: 토리첼리 법칙의 유출 속도는?
+a: $\sqrt{2gh}$
+w: $2gh$
+w: $\sqrt{gh}$
+w: $gh^2$
+e: 위치에너지 $mgh$ 가 운동에너지 $\frac12 mv^2$ 로 바뀐다고 보면 나와요.
+Q mc
+q: 물탱크 수위 $h(t)$ 의 지배방정식은?
+a: $A\dfrac{dh}{dt} = -a\sqrt{2gh}$
+w: $A\dfrac{dh}{dt} = -a\,2gh$
+w: $\dfrac{dh}{dt} = -kh$
+w: $A\dfrac{dh}{dt} = a\sqrt{2gh}$
+e: (부피 감소율) = (구멍 면적) × (유출 속도). 물이 줄어드니 음수예요.
+Q mc
+q: 이 ODE는 어떤 유형으로 풀까요?
+a: 변수분리
+w: 완전방정식
+w: 베르누이 방정식
+w: 리카티 방정식
+e: $\dfrac{dh}{\sqrt h} = -\dfrac{a\sqrt{2g}}{A}dt$
+Q in
+q: 수위 $h_0$에서 다 비우는 데 시간 $T$가 걸린다면, 수위가 $h_0/4$ 가 되는 시각은 $T$의 몇 배? (분수 또는 소수)
+a: 1/2
+e: $\sqrt h$ 가 시간에 대해 일차로 줄어요. $\sqrt{h_0/4} = \frac12\sqrt{h_0}$ 이므로 정확히 절반 시간이에요.
+
+## 09 | 2계 ODE | 치환 계수내림
+c: **$y$가 없는** 식 $F(x, y', y'') = 0$: $p = y'$, $y'' = p'$
+c: **$x$가 없는** 식 $F(y, y', y'') = 0$: $p = y'$, $y'' = p\dfrac{dp}{dy}$
+c: 어느 쪽이든 2계가 1계로 내려가요.
+Q mc
+q: $x\,y'' + y' = 0$ 에서 $p = y'$ 로 치환하면 해는?
+a: $y = C_1\ln|x| + C_2$
+w: $y = C_1x + C_2$
+w: $y = C_1e^{x} + C_2$
+w: $y = C_1x^2 + C_2$
+e: $xp' + p = 0 \Rightarrow p = \dfrac{C_1}{x} \Rightarrow y = C_1\ln|x| + C_2$
+Q mc
+q: $x$가 없는 식 $y\,y'' = (y')^2$ 에서 $y''$ 는 무엇으로 바꿀까요?
+a: $p\dfrac{dp}{dy}$
+w: $\dfrac{dp}{dx}$
+w: $y\dfrac{dp}{dx}$
+w: $p^2$
+e: 연쇄법칙: $y'' = \dfrac{dp}{dx} = \dfrac{dp}{dy}\dfrac{dy}{dx} = p\dfrac{dp}{dy}$
+Q mc
+q: $y\,y'' = (y')^2$ 의 일반해는?
+a: $y = C_2e^{C_1x}$
+w: $y = C_1x + C_2$
+w: $y = C_1\ln x + C_2$
+w: $y = (C_1x + C_2)^2$
+e: $yp\dfrac{dp}{dy} = p^2 \Rightarrow \dfrac{dp}{p} = \dfrac{dy}{y} \Rightarrow p = C_1y$, 다시 변수분리하면 지수함수예요.
+Q mc
+q: 치환 계수내림을 하면 ODE의 계는 어떻게 될까요?
+a: 하나 줄어든다 (2계 → 1계)
+w: 그대로다
+w: 하나 늘어난다
+w: 0계가 된다
+e: 이름 그대로 계수(계)를 내리는 방법이에요.
+
+## 10 | 2계 ODE | 공식 계수내림
+c: $y'' + p(x)y' + q(x)y = 0$ 의 해 $y_1$ 하나를 알면 두 번째 해는
+c: $y_2 = y_1\displaystyle\int \frac{e^{-\int p\,dx}}{y_1^2}\,dx$
+c: 공식을 쓰기 전에 반드시 $y''$ 계수를 1로 맞춰요.
+Q mc
+q: 공식을 쓰기 전에 꼭 해야 하는 것은?
+a: $y''$ 의 계수를 1로 만든다 (표준형)
+w: 초기조건을 대입한다
+w: 양변을 미분한다
+w: $y_1$을 정규화한다
+e: $p(x)$는 표준형에서의 $y'$ 계수예요.
+Q mc
+q: $y'' - 2y' + y = 0$, $y_1 = e^{x}$ 일 때 $y_2$는?
+a: $xe^{x}$
+w: $e^{-x}$
+w: $e^{2x}$
+w: $x^2e^{x}$
+e: $e^{-\int(-2)dx} = e^{2x}$, $\dfrac{e^{2x}}{e^{2x}} = 1$, $\int 1\,dx = x$
+Q mc
+q: $x^2y'' - 3xy' + 4y = 0$, $y_1 = x^2$ 일 때 $y_2$는?
+a: $x^2\ln x$
+w: $x^3$
+w: $x^{-2}$
+w: $x\ln x$
+e: 표준형으로 $p = -\dfrac3x$, $e^{\int 3/x\,dx} = x^3$, $\dfrac{x^3}{x^4} = \dfrac1x$ 를 적분하면 $\ln x$
+Q mc
+q: 공식 안의 $e^{-\int p\,dx}$ 는 사실 무엇과 관련 있을까요?
+a: 론스키안 (Abel 공식)
+w: 라플라스 변환
+w: 특성방정식의 근
+w: 적분상수
+e: Abel 공식 $W = Ce^{-\int p\,dx}$ 가 그대로 들어간 모양이에요. 13강에서 다시 나와요.
+
+## 11 | 2계 ODE | 상수계수 제차
+c: $y'' + ay' + by = 0$ 에 $y = e^{\lambda x}$ 를 넣으면 특성방정식 $\lambda^2 + a\lambda + b = 0$
+c: 서로 다른 실근: $C_1e^{\lambda_1x} + C_2e^{\lambda_2x}$ / 중근: $(C_1 + C_2x)e^{\lambda x}$
+c: 복소근 $\alpha \pm \beta i$: $e^{\alpha x}(A\cos\beta x + B\sin\beta x)$
+Q mc
+q: $y'' - 5y' + 6y = 0$ 의 일반해는?
+a: $C_1e^{2x} + C_2e^{3x}$
+w: $C_1e^{-2x} + C_2e^{-3x}$
+w: $(C_1 + C_2x)e^{5x}$
+w: $C_1e^{x} + C_2e^{6x}$
+e: $\lambda^2 - 5\lambda + 6 = (\lambda - 2)(\lambda - 3)$
+Q mc
+q: $y'' + 4y' + 4y = 0$ 의 일반해는?
+a: $(C_1 + C_2x)e^{-2x}$
+w: $C_1e^{-2x} + C_2e^{-2x}$
+w: $C_1e^{2x} + C_2xe^{2x}$
+w: $C_1\cos 2x + C_2\sin 2x$
+e: $(\lambda + 2)^2 = 0$, 중근이면 $x$를 곱해서 독립인 두 번째 해를 만들어요.
+Q mc
+q: $y'' + 2y' + 5y = 0$ 의 일반해는?
+a: $e^{-x}(A\cos 2x + B\sin 2x)$
+w: $e^{x}(A\cos 2x + B\sin 2x)$
+w: $e^{-2x}(A\cos x + B\sin x)$
+w: $C_1e^{-x} + C_2e^{-5x}$
+e: $\lambda = \dfrac{-2 \pm \sqrt{4 - 20}}{2} = -1 \pm 2i$
+Q in
+q: $y'' + 9y = 0$ 의 해 $A\cos\beta x + B\sin\beta x$ 에서 $\beta$는?
+a: 3
+e: $\lambda^2 + 9 = 0 \Rightarrow \lambda = \pm 3i$
+Q mc
+q: $y'' - y = 0,\; y(0) = 2,\; y'(0) = 0$ 의 해는?
+a: $e^{x} + e^{-x}$
+w: $2e^{x}$
+w: $e^{x} - e^{-x}$
+w: $2\cos x$
+e: $C_1 + C_2 = 2$, $C_1 - C_2 = 0$ 이므로 $C_1 = C_2 = 1$. $2\cosh x$ 와 같아요.
+
+## 12 | 2계 ODE | 오일러-코시 방정식
+c: $x^2y'' + axy' + by = 0$ 에 $y = x^m$ 을 넣으면 보조방정식 $m^2 + (a - 1)m + b = 0$
+c: 서로 다른 실근: $C_1x^{m_1} + C_2x^{m_2}$ / 중근: $x^m(C_1 + C_2\ln x)$
+c: 복소근 $\alpha \pm \beta i$: $x^{\alpha}\left[A\cos(\beta\ln x) + B\sin(\beta\ln x)\right]$
+Q mc
+q: $x^2y'' + axy' + by = 0$ 의 보조방정식은?
+a: $m^2 + (a - 1)m + b = 0$
+w: $m^2 + am + b = 0$
+w: $m^2 + (a + 1)m + b = 0$
+w: $m^2 - am + b = 0$
+e: $x^2 \cdot m(m-1)x^{m-2} = m(m-1)x^m$ 이라 $-1$이 생겨요. 자주 틀리는 부분이에요.
+Q mc
+q: $x^2y'' - 2xy' + 2y = 0$ 의 일반해는?
+a: $C_1x + C_2x^2$
+w: $C_1x^{-1} + C_2x^{-2}$
+w: $C_1e^{x} + C_2e^{2x}$
+w: $x(C_1 + C_2\ln x)$
+e: $m^2 - 3m + 2 = 0 \Rightarrow m = 1, 2$
+Q mc
+q: $x^2y'' - xy' + y = 0$ 의 일반해는?
+a: $x(C_1 + C_2\ln x)$
+w: $C_1x + C_2x^{-1}$
+w: $(C_1 + C_2x)e^{x}$
+w: $C_1\cos(\ln x) + C_2\sin(\ln x)$
+e: $m^2 - 2m + 1 = 0$, $m = 1$ 중근이라 $\ln x$를 곱해요.
+Q mc
+q: $x^2y'' + xy' + y = 0$ 의 일반해는?
+a: $A\cos(\ln x) + B\sin(\ln x)$
+w: $A\cos x + B\sin x$
+w: $x(A\cos x + B\sin x)$
+w: $C_1x + C_2x^{-1}$
+e: $m^2 + 1 = 0 \Rightarrow m = \pm i$, $\alpha = 0,\;\beta = 1$
+Q mc
+q: 오일러-코시를 상수계수 ODE로 바꾸는 치환은?
+a: $x = e^{t}$
+w: $y = e^{x}$
+w: $x = \ln t$
+w: $y = ux$
+e: $x = e^t$ 이면 $x\dfrac{d}{dx} = \dfrac{d}{dt}$ 가 되어 상수계수가 돼요.
+
+## 13 | 2계 ODE | 론스키안과 해의 독립
+c: $W(y_1, y_2) = \begin{vmatrix} y_1 & y_2 \\ y_1' & y_2' \end{vmatrix} = y_1y_2' - y_1'y_2$
+c: $W \ne 0$ 이면 두 해는 **선형독립**이고, 일반해를 만들 수 있어요.
+c: Abel 공식: $y'' + py' + qy = 0$ 의 해에 대해 $W = Ce^{-\int p\,dx}$
+Q mc
+q: $W(e^{x}, e^{2x})$ 는?
+a: $e^{3x}$
+w: $3e^{3x}$
+w: $e^{2x}$
+w: $0$
+e: $e^x \cdot 2e^{2x} - e^x \cdot e^{2x} = e^{3x}$
+Q in
+q: $W(\cos x, \sin x)$ 의 값은?
+a: 1
+e: $\cos x\cos x - (-\sin x)\sin x = 1$
+Q mc
+q: 다음 중 선형**종속**인 쌍은?
+a: $e^{x}$, $3e^{x}$
+w: $x$, $x^2$
+w: $\sin x$, $\cos x$
+w: $e^{x}$, $e^{-x}$
+e: $3e^x$ 는 $e^x$ 의 상수배라서 $W = 0$ 이에요.
+Q mc
+q: $W(x, x\ln x)$ 는?
+a: $x$
+w: $\ln x$
+w: $x^2$
+w: $1$
+e: $x(\ln x + 1) - 1\cdot x\ln x = x$
+Q mc
+q: Abel 공식으로 옳은 것은?
+a: $W = Ce^{-\int p\,dx}$
+w: $W = Ce^{\int q\,dx}$
+w: $W = Ce^{\int p\,dx}$
+w: $W = p\,q$
+e: $W' = -pW$ 를 풀면 나와요. 부호에 주의해요.
+
+## 14 | 2계 ODE | 미정계수법
+c: 비제차 해 = 제차해 $y_h$ + 특수해 $y_p$
+c: 우변 $r(x)$ 모양대로 $y_p$를 추측해요: 상수 → $A$, $e^{kx}$ → $Ae^{kx}$, $\sin, \cos$ → $A\cos + B\sin$, 다항식 → 같은 차수 다항식
+c: **수정 규칙**: 추측한 항이 $y_h$와 겹치면 $x$를 곱해요. 중근이라 또 겹치면 $x^2$.
+Q in
+q: $y'' - 3y' + 2y = 4$ 의 특수해 $y_p = A$ 에서 $A$는?
+a: 2
+e: $2A = 4$
+Q in
+q: $y'' + y = e^{2x}$ 의 특수해 $y_p = Ae^{2x}$ 에서 $A$는? (분수 가능)
+a: 1/5
+e: $4A + A = 1$
+Q mc
+q: $y'' - y = e^{x}$ 의 $y_p$ 형태는?
+a: $Axe^{x}$
+w: $Ae^{x}$
+w: $Ax^2e^{x}$
+w: $A\cosh x$
+e: $y_h = C_1e^x + C_2e^{-x}$ 에 $e^x$ 가 있으니 $x$를 곱해요.
+Q mc
+q: $y'' - 2y' + y = e^{x}$ 의 $y_p$ 형태는?
+a: $Ax^2e^{x}$
+w: $Axe^{x}$
+w: $Ae^{x}$
+w: $(Ax + B)e^{x}$
+e: $\lambda = 1$ 중근이라 $e^x, xe^x$ 둘 다 $y_h$ 에 있어요. 그래서 $x^2$.
+Q mc
+q: $y'' + 4y = \sin 2x$ 의 $y_p$ 형태는?
+a: $x(A\cos 2x + B\sin 2x)$
+w: $A\sin 2x$
+w: $A\cos 2x + B\sin 2x$
+w: $Ax\sin 2x$
+e: $y_h$ 가 $\cos 2x, \sin 2x$ 라 겹쳐요. 사인 하나만 써도 코사인 짝을 같이 넣어야 해요.
+Q mc
+q: $y'' + y' = x^2$ 의 $y_p$ 형태는?
+a: $x(Ax^2 + Bx + C)$
+w: $Ax^2 + Bx + C$
+w: $Ax^2$
+w: $x^2(Ax^2 + Bx + C)$
+e: 특성근에 $0$이 있어서 상수항이 $y_h$ 와 겹쳐요.
+
+## 15 | 2계 ODE | 매개변수 변환법
+c: 표준형 $y'' + py' + qy = r(x)$, 제차해 $y_1, y_2$, $W = W(y_1, y_2)$ 일 때
+c: $y_p = -y_1\displaystyle\int \frac{y_2\,r}{W}dx + y_2\int \frac{y_1\,r}{W}dx$
+c: $\tan x$, $\sec x$, $\ln x$ 처럼 미정계수법이 안 되는 우변에도 쓸 수 있어요.
+Q mc
+q: 매개변수 변환법의 $y_p$ 공식은?
+a: $-y_1\int\dfrac{y_2r}{W}dx + y_2\int\dfrac{y_1r}{W}dx$
+w: $y_1\int\dfrac{y_2r}{W}dx + y_2\int\dfrac{y_1r}{W}dx$
+w: $-y_1\int\dfrac{y_1r}{W}dx + y_2\int\dfrac{y_2r}{W}dx$
+w: $\int\dfrac{r}{W}dx$
+e: 첫 항에만 마이너스, 각 적분 안에는 짝이 되는 상대 해가 들어가요.
+Q mc
+q: 미정계수법으로는 풀기 어려워서 매개변수 변환법을 써야 하는 우변은?
+a: $\tan x$
+w: $e^{3x}$
+w: $x^2$
+w: $\sin x$
+e: $\tan x$ 는 미분할수록 새로운 꼴이 계속 나와서 유한한 추측식이 없어요.
+Q mc
+q: $y'' + y = \sec x$ 의 $y_p$ 는?
+a: $\cos x\ln|\cos x| + x\sin x$
+w: $x\cos x + \sin x\ln|\cos x|$
+w: $\sec x\tan x$
+w: $x\sin x$
+e: $y_1 = \cos x,\; y_2 = \sin x,\; W = 1$. $-\cos x\int\tan x\,dx + \sin x\int 1\,dx$
+Q ord
+q: 매개변수 변환법 풀이 순서를 쌓아보세요.
+s: $y''$ 계수를 1로 만들어 $r(x)$ 를 확인한다
+s: 제차해 $y_1, y_2$ 를 구한다
+s: 론스키안 $W$ 를 계산한다
+s: 공식으로 $y_p$ 를 구하고 $y = y_h + y_p$
+e: $r(x)$ 는 반드시 표준형의 우변이어야 해요.
+
+## 16 | 2계 ODE | 비제차 오일러-코시
+c: $x^2y'' + axy' + by = r(x)$
+c: 매개변수 변환법을 쓸 때는 양변을 $x^2$ 로 나눠서 표준형의 우변 $\dfrac{r(x)}{x^2}$ 을 써야 해요.
+c: $r(x)$ 가 $x$의 거듭제곱이면 $y_p = Ax^k$ 로 추측해도 돼요.
+Q mc
+q: 매개변수 변환 공식에 넣을 우변은?
+a: $\dfrac{r(x)}{x^2}$
+w: $r(x)$
+w: $x^2r(x)$
+w: $\dfrac{r(x)}{x}$
+e: 공식은 $y''$ 계수가 1인 표준형 기준이에요. 이 강의에서 가장 많이 틀리는 부분이에요.
+Q mc
+q: $x^2y'' - 2xy' + 2y = x^3$ 의 제차해는?
+a: $C_1x + C_2x^2$
+w: $C_1x^2 + C_2x^3$
+w: $C_1e^{x} + C_2e^{2x}$
+w: $x(C_1 + C_2\ln x)$
+e: $m^2 - 3m + 2 = 0 \Rightarrow m = 1, 2$
+Q in
+q: 위 식에서 $y_p = Ax^3$ 으로 두면 $A$는? (분수 가능)
+a: 1/2
+e: $6Ax^3 - 6Ax^3 + 2Ax^3 = x^3 \Rightarrow A = \dfrac12$
+Q mc
+q: $W(x, x^2)$ 는?
+a: $x^2$
+w: $2x$
+w: $x^3$
+w: $1$
+e: $x\cdot 2x - 1\cdot x^2 = x^2$
+
+## 17 | 2계 ODE | 활용: 질량-스프링-댐퍼
+c: 운동방정식 $my'' + cy' + ky = F(t)$
+c: $c^2 > 4mk$ 과감쇠, $c^2 = 4mk$ 임계감쇠, $c^2 < 4mk$ 부족감쇠(진동하며 줄어듦)
+c: 비감쇠 고유진동수 $\omega_0 = \sqrt{k/m}$
+Q mc
+q: MSD 시스템의 운동방정식은?
+a: $my'' + cy' + ky = F(t)$
+w: $my' + cy + k = F(t)$
+w: $ky'' + cy' + my = F(t)$
+w: $my'' - cy' - ky = F(t)$
+e: 관성력 + 감쇠력 + 복원력 = 외력
+Q mc
+q: $c^2 < 4mk$ 일 때 운동은?
+a: 진동하면서 진폭이 줄어든다 (부족감쇠)
+w: 진동 없이 천천히 줄어든다 (과감쇠)
+w: 진동 없이 가장 빨리 평형으로 간다 (임계감쇠)
+w: 진폭이 계속 커진다
+e: 특성근이 복소수 $-\dfrac{c}{2m} \pm i\beta$ 가 되어 $e^{-ct/2m}\cos$ 꼴이에요.
+Q in
+q: $m = 2,\; k = 18$ 일 때 $\omega_0$는?
+a: 3
+e: $\sqrt{18/2} = 3$
+Q in
+q: $m = 1,\; k = 4$ 일 때 임계감쇠가 되는 $c$는?
+a: 4
+e: $c = 2\sqrt{mk} = 2\sqrt4 = 4$
+Q mc
+q: $c = 0$ 이고 외력 진동수가 $\omega_0$ 와 같으면?
+a: 공진: 진폭이 $t$에 비례해 커진다
+w: 진동이 즉시 멈춘다
+w: 임계감쇠가 된다
+w: 해가 존재하지 않는다
+e: 미정계수법의 수정 규칙 때문에 $y_p$ 에 $t$ 가 곱해져요. 14강과 연결돼요.
+
+## 18 | 고계 ODE | 상수계수
+c: 2계와 똑같이 특성방정식을 풀어요. 근 하나당 해 하나.
+c: $k$중근 $\lambda$: $e^{\lambda x}, xe^{\lambda x}, \dots, x^{k-1}e^{\lambda x}$
+c: 복소 중근도 같은 규칙으로 $x$ 를 곱해요.
+Q mc
+q: $y''' - y' = 0$ 의 일반해는?
+a: $C_1 + C_2e^{x} + C_3e^{-x}$
+w: $C_1e^{x} + C_2e^{-x}$
+w: $C_1 + C_2x + C_3x^2$
+w: $C_1e^{x} + C_2xe^{x} + C_3x^2e^{x}$
+e: $\lambda^3 - \lambda = \lambda(\lambda - 1)(\lambda + 1)$, $\lambda = 0$ 은 상수 해예요.
+Q mc
+q: $y''' - 3y'' + 3y' - y = 0$ 의 일반해는?
+a: $(C_1 + C_2x + C_3x^2)e^{x}$
+w: $C_1e^{x} + C_2e^{2x} + C_3e^{3x}$
+w: $(C_1 + C_2x)e^{x}$
+w: $C_1e^{-x} + C_2xe^{-x} + C_3x^2e^{-x}$
+e: $(\lambda - 1)^3 = 0$, 3중근
+Q mc
+q: $y^{(4)} - 16y = 0$ 의 일반해는?
+a: $C_1e^{2x} + C_2e^{-2x} + C_3\cos 2x + C_4\sin 2x$
+w: $C_1e^{4x} + C_2e^{-4x} + C_3\cos 4x + C_4\sin 4x$
+w: $(C_1 + C_2x)e^{2x} + (C_3 + C_4x)e^{-2x}$
+w: $C_1e^{2x} + C_2e^{-2x}$
+e: $\lambda^4 = 16 \Rightarrow (\lambda^2 - 4)(\lambda^2 + 4) = 0 \Rightarrow \pm 2,\; \pm 2i$
+Q mc
+q: $y^{(4)} + 2y'' + y = 0$ 의 일반해는?
+a: $(A + Bx)\cos x + (C + Dx)\sin x$
+w: $A\cos x + B\sin x$
+w: $A\cos x + B\sin x + C\cos 2x + D\sin 2x$
+w: $(A + Bx)e^{x} + (C + Dx)e^{-x}$
+e: $(\lambda^2 + 1)^2 = 0$, $\pm i$ 가 각각 중근이에요.
+
+## 19 | 고계 ODE | 오일러-코시
+c: $y = x^m$ 대입: $x^3y''' \to m(m-1)(m-2)x^m$, $x^2y'' \to m(m-1)x^m$, $xy' \to mx^m$
+c: $k$중근 $m$: $x^m, x^m\ln x, \dots, x^m(\ln x)^{k-1}$
+Q mc
+q: $y = x^m$ 일 때 $x^3y'''$ 은?
+a: $m(m-1)(m-2)x^m$
+w: $m^3x^m$
+w: $m(m+1)(m+2)x^m$
+w: $m(m-1)x^{m}$
+e: $y''' = m(m-1)(m-2)x^{m-3}$ 에 $x^3$을 곱해요.
+Q mc
+q: $x^3y''' + xy' - y = 0$ 의 일반해는?
+a: $x\left[C_1 + C_2\ln x + C_3(\ln x)^2\right]$
+w: $C_1x + C_2x^2 + C_3x^3$
+w: $x(C_1 + C_2\ln x)$
+w: $C_1x + C_2x^{-1} + C_3$
+e: $m(m-1)(m-2) + m - 1 = (m-1)\left[m(m-2) + 1\right] = (m-1)^3$
+Q mc
+q: $x^3y''' + 3x^2y'' - 2xy' + 2y = 0$ 의 일반해는?
+a: $C_1x + C_2x\ln x + C_3x^{-2}$
+w: $C_1x + C_2x^2 + C_3x^{-2}$
+w: $C_1x + C_2x^{-1} + C_3x^{2}$
+w: $x\left[C_1 + C_2\ln x + C_3(\ln x)^2\right]$
+e: $m(m-1)(m-2) + 3m(m-1) - 2m + 2 = (m-1)^2(m+2)$
+
+## 20 | 라플라스 변환 | 기초, 제1이동정리
+c: 정의 $\mathcal{L}\{f\} = F(s) = \displaystyle\int_0^\infty e^{-st}f(t)\,dt$
+c: $\mathcal{L}\{1\} = \frac1s,\; \mathcal{L}\{t^n\} = \frac{n!}{s^{n+1}},\; \mathcal{L}\{e^{at}\} = \frac{1}{s-a}$
+c: $\mathcal{L}\{\cos\omega t\} = \frac{s}{s^2+\omega^2},\; \mathcal{L}\{\sin\omega t\} = \frac{\omega}{s^2+\omega^2}$
+c: **제1이동정리 (s-shift)**: $\mathcal{L}\{e^{at}f(t)\} = F(s - a)$
+Q mc
+q: 라플라스 변환의 정의는?
+a: $\displaystyle\int_0^\infty e^{-st}f(t)\,dt$
+w: $\displaystyle\int_{-\infty}^\infty e^{-ist}f(t)\,dt$
+w: $\displaystyle\int_0^\infty e^{st}f(t)\,dt$
+w: $\displaystyle\int_0^t f(\tau)\,d\tau$
+e: 두 번째는 푸리에 변환에 가까워요.
+Q mc
+q: $\mathcal{L}\{t^2\}$ 는?
+a: $\dfrac{2}{s^3}$
+w: $\dfrac{1}{s^3}$
+w: $\dfrac{2}{s^2}$
+w: $\dfrac{6}{s^4}$
+e: $\dfrac{n!}{s^{n+1}}$ 에 $n = 2$
+Q mc
+q: $\mathcal{L}\{\sin 3t\}$ 는?
+a: $\dfrac{3}{s^2 + 9}$
+w: $\dfrac{s}{s^2 + 9}$
+w: $\dfrac{1}{s^2 + 9}$
+w: $\dfrac{3}{s^2 - 9}$
+e: 사인은 분자에 $\omega$, 코사인은 분자에 $s$
+Q mc
+q: $\mathcal{L}\{e^{2t}\cos t\}$ 는?
+a: $\dfrac{s - 2}{(s - 2)^2 + 1}$
+w: $\dfrac{s}{(s - 2)^2 + 1}$
+w: $\dfrac{s + 2}{(s + 2)^2 + 1}$
+w: $\dfrac{s - 2}{s^2 + 1}$
+e: $\mathcal{L}\{\cos t\} = \frac{s}{s^2+1}$ 의 **모든** $s$ 를 $s - 2$ 로 바꿔요.
+Q mc
+q: $\mathcal{L}\{t^3e^{-t}\}$ 는?
+a: $\dfrac{6}{(s + 1)^4}$
+w: $\dfrac{6}{(s - 1)^4}$
+w: $\dfrac{3}{(s + 1)^4}$
+w: $\dfrac{6}{s^4} \cdot \dfrac{1}{s + 1}$
+e: $\frac{3!}{s^4}$ 에서 $s \to s + 1$
+
+## 21 | 라플라스 변환 | 부분분수
+c: 역변환은 표에 있는 꼴로 쪼개는 게 핵심이에요.
+c: 일차 인수: $\dfrac{A}{s - a}$. 해당 인수를 가리고 $s = a$ 를 대입하면 $A$ 가 바로 나와요 (커버업).
+c: 이차 인수는 완전제곱 $(s - a)^2 + \omega^2$ 로 만들어서 $e^{at}\cos, e^{at}\sin$ 으로 돌려요.
+Q mc
+q: $\mathcal{L}^{-1}\left\{\dfrac{1}{s(s + 1)}\right\}$ 는?
+a: $1 - e^{-t}$
+w: $1 + e^{-t}$
+w: $e^{-t}$
+w: $t\,e^{-t}$
+e: $\dfrac1s - \dfrac{1}{s+1}$
+Q in
+q: $\dfrac{1}{(s - 1)(s - 2)} = \dfrac{A}{s - 1} + \dfrac{B}{s - 2}$ 에서 $A$는?
+a: -1
+e: $(s - 1)$ 을 가리고 $s = 1$: $\dfrac{1}{1 - 2} = -1$
+Q mc
+q: $\mathcal{L}^{-1}\left\{\dfrac{s + 3}{(s + 1)(s + 2)}\right\}$ 는?
+a: $2e^{-t} - e^{-2t}$
+w: $e^{-t} + 2e^{-2t}$
+w: $2e^{-t} + e^{-2t}$
+w: $3e^{-t} - 2e^{-2t}$
+e: $A = \dfrac{-1 + 3}{-1 + 2} = 2$, $B = \dfrac{-2 + 3}{-2 + 1} = -1$
+Q mc
+q: $\mathcal{L}^{-1}\left\{\dfrac{1}{s^2 + 4}\right\}$ 는?
+a: $\dfrac12\sin 2t$
+w: $\sin 2t$
+w: $\cos 2t$
+w: $\dfrac14\sin 4t$
+e: $\dfrac{2}{s^2+4}$ 이 $\sin 2t$ 이니 $\frac12$ 를 맞춰줘요.
+Q mc
+q: $\mathcal{L}^{-1}\left\{\dfrac{s + 1}{s^2 + 2s + 5}\right\}$ 는?
+a: $e^{-t}\cos 2t$
+w: $e^{-t}\sin 2t$
+w: $e^{t}\cos 2t$
+w: $\cos 2t$
+e: $s^2 + 2s + 5 = (s + 1)^2 + 4$ 로 완전제곱
+
+## 22 | 라플라스 변환 | ODE 풀기
+c: $\mathcal{L}\{y'\} = sY - y(0)$
+c: $\mathcal{L}\{y''\} = s^2Y - sy(0) - y'(0)$
+c: 변환 → $Y(s)$ 에 대해 대수적으로 풀기 → 부분분수 → 역변환. 초기조건이 처음부터 들어가요.
+Q mc
+q: $\mathcal{L}\{y''\}$ 는?
+a: $s^2Y - sy(0) - y'(0)$
+w: $s^2Y - y(0) - sy'(0)$
+w: $s^2Y + sy(0) + y'(0)$
+w: $s^2Y - y'(0)$
+e: $y'$ 공식을 두 번 적용하면 나와요.
+Q mc
+q: $y' + 2y = 0,\; y(0) = 3$ 의 해는?
+a: $3e^{-2t}$
+w: $3e^{2t}$
+w: $e^{-2t} + 2$
+w: $-6e^{-2t}$
+e: $sY - 3 + 2Y = 0 \Rightarrow Y = \dfrac{3}{s + 2}$
+Q mc
+q: $y'' + y = 0,\; y(0) = 0,\; y'(0) = 2$ 의 해는?
+a: $2\sin t$
+w: $2\cos t$
+w: $\sin 2t$
+w: $2e^{-t}$
+e: $s^2Y - 2 + Y = 0 \Rightarrow Y = \dfrac{2}{s^2 + 1}$
+Q mc
+q: $y'' - 3y' + 2y = 0,\; y(0) = 1,\; y'(0) = 0$ 의 해는?
+a: $2e^{t} - e^{2t}$
+w: $e^{t} + e^{2t}$
+w: $2e^{2t} - e^{t}$
+w: $e^{t}$
+e: $Y = \dfrac{s - 3}{(s - 1)(s - 2)}$, 커버업으로 $A = 2,\; B = -1$
+Q mc
+q: $y'' + 2y' + 2y = 0,\; y(0) = 0,\; y'(0) = 1$ 의 해는?
+a: $e^{-t}\sin t$
+w: $e^{-t}\cos t$
+w: $e^{t}\sin t$
+w: $\sin t$
+e: $Y = \dfrac{1}{(s + 1)^2 + 1}$, 제1이동정리 (s-shift)
+Q ord
+q: 라플라스로 ODE를 푸는 순서를 쌓아보세요.
+s: 양변을 라플라스 변환한다 (초기조건 대입)
+s: $Y(s)$ 에 대해 정리한다
+s: 부분분수 / 완전제곱으로 쪼갠다
+s: 역변환해서 $y(t)$ 를 구한다
+e: 일반해를 구한 뒤 상수를 정하는 과정이 없어요. 초기조건이 처음부터 들어가니까요.
+
+## 23 | 라플라스 변환 | 단위계단함수, 제2이동정리
+c: 단위계단 $u(t - a)$: $t < a$ 에서 0, $t \ge a$ 에서 1. $\mathcal{L}\{u(t - a)\} = \dfrac{e^{-as}}{s}$
+c: **제2이동정리 (t-shift)**: $\mathcal{L}\{f(t - a)u(t - a)\} = e^{-as}F(s)$
+c: 다른 꼴: $\mathcal{L}\{f(t)u(t - a)\} = e^{-as}\mathcal{L}\{f(t + a)\}$
+Q mc
+q: $\mathcal{L}\{u(t - 2)\}$ 는?
+a: $\dfrac{e^{-2s}}{s}$
+w: $e^{-2s}$
+w: $\dfrac{e^{2s}}{s}$
+w: $\dfrac{1}{s - 2}$
+e: 네 번째는 $e^{2t}$ 의 변환이에요. 헷갈리기 쉬워요.
+Q mc
+q: $\mathcal{L}^{-1}\left\{\dfrac{e^{-3s}}{s^2}\right\}$ 는?
+a: $(t - 3)\,u(t - 3)$
+w: $t\,u(t - 3)$
+w: $(t + 3)\,u(t - 3)$
+w: $t\,e^{-3t}$
+e: $\frac{1}{s^2} \to t$ 를 $t - 3$ 만큼 밀고 $u(t - 3)$ 을 곱해요.
+Q mc
+q: $0 \le t < 2$ 에서 1, $t \ge 2$ 에서 0 인 함수는?
+a: $1 - u(t - 2)$
+w: $u(t - 2)$
+w: $u(t - 2) - 1$
+w: $u(2 - t) - 1$
+e: 1로 켜져 있다가 $t = 2$ 에서 꺼지니 1에서 계단을 빼요.
+Q mc
+q: $\mathcal{L}\{t\,u(t - 1)\}$ 는?
+a: $e^{-s}\left(\dfrac{1}{s^2} + \dfrac{1}{s}\right)$
+w: $\dfrac{e^{-s}}{s^2}$
+w: $e^{-s}\left(\dfrac{1}{s^2} - \dfrac{1}{s}\right)$
+w: $\dfrac{e^{-s}}{s}$
+e: $f(t + 1) = t + 1$ 이므로 $e^{-s}\mathcal{L}\{t + 1\}$
+Q mc
+q: $\mathcal{L}^{-1}\left\{\dfrac{s\,e^{-\pi s}}{s^2 + 1}\right\}$ 는?
+a: $\cos(t - \pi)\,u(t - \pi)$
+w: $\cos t\,u(t - \pi)$
+w: $\sin(t - \pi)\,u(t - \pi)$
+w: $e^{-\pi t}\cos t$
+e: $\cos(t - \pi) = -\cos t$ 이므로 $-\cos t\,u(t - \pi)$ 라고 써도 같아요.
+
+## 24 | 라플라스 변환 | ODE 풀기 (t-shift)
+c: 입력이 도중에 켜지는 문제: 우변에 $u(t - a)$ 가 있으면 $Y(s)$ 에 $e^{-as}$ 가 붙어요.
+c: $e^{-as}$ 는 잠시 떼어두고 나머지를 역변환한 뒤, 마지막에 $t \to t - a$ 로 밀고 $u(t - a)$ 를 곱해요.
+Q mc
+q: $y' + y = u(t - 1),\; y(0) = 0$ 의 해는?
+a: $\left(1 - e^{-(t-1)}\right)u(t - 1)$
+w: $\left(1 - e^{-t}\right)u(t - 1)$
+w: $e^{-(t-1)}u(t - 1)$
+w: $1 - e^{-(t - 1)}$
+e: $Y = e^{-s}\cdot\dfrac{1}{s(s + 1)}$, $\dfrac{1}{s(s+1)} \to 1 - e^{-t}$ 을 1만큼 밀어요.
+Q mc
+q: 초기조건이 모두 0이고 입력이 $t = a$ 에 켜지면, $t < a$ 에서 해는?
+a: $0$
+w: 입력과 같다
+w: 정의되지 않는다
+w: 상수 $C$
+e: 아무 자극이 없으니 정지 상태 그대로예요. $u(t - a)$ 가 그걸 표현해요.
+Q mc
+q: $y'' + y = u(t - \pi),\; y(0) = y'(0) = 0$ 의 해는?
+a: $(1 + \cos t)\,u(t - \pi)$
+w: $(1 - \cos t)\,u(t - \pi)$
+w: $\sin(t - \pi)\,u(t - \pi)$
+w: $1 - \cos t$
+e: $\dfrac{1}{s(s^2+1)} \to 1 - \cos t$, 밀면 $1 - \cos(t - \pi) = 1 + \cos t$
+Q ord
+q: t-shift 문제 풀이 순서를 쌓아보세요.
+s: 우변의 $u(t - a)$ 를 $\dfrac{e^{-as}}{s}$ 로 변환한다
+s: $Y(s) = e^{-as}G(s)$ 꼴로 정리한다
+s: $G(s)$ 를 역변환해 $g(t)$ 를 구한다
+s: $y = g(t - a)\,u(t - a)$ 로 쓴다
+e: $e^{-as}$ 는 마지막까지 "보관"해 두는 게 요령이에요.
+
+## 25 | 라플라스 변환 | 디랙 델타 함수
+c: $\delta(t - a)$: $t = a$ 에서만 무한히 큰 순간 충격, 넓이는 1
+c: 거르기 성질 $\displaystyle\int_0^\infty f(t)\,\delta(t - a)\,dt = f(a)$
+c: $\mathcal{L}\{\delta(t - a)\} = e^{-as}$, $\mathcal{L}\{\delta(t)\} = 1$
+Q mc
+q: $\mathcal{L}\{\delta(t - 2)\}$ 는?
+a: $e^{-2s}$
+w: $\dfrac{e^{-2s}}{s}$
+w: $1$
+w: $\dfrac{1}{s - 2}$
+e: 거르기 성질로 $e^{-st}$ 에 $t = 2$
+Q in
+q: $\displaystyle\int_0^\infty \cos t\;\delta(t - \pi)\,dt$ 의 값은?
+a: -1
+e: $\cos\pi = -1$
+Q mc
+q: $y' + 3y = \delta(t),\; y(0) = 0$ 의 해는?
+a: $e^{-3t}$
+w: $3e^{-3t}$
+w: $u(t)$
+w: $1 - e^{-3t}$
+e: $(s + 3)Y = 1$
+Q mc
+q: $y'' + y = \delta(t - \pi),\; y(0) = y'(0) = 0$ 의 해는?
+a: $-\sin t\;u(t - \pi)$
+w: $\sin t\;u(t - \pi)$
+w: $(1 + \cos t)\,u(t - \pi)$
+w: $\sin(t - \pi)$
+e: $Y = \dfrac{e^{-\pi s}}{s^2 + 1} \to \sin(t - \pi)u(t - \pi) = -\sin t\,u(t - \pi)$
+Q mc
+q: 디랙 델타가 물리적으로 나타내는 것은?
+a: 아주 짧은 순간에 가해지는 충격 (impulse)
+w: 일정하게 유지되는 힘
+w: 시간에 비례해 커지는 힘
+w: 주기적인 힘
+e: 망치로 한 번 치는 상황을 생각하면 돼요.
+
+## 26 | 라플라스 변환 | 합성곱, 변환의 도함수
+c: 합성곱 $(f * g)(t) = \displaystyle\int_0^t f(\tau)\,g(t - \tau)\,d\tau$, 그리고 $\mathcal{L}\{f * g\} = F(s)G(s)$
+c: 변환의 도함수 $\mathcal{L}\{t\,f(t)\} = -F'(s)$
+Q mc
+q: 합성곱의 정의는?
+a: $\displaystyle\int_0^t f(\tau)\,g(t - \tau)\,d\tau$
+w: $\displaystyle\int_0^t f(\tau)\,g(\tau)\,d\tau$
+w: $f(t)\,g(t)$
+w: $\displaystyle\int_0^\infty f(\tau)\,g(t + \tau)\,d\tau$
+e: 곱의 변환이 합성곱이지, 함수끼리 곱한 것의 변환이 아니에요.
+Q mc
+q: $(1 * t)(t)$ 는?
+a: $\dfrac{t^2}{2}$
+w: $t$
+w: $t^2$
+w: $1$
+e: $\displaystyle\int_0^t (t - \tau)\,d\tau = \frac{t^2}{2}$. 또는 $\frac1s\cdot\frac1{s^2} = \frac{1}{s^3}$
+Q mc
+q: 합성곱으로 구한 $\mathcal{L}^{-1}\left\{\dfrac{1}{s(s^2 + 1)}\right\}$ 는?
+a: $1 - \cos t$
+w: $\sin t$
+w: $1 + \cos t$
+w: $t\sin t$
+e: $1 * \sin t = \displaystyle\int_0^t \sin\tau\,d\tau = 1 - \cos t$
+Q mc
+q: $\mathcal{L}\{t\sin t\}$ 는?
+a: $\dfrac{2s}{(s^2 + 1)^2}$
+w: $\dfrac{1}{(s^2 + 1)^2}$
+w: $\dfrac{-2s}{(s^2 + 1)^2}$
+w: $\dfrac{s^2 - 1}{(s^2 + 1)^2}$
+e: $-\dfrac{d}{ds}\dfrac{1}{s^2 + 1} = \dfrac{2s}{(s^2 + 1)^2}$. 네 번째는 $t\cos t$ 의 변환이에요.
+Q mc
+q: $\mathcal{L}\{t\,e^{2t}\}$ 는?
+a: $\dfrac{1}{(s - 2)^2}$
+w: $\dfrac{1}{s - 2}$
+w: $\dfrac{2}{(s - 2)^2}$
+w: $\dfrac{1}{(s + 2)^2}$
+e: $-\dfrac{d}{ds}\dfrac{1}{s - 2}$, 또는 $\frac{1}{s^2}$ 에 s-shift
+Q mc
+q: $\mathcal{L}^{-1}\left\{\dfrac{1}{(s^2 + 1)^2}\right\}$ 는?
+a: $\dfrac12(\sin t - t\cos t)$
+w: $\dfrac12 t\sin t$
+w: $\sin t * \cos t$
+w: $t\sin t$
+e: $\sin t * \sin t$ 를 계산하면 나와요. 세 번째 $\sin t * \cos t$ 는 $\frac{s}{(s^2+1)^2}$ 의 역변환이에요.
+</script>
+
+<script type="application/json" id="glossary">[{"t": "ODE", "d": "상미분방정식 (Ordinary Differential Equation). 미지 함수가 변수 하나에만 의존하고, 그 함수의 도함수가 들어 있는 방정식이에요. 예: $y' = 2xy$"}, {"t": "계(order)", "d": "식에 나오는 가장 높은 도함수의 차수예요. $y''$까지 있으면 2계, $y'''$까지 있으면 3계예요."}, {"t": "비선형", "d": "선형이 아닌 것. $y^2$, $y\\,y'$, $\\sin y$처럼 $y$나 도함수가 1차가 아니거나 서로 곱해지면 비선형이에요."}, {"t": "선형", "d": "$y$와 그 도함수들이 모두 1차이고 서로 곱해지지 않는 꼴이에요. 계수는 $x$의 함수여도 괜찮아요. 예: $y'' + x^2y = e^x$"}, {"t": "일반해", "d": "임의상수가 남아 있는 해예요. 해 전체를 한 식으로 나타낸 것이라고 보면 돼요. 예: $y = Ce^{2x}$"}, {"t": "특수해", "d": "초기조건 등으로 상수를 정해서 하나로 확정된 해예요. 비제차 ODE에서는 우변을 만족하는 해 하나($y_p$)를 뜻하기도 해요."}, {"t": "초기조건", "d": "$y(0) = 3$처럼 특정 지점에서의 함숫값이나 도함숫값이에요. 일반해의 상수를 정하는 데 써요."}, {"t": "임의상수", "d": "적분할 때 생기는 아무 값이나 될 수 있는 상수예요. $n$계 ODE의 일반해에는 $n$개가 있어요."}, {"t": "적분상수", "d": "부정적분하면 생기는 상수 $C$예요. 미분하면 사라지니까 적분할 때 항상 붙여야 해요."}, {"t": "변수분리", "d": "$g(y)\\,dy = f(x)\\,dx$처럼 $y$는 한쪽, $x$는 다른 쪽으로 모은 뒤 양변을 각각 적분하는 풀이법이에요."}, {"t": "덮어씌워서", "d": "상수 덮어씌우기: $e^{C}$, $2C$, $-C$처럼 상수끼리 계산한 덩어리도 결국 아무 상수이므로 다시 $C$ 하나로 바꿔 쓰는 요령이에요."}, {"t": "치환", "d": "복잡한 부분을 새 변수($u$ 등)로 바꿔서 이미 아는 꼴(변수분리, 선형 등)로 만드는 방법이에요."}, {"t": "동차형", "d": "$y' = f(y/x)$처럼 우변이 $y/x$만의 함수로 쓸 수 있는 1계 ODE예요. $u = y/x$로 치환해요. (2계의 '제차'와는 다른 뜻이에요.)"}, {"t": "곱의 미분", "d": "$(fg)' = f'g + fg'$"}, {"t": "연쇄법칙", "d": "합성함수의 미분: $\\dfrac{dp}{dx} = \\dfrac{dp}{dy}\\cdot\\dfrac{dy}{dx}$"}, {"t": "완전방정식", "d": "$M\\,dx + N\\,dy = 0$에서 $M_y = N_x$가 성립하는 식이에요. 어떤 함수 $F$의 전미분 $dF = 0$이라서 해가 $F = C$예요."}, {"t": "완전", "d": "완전방정식: $M\\,dx + N\\,dy = 0$에서 $M_y = N_x$가 성립해서, 어떤 $F$의 전미분($dF = 0$)으로 볼 수 있는 식이에요."}, {"t": "적분인자", "d": "식 전체에 곱해서 완전방정식(또는 바로 적분 가능한 꼴)으로 만들어 주는 함수 $\\mu$예요."}, {"t": "표준형", "d": "최고차 도함수의 계수를 1로 맞춘 꼴이에요. 1계 선형: $y' + p(x)y = q(x)$, 2계: $y'' + p(x)y' + q(x)y = r(x)$"}, {"t": "정상상태", "d": "시간이 충분히 지난 뒤 변하지 않고 머무는 값이에요. 지수적으로 줄어드는 항이 사라진 뒤 남는 부분이에요."}, {"t": "베르누이 방정식", "d": "$y' + p(x)y = q(x)y^n$ 꼴의 1계 ODE예요. $u = y^{1-n}$으로 치환하면 선형이 돼요."}, {"t": "리카티 방정식", "d": "$y' = p + qy + ry^2$ 꼴의 1계 ODE예요. 특수해 $y_1$을 하나 알면 $y = y_1 + 1/v$로 풀 수 있어요."}, {"t": "토리첼리 법칙", "d": "수면 높이 $h$인 물이 구멍으로 나가는 속도는 $v = \\sqrt{2gh}$라는 법칙이에요. 높이가 낮을수록 천천히 빠져요."}, {"t": "계수내림", "d": "해 하나를 알거나 변수가 빠져 있을 때 치환으로 ODE의 계(order)를 하나 낮추는 방법이에요."}, {"t": "특성방정식", "d": "상수계수 ODE에 $y = e^{\\lambda x}$를 넣어서 얻는 $\\lambda$에 대한 다항식이에요. 그 근으로 해의 모양이 정해져요."}, {"t": "중근", "d": "같은 근이 두 번(이상) 나오는 경우예요. 해가 겹치므로 $x$ (오일러-코시는 $\\ln x$)를 곱해 독립인 해를 만들어요."}, {"t": "복소근", "d": "$\\alpha \\pm \\beta i$ 꼴의 근이에요. 오일러 공식으로 $e^{\\alpha x}\\cos\\beta x$, $e^{\\alpha x}\\sin\\beta x$ 해가 나와요."}, {"t": "오일러-코시", "d": "$x^2y'' + axy' + by = 0$처럼 $x$의 거듭제곱이 도함수 차수와 맞춰 붙은 ODE예요. $y = x^m$을 대입해요."}, {"t": "보조방정식", "d": "오일러-코시에 $y = x^m$을 넣어 얻는 $m$에 대한 방정식이에요. 상수계수의 특성방정식에 해당해요."}, {"t": "론스키안", "d": "두 해로 만든 행렬식 $W = y_1y_2' - y_1'y_2$예요. $0$이 아니면 두 해가 선형독립이에요."}, {"t": "선형독립", "d": "어느 한쪽이 다른 쪽의 상수배가 아닌 관계예요. 2계 일반해를 만들려면 선형독립인 해 두 개가 필요해요."}, {"t": "선형종속", "d": "한 해가 다른 해의 상수배로 쓰이는 관계예요. 예: $e^x$와 $3e^x$. 론스키안이 $0$이에요."}, {"t": "Abel 공식", "d": "$y'' + py' + qy = 0$의 두 해의 론스키안은 $W = Ce^{-\\int p\\,dx}$라는 공식이에요. $W$를 직접 계산하지 않고 구할 수 있어요."}, {"t": "비제차", "d": "우변 $r(x)$가 $0$이 아닌 선형 ODE예요. 해 = 제차해 + 특수해."}, {"t": "제차해", "d": "우변을 $0$으로 둔 제차 ODE의 일반해 $y_h$예요."}, {"t": "제차", "d": "선형 ODE에서 우변이 $0$인 경우예요. 예: $y'' + ay' + by = 0$"}, {"t": "미정계수법", "d": "우변 $r(x)$의 모양을 보고 특수해 꼴($Ae^{kx}$, $A\\cos + B\\sin$ 등)을 추측한 뒤 계수를 대입해 정하는 방법이에요."}, {"t": "수정 규칙", "d": "미정계수법에서 추측한 $y_p$가 제차해와 겹치면 $x$ (또 겹치면 $x^2$)를 곱해야 한다는 규칙이에요."}, {"t": "매개변수 변환법", "d": "제차해의 상수를 함수로 바꿔 특수해를 구하는 방법이에요. 어떤 우변에도 쓸 수 있지만 적분이 필요해요."}, {"t": "과감쇠", "d": "$c^2 > 4mk$. 감쇠가 커서 진동하지 않고 천천히 평형으로 돌아가요."}, {"t": "임계감쇠", "d": "$c^2 = 4mk$. 진동하지 않으면서 가장 빨리 평형으로 돌아가는 경계 상태예요."}, {"t": "부족감쇠", "d": "$c^2 < 4mk$. 진동하면서 진폭이 지수적으로 줄어들어요."}, {"t": "감쇠", "d": "마찰이나 댐퍼처럼 운동 에너지를 잃게 만드는 효과예요. 운동방정식에서 $cy'$ 항이에요."}, {"t": "고유진동수", "d": "외력과 감쇠가 없을 때 시스템이 스스로 진동하는 각진동수 $\\omega_0 = \\sqrt{k/m}$예요."}, {"t": "공진", "d": "외력의 진동수가 고유진동수와 같아서 진폭이 계속 커지는 현상이에요."}, {"t": "라플라스 변환", "d": "$F(s) = \\int_0^\\infty e^{-st}f(t)\\,dt$. 미분을 $s$의 곱셈으로 바꿔서 ODE를 대수 방정식으로 만들어 줘요."}, {"t": "역변환", "d": "$F(s)$에서 원래 함수 $f(t)$로 되돌리는 것, $\\mathcal{L}^{-1}$이에요. 보통 표와 부분분수로 해요."}, {"t": "제1이동정리", "d": "s-shift: $\\mathcal{L}\\{e^{at}f(t)\\} = F(s - a)$. $t$쪽에 지수를 곱하면 $s$쪽이 $a$만큼 밀려요."}, {"t": "제2이동정리", "d": "t-shift: $\\mathcal{L}\\{f(t-a)u(t-a)\\} = e^{-as}F(s)$. $t$쪽에서 $a$만큼 늦추면 $s$쪽에 $e^{-as}$가 곱해져요."}, {"t": "s-shift", "d": "제1이동정리: $\\mathcal{L}\\{e^{at}f(t)\\} = F(s - a)$"}, {"t": "t-shift", "d": "제2이동정리: $\\mathcal{L}\\{f(t-a)u(t-a)\\} = e^{-as}F(s)$"}, {"t": "부분분수", "d": "복잡한 분수를 $\\dfrac{A}{s-a} + \\dfrac{B}{s-b}$처럼 단순한 분수의 합으로 쪼개는 것이에요."}, {"t": "커버업", "d": "부분분수 계수를 빨리 구하는 요령이에요. 구하려는 인수를 손으로 가리고 그 근을 나머지에 대입하면 계수가 나와요."}, {"t": "완전제곱", "d": "$s^2 + 2s + 5 = (s+1)^2 + 4$처럼 제곱식 + 상수로 바꾸는 것이에요. 이동정리를 쓰기 위해 해요."}, {"t": "단위계단", "d": "$u(t - a)$: $t < a$에서 $0$, $t \\ge a$에서 $1$인 함수예요. 스위치를 켜는 순간을 나타내요."}, {"t": "디랙 델타", "d": "$\\delta(t - a)$: $t = a$ 한 순간에만 무한히 크고 넓이가 1인 함수예요. 순간 충격을 나타내요."}, {"t": "거르기 성질", "d": "$\\int f(t)\\,\\delta(t-a)\\,dt = f(a)$. 델타 함수와 곱해 적분하면 $t = a$에서의 값만 남아요."}, {"t": "합성곱", "d": "$(f*g)(t) = \\int_0^t f(\\tau)g(t-\\tau)\\,d\\tau$. 라플라스 영역에서는 그냥 곱 $F(s)G(s)$가 돼요."}, {"t": "변환의 도함수", "d": "$\\mathcal{L}\\{t f(t)\\} = -F'(s)$. $t$를 곱하면 $s$쪽에서는 미분하고 부호를 바꿔요."}]</script>
+<script>
+(function () {
+  const DRIVE = {
+    "00":"1tsdR1wYTqMyl5tAMqkm8ZAjxZspV9Gsu","01":"1CRcTYDWD7-reqDYZdfFcodvbFKT8KHe-","02":"1dTQDw4jYyDhnpB6c1k5ZK7XqWOT3mRfd",
+    "03":"1XdmPy-SrnSnLlluNWsRKoTSR0hbUeuQp","04":"1UEPa8RNrcP2udHW4ooGNZAoNoSeT3nm3","05":"1ULz-7hyjgT06azQGpG30k_4gBDkOwp3o",
+    "06":"15ypx2Bn5h4dq49lWm5_3jDCnj7V6MpAv","07":"1g10DKBGo8MnMuya72r8rOIV27F1YdXRu","08":"1haT4KJqG0OqCByUXrX2CSJw0Jqh7fvHS",
+    "09":"1AovgqqBWms2EyZCCuK7yBrbenOfXEaC4","10":"15zwVgTkFusATSlb-Emv6PTRsK9J6OqRl","11":"1IDrTJ44zLIOM2cr6G6dVxfNdpGJ5x0DW",
+    "12":"1LlxE09tlB2efelQcPSa_MxNdLGYVtxEY","13":"1NCHt5wntYtSOPxDUzgj5uCeFS947crI_","14":"1_Zyntxc1-geHN3K9ECKFc8FHvOI8UyG1",
+    "15":"184vjnbduWIfSgBMhuPJv5_d9jTlxKW6O","16":"184QhcmiXfb5tKJdFmNSmciajr12UuJ5s","17":"1YH0c6UTzH99b6OY9dfcjIerddzHeFDuf",
+    "18":"1cCw8Qjutjg0np7S00LP4w3g_h0QmBeq6","19":"1cUASTS3KTM3nlJt2OOiltJISZYeobm8K","20":"1pBW1NOQKuK3Sr2nKaaHef6vJT7p2tZXe",
+    "21":"1HJND6Odo10cGH5n99DYpBQljoGy1XzTa","22":"1ii4vsC-odWu7jCL_2OH0z43NyK3g6o-m","23":"1HKbJQbAXcYQ3gdicJ7SHvBpvCjUV48XU",
+    "24":"1c2WEsdSFpjCL9tkjtk9AvkUuwkCY31EW","25":"1qiMs-VkmGegEiyhfYtizac8BwQo3o6XW","26":"1g2b_cAqfs4ol20WoARwLrLfS3CRSoh2p"
+  };
+  const DAILY_GOAL = 30;
+  const BOX_DAYS = [0, 1, 3, 7, 16, 35];
+  const LS_KEY = "gongsu-daily-v1";
+
+  // ---------- course parsing ----------
+  function parseCourse(text) {
+    const lessons = [];
+    let L = null, Q = null;
+    for (const raw of text.split("\n")) {
+      const line = raw.trim();
+      if (!line) continue;
+      if (line.startsWith("## ")) {
+        const [id, unit, title] = line.slice(3).split(" | ").map(s => s.trim());
+        L = { id, unit, title, concept: [], qs: [] };
+        lessons.push(L); Q = null; continue;
+      }
+      if (line.startsWith("Q ")) {
+        Q = { type: line.slice(2).trim(), q: "", a: [], w: [], s: [], e: "" };
+        Q.id = L.id + "-" + (L.qs.length + 1);
+        L.qs.push(Q); continue;
+      }
+      const m = line.match(/^([cqawse]):\s?(.*)$/);
+      if (!m) continue;
+      const [, k, v] = m;
+      if (k === "c") L.concept.push(v);
+      else if (k === "q") Q.q = v;
+      else if (k === "e") Q.e = v;
+      else if (k === "a") Q.type === "in" ? Q.a.push(...v.split(" ; ").map(s => s.trim())) : Q.a.push(v);
+      else Q[k].push(v);
+    }
+    return lessons;
+  }
+  const LESSONS = parseCourse(document.getElementById("course").textContent);
+  const QMAP = {};
+  LESSONS.forEach(l => l.qs.forEach(q => { QMAP[q.id] = Object.assign(q, { lesson: l }); }));
+
+  // ---------- state & persistence ----------
+  const today = () => { const d = new Date(); return Math.floor((d.getTime() - d.getTimezoneOffset() * 60000) / 86400000); };
+  const blank = () => ({ xp: 0, streak: 0, lastDay: null, dayXp: 0, dayKey: null, lessons: {}, cards: {}, updatedAt: 0 });
+  let S = blank();
+  try { const raw = localStorage.getItem(LS_KEY); if (raw) S = Object.assign(blank(), JSON.parse(raw)); } catch (e) {}
+
+  let remote = null, saveTimer = null, saving = Promise.resolve();
+  function persist() {
+    S.updatedAt = Date.now();
+    try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch (e) {}
+    if (!remote) return;
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      const body = JSON.parse(JSON.stringify(S));
+      saving = saving.then(() => remote.set(body)).then(() => setSync("진도가 계정에 저장됐어요"), () => setSync("저장하지 못했어요. 이 브라우저에는 남아 있어요"));
+    }, 600);
+  }
+  function setSync(t) { document.getElementById("sync").textContent = t; }
+
+  async function connect() {
+    if (!window.claude || !window.claude.use) return;
+    try {
+      const [db, user] = await Promise.all([claude.use("db"), claude.use("user")]);
+      if (!db || !user) return;
+      const uid = await user.id();
+      if (!uid) return;
+      const ref = db.doc("data/users/" + uid + "/progress");
+      const snap = await ref.get();
+      if (snap.exists) {
+        const r = snap.data();
+        if ((r.updatedAt || 0) > (S.updatedAt || 0)) {
+          S = Object.assign(blank(), JSON.parse(JSON.stringify(r)));
+          try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch (e) {}
+          renderHome();
+        }
+      }
+      remote = ref;
+      setSync("진도가 계정에 저장돼요. 다른 기기에서도 이어서 할 수 있어요");
+      if (!snap.exists && S.updatedAt) persist();
+    } catch (e) { /* stay local */ }
+  }
+
+  function rollDay() {
+    const t = today();
+    if (S.dayKey !== t) { S.dayKey = t; S.dayXp = 0; }
+  }
+  function streakAlive() { return S.lastDay !== null && today() - S.lastDay <= 1; }
+  function touchStreak() {
+    const t = today();
+    if (S.lastDay === t) return;
+    S.streak = (S.lastDay === t - 1) ? S.streak + 1 : 1;
+    S.lastDay = t;
+  }
+  function dueCards() {
+    const t = today();
+    return Object.keys(S.cards).filter(id => QMAP[id] && S.cards[id].d <= t);
+  }
+  function grade(id, correct) {
+    const c = S.cards[id] || { b: 0, d: today() };
+    c.b = correct ? Math.min(c.b + 1, BOX_DAYS.length - 1) : 0;
+    c.d = today() + BOX_DAYS[c.b];
+    S.cards[id] = c;
+  }
+
+  // ---------- helpers ----------
+  const $ = id => document.getElementById(id);
+  const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const GLOSS = JSON.parse(document.getElementById("glossary").textContent);
+  const GIDX = {}; GLOSS.forEach((g, i) => { GIDX[g.t] = i; });
+  const TERM_RE = new RegExp("(" + GLOSS.map(g => g.t).sort((a, b) => b.length - a.length).map(t => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|") + ")", "g");
+  let seenTerms = new Set();
+  function linkTerms(text) {
+    return text.replace(TERM_RE, t => {
+      if (seenTerms.has(t)) return t;
+      seenTerms.add(t);
+      return '<span class="term" role="button" tabindex="0" data-g="' + GIDX[t] + '">' + t + '</span>';
+    });
+  }
+  const md = s => esc(s).split(/(\$\$[\s\S]*?\$\$|\$[^$]*\$)/).map((seg, i) => i % 2 ? seg : linkTerms(seg)).join("").replace(/\*\*(.+?)\*\*/g, '<strong class="hl">$1</strong>');
+  function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+  function typeset(el) {
+    const run = () => { if (window.MathJax && MathJax.typesetPromise) { try { MathJax.typesetClear && MathJax.typesetClear([el]); } catch (e) {} MathJax.typesetPromise([el]).catch(() => {}); } };
+    if (window.MathJax && MathJax.startup && MathJax.startup.promise) MathJax.startup.promise.then(run); else setTimeout(run, 400);
+  }
+  function parseNum(s) {
+    s = s.replace(/\s+/g, "").replace(/−/g, "-");
+    const f = s.match(/^(-?\d+(?:\.\d+)?)\/(-?\d+(?:\.\d+)?)$/);
+    if (f) return parseFloat(f[1]) / parseFloat(f[2]);
+    return /^-?\d+(\.\d+)?$/.test(s) ? parseFloat(s) : NaN;
+  }
+  function checkInput(q, val) {
+    const norm = s => s.replace(/\s+/g, "").replace(/−/g, "-").toLowerCase();
+    if (q.a.some(a => norm(a) === norm(val))) return true;
+    const v = parseNum(val);
+    return !isNaN(v) && q.a.some(a => { const n = parseNum(a); return !isNaN(n) && Math.abs(n - v) < 1e-9; });
+  }
+
+  // ---------- home ----------
+  const CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>';
+  const CROSS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg>';
+  const CHEV = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>';
+  const mins = l => Math.max(2, Math.round(l.qs.length * 0.5 + 1));
+  function renderHome() {
+    rollDay();
+    $("st-xp").textContent = S.xp;
+    const alive = streakAlive();
+    $("st-streak-n").textContent = alive ? S.streak : 0;
+    $("st-streak").classList.toggle("off", !(alive && S.lastDay === today()));
+    const frac = Math.min(1, S.dayXp / DAILY_GOAL);
+    $("ring-bar").style.strokeDashoffset = (169.6 * (1 - frac)).toFixed(1);
+    $("ring").classList.toggle("full", frac >= 1);
+    $("ring-n").textContent = S.dayXp;
+
+    const next = LESSONS.find(l => !S.lessons[l.id]);
+    const heroL = next || LESSONS[LESSONS.length - 1];
+    $("hero-eyebrow").textContent = next ? (Object.keys(S.lessons).length ? "이어서 학습" : "첫 레슨") : "모든 레슨 완료 · 다시 풀기";
+    $("hero-title").textContent = heroL.id + "강 " + heroL.title;
+    $("hero-meta").textContent = heroL.unit + " · " + heroL.qs.length + "문제 · 약 " + mins(heroL) + "분";
+    $("hero-btn").onclick = () => startLesson(heroL);
+
+    const due = dueCards().length;
+    $("review-sub").textContent = due ? due + "문제가 기다리고 있어요" : "틀린 문제가 생기면 여기 모여요";
+    $("review-btn").disabled = due === 0;
+
+    const units = [];
+    LESSONS.forEach(l => { let u = units.find(x => x.name === l.unit); if (!u) units.push(u = { name: l.unit, ls: [] }); u.ls.push(l); });
+    const host = $("units");
+    host.innerHTML = "";
+    units.forEach(u => {
+      const done = u.ls.filter(l => S.lessons[l.id]).length;
+      const sec = document.createElement("section");
+      sec.className = "unit";
+      sec.innerHTML = '<div class="unit-head"><h2>' + esc(u.name) + '</h2><span>' + done + '/' + u.ls.length + '</span></div>' +
+        '<div class="unit-bar"><i style="width:' + Math.round(done / u.ls.length * 100) + '%"></i></div><ol class="steps"></ol>';
+      const list = sec.querySelector(".steps");
+      u.ls.forEach(l => {
+        const rec = S.lessons[l.id];
+        const isNext = next && l.id === next.id;
+        const li = document.createElement("li");
+        if (rec) li.className = "was-done";
+        const sub = isNext ? "다음 레슨 · 약 " + mins(l) + "분" : rec ? "정답률 " + rec.best + "% · " + rec.n + "회 완료" : l.qs.length + "문제";
+        li.innerHTML = '<button type="button" class="row' + (rec ? " done" : "") + (isNext ? " next" : "") + '"><span class="disc">' + (rec ? CHECK : l.id) +
+          '</span><span class="tx"><b>' + l.id + '강 ' + esc(l.title) + '</b><span>' + sub + '</span></span>' + CHEV + '</button>';
+        li.firstChild.addEventListener("click", () => startLesson(l));
+        list.appendChild(li);
+      });
+      host.appendChild(sec);
+    });
+  }
+
+  // ---------- session ----------
+  let sess = null;
+  function startLesson(l) {
+    sess = { kind: "lesson", lesson: l, steps: [{ t: "concept" }].concat(l.qs.map(q => ({ t: "q", q }))), i: 0, total: l.qs.length + 1, firstTry: {}, correct: 0, xp: 0, retries: {} };
+    openSession();
+  }
+  function startReview() {
+    const ids = shuffle(dueCards()).slice(0, 12);
+    if (!ids.length) return;
+    sess = { kind: "review", steps: ids.map(id => ({ t: "q", q: QMAP[id] })), i: 0, total: ids.length, firstTry: {}, correct: 0, xp: 0, retries: {} };
+    openSession();
+  }
+  function openSession() {
+    $("home").hidden = true; $("lesson").hidden = false;
+    document.body.style.overflow = "hidden";
+    showStep();
+  }
+  function closeSession() {
+    sess = null;
+    $("lesson").hidden = true; $("home").hidden = false;
+    document.body.style.overflow = "";
+    renderHome();
+    window.scrollTo(0, 0);
+  }
+  $("quit").addEventListener("click", closeSession);
+  $("review-btn").addEventListener("click", startReview);
+
+  function setProgress() {
+    const doneCount = Math.min(sess.i, sess.total);
+    $("prog-fill").style.width = Math.round(doneCount / sess.total * 100) + "%";
+  }
+  function sheet(html, cls) {
+    const sh = $("sheet");
+    sh.className = "sheet" + (cls ? " " + cls : "");
+    $("sheet-inner").innerHTML = html;
+    typeset(sh);
+  }
+
+  function showStep() {
+    setProgress();
+    const stage = $("stage");
+    $("lesson-body").scrollTop = 0;
+    const step = sess.steps[sess.i];
+    if (!step) return finish();
+    seenTerms = new Set();
+    stage.className = "wrap rise";
+    void stage.offsetWidth;
+    if (step.t === "concept") {
+      const l = sess.lesson;
+      stage.innerHTML = '<article class="concept"><span class="eyebrow">' + l.id + '강 · 핵심 정리</span><h2>' + esc(l.title) + '</h2><ol>' +
+        l.concept.map(c => '<li>' + md(c) + '</li>').join("") + '</ol>' +
+        (DRIVE[l.id] ? '<a href="https://drive.google.com/file/d/' + DRIVE[l.id] + '/view" target="_blank" rel="noopener">강의자료 PDF 열기 →</a>' : "") + '</article>';
+      sheet('<button class="btn wide" id="go" type="button">문제 풀기</button>');
+      $("go").addEventListener("click", () => { sess.i++; showStep(); });
+      typeset(stage);
+      return;
+    }
+    renderQuestion(step.q, stage);
+  }
+
+  function renderQuestion(q, stage) {
+    const label = sess.kind === "review" ? "복습 · " + q.lesson.id + "강 " + q.lesson.title : q.lesson.id + "강";
+    const typeLabel = { mc: "고르기", in: "직접 입력", ord: "순서 맞추기" }[q.type];
+    let html = '<span class="eyebrow">' + esc(label) + ' · ' + typeLabel + '</span><p class="qtext">' + md(q.q) + '</p>';
+    let getAnswer = null;
+    if (q.type === "mc") {
+      const opts = shuffle(q.a.map(t => ({ t, ok: true })).concat(q.w.map(t => ({ t, ok: false }))));
+      html += '<div class="opts" id="opts" role="radiogroup">' + opts.map((o, i) => '<button type="button" class="opt" role="radio" aria-checked="false" data-i="' + i + '"><span class="k">' + (i + 1) + '</span><span class="t">' + md(o.t) + '</span></button>').join("") + '</div>';
+      stage.innerHTML = html;
+      let sel = -1;
+      stage.querySelectorAll(".opt").forEach(b => b.addEventListener("click", () => {
+        if ($("opts").classList.contains("locked")) return;
+        sel = +b.dataset.i;
+        stage.querySelectorAll(".opt").forEach(x => { x.classList.toggle("sel", x === b); x.setAttribute("aria-checked", x === b); });
+        $("check").disabled = false;
+      }));
+      getAnswer = () => {
+        const ok = opts[sel].ok;
+        $("opts").classList.add("locked");
+        stage.querySelectorAll(".opt").forEach((x, i) => { if (opts[i].ok) x.classList.add("right"); else if (i === sel) x.classList.add("wrong"); x.classList.remove("sel"); });
+        return ok;
+      };
+    } else if (q.type === "in") {
+      html += '<input class="answer-in" id="ans" inputmode="text" autocomplete="off" placeholder="답 입력" aria-label="답"><div class="hint">숫자, 음수(-3), 분수(1/2) 모두 돼요.</div>';
+      stage.innerHTML = html;
+      const inp = $("ans");
+      inp.addEventListener("input", () => { $("check").disabled = !inp.value.trim(); });
+      inp.addEventListener("keydown", e => { if (e.key === "Enter" && inp.value.trim() && !$("check").disabled) $("check").click(); });
+      setTimeout(() => inp.focus({ preventScroll: true }), 50);
+      getAnswer = () => { inp.readOnly = true; return checkInput(q, inp.value); };
+    } else {
+      const pool = shuffle(q.s.map((t, i) => ({ t, i })));
+      html += '<div class="slots" id="slots"></div><div class="pool" id="pool">' + pool.map((p, k) => '<button type="button" class="chip" data-k="' + k + '"><span class="t">' + md(p.t) + '</span></button>').join("") + '</div>';
+      stage.innerHTML = html;
+      const order = [];
+      const slots = $("slots");
+      const redraw = () => {
+        slots.innerHTML = order.map((k, n) => '<button type="button" class="chip" data-k="' + k + '"><span class="n">' + (n + 1) + '</span><span class="t">' + md(pool[k].t) + '</span></button>').join("");
+        stage.querySelectorAll("#pool .chip").forEach(c => c.classList.toggle("used", order.includes(+c.dataset.k)));
+        slots.querySelectorAll(".chip").forEach(c => c.addEventListener("click", () => { if (slots.dataset.locked) return; order.splice(order.indexOf(+c.dataset.k), 1); redraw(); }));
+        $("check").disabled = order.length !== pool.length;
+        typeset(slots);
+      };
+      stage.querySelectorAll("#pool .chip").forEach(c => c.addEventListener("click", () => { if (slots.dataset.locked) return; const k = +c.dataset.k; if (!order.includes(k)) { order.push(k); redraw(); } }));
+      getAnswer = () => { slots.dataset.locked = "1"; return order.every((k, n) => pool[k].i === n); };
+    }
+    typeset(stage);
+    sheet('<button class="btn wide" id="check" type="button" disabled>확인</button>');
+    $("check").addEventListener("click", () => {
+      const ok = getAnswer();
+      onAnswer(q, ok);
+    });
+  }
+
+  function onAnswer(q, ok) {
+    const first = !(q.id in sess.firstTry);
+    if (first) {
+      sess.firstTry[q.id] = ok;
+      grade(q.id, ok);
+      if (ok) { sess.correct++; sess.xp += 2; }
+    } else if (ok) { sess.xp += 1; }
+    if (!ok) {
+      sess.retries[q.id] = (sess.retries[q.id] || 0) + 1;
+      if (sess.retries[q.id] <= 2) { sess.steps.push({ t: "q", q }); sess.total++; }
+    }
+    let ansHtml = "";
+    if (!ok) {
+      if (q.type === "in") ansHtml = '<p class="explain"><b>정답:</b> ' + md(q.a[0]) + '</p>';
+      if (q.type === "ord") ansHtml = '<p class="explain"><b>올바른 순서:</b><br>' + q.s.map((s, i) => (i + 1) + ". " + md(s)).join("<br>") + '</p>';
+    }
+    const retryNote = !ok && sess.retries[q.id] <= 2 ? " 이 문제는 레슨 끝에 다시 나와요." : "";
+    sheet('<p class="verdict"><i>' + (ok ? CHECK : CROSS) + '</i>' + (ok ? "정답이에요" : "아쉬워요") + '</p>' + ansHtml + (q.e ? '<p class="explain">' + md(q.e) + retryNote + '</p>' : (retryNote ? '<p class="explain">' + retryNote + '</p>' : "")) +
+      '<button class="btn wide ' + (ok ? "ok" : "bad") + '" id="next" type="button">계속</button>', ok ? "ok" : "bad");
+    const nx = $("next");
+    nx.focus({ preventScroll: true });
+    nx.addEventListener("click", () => { sess.i++; showStep(); });
+  }
+
+  function finish() {
+    rollDay();
+    const asked = Object.keys(sess.firstTry).length;
+    const acc = asked ? Math.round(sess.correct / asked * 100) : 100;
+    let bonus = 0;
+    if (sess.kind === "lesson") {
+      bonus = acc === 100 ? 10 : 5;
+      const r = S.lessons[sess.lesson.id] || { n: 0, best: 0 };
+      r.n++; r.best = Math.max(r.best, acc);
+      S.lessons[sess.lesson.id] = r;
+    } else bonus = 3;
+    const gained = sess.xp + bonus;
+    S.xp += gained; S.dayXp += gained;
+    touchStreak();
+    persist();
+    $("prog-fill").style.width = "100%";
+    const stage = $("stage");
+    const title = sess.kind === "review" ? "복습 완료" : acc === 100 ? "완벽해요" : "레슨 완료";
+    const sub = sess.kind === "review" ? "맞힌 문제는 더 긴 간격 뒤에 다시 나와요." : acc === 100 ? "한 번도 안 틀렸어요. 보너스 10 XP." : "틀린 문제는 복습 목록에 들어갔어요.";
+    stage.innerHTML = '<div class="finish"><div class="badge">' + CHECK + '</div><h2>' + title + '</h2><p>' + sub + '</p><div class="tiles">' +
+      '<div class="tile xp"><b>+' + gained + '</b><span>XP</span></div>' +
+      '<div class="tile acc"><b>' + acc + '%</b><span>첫 시도 정답률</span></div>' +
+      '<div class="tile st"><b>' + S.streak + '일</b><span>연속 학습</span></div></div></div>';
+    sheet('<button class="btn wide" id="done" type="button">계속</button>');
+    $("done").addEventListener("click", closeSession);
+  }
+
+  document.addEventListener("keydown", e => {
+    if (!sess) return;
+    if (/^[1-9]$/.test(e.key) && document.activeElement && document.activeElement.id !== "ans") {
+      const b = document.querySelector('#opts:not(.locked) .opt[data-i="' + (+e.key - 1) + '"]');
+      if (b) b.click();
+    }
+    if (e.key === "Enter" && (!document.activeElement || !/^(BUTTON|INPUT|A)$/.test(document.activeElement.tagName))) {
+      const b = $("check") || $("next") || $("go") || $("done");
+      if (b && !b.disabled && document.activeElement !== b) { e.preventDefault(); b.click(); }
+    }
+  });
+
+  function openGloss(i) {
+    const g = GLOSS[i];
+    $("gloss-term").textContent = g.t === "계(order)" ? "계 (order)" : g.t;
+    $("gloss-def").innerHTML = esc(g.d);
+    $("gloss").hidden = false;
+    typeset($("gloss-def"));
+    $("gloss-close").focus({ preventScroll: true });
+  }
+  function closeGloss() { $("gloss").hidden = true; }
+  document.addEventListener("click", e => {
+    const t = e.target.closest && e.target.closest(".term");
+    if (t) { e.stopPropagation(); e.preventDefault(); openGloss(+t.dataset.g); }
+  }, true);
+  document.addEventListener("keydown", e => {
+    const t = e.target.closest && e.target.closest(".term");
+    if (t && (e.key === "Enter" || e.key === " ")) { e.stopPropagation(); e.preventDefault(); openGloss(+t.dataset.g); return; }
+    if (e.key === "Escape" && !$("gloss").hidden) { e.stopPropagation(); closeGloss(); }
+  }, true);
+  $("gloss-close").addEventListener("click", closeGloss);
+  $("gloss").addEventListener("click", e => { if (e.target.id === "gloss") closeGloss(); });
+
+  const gName = g => g.t === "계(order)" ? "계 (order)" : g.t;
+  function renderGlist() {
+    const q = $("gsearch").value.trim().toLowerCase();
+    const hits = GLOSS.filter(g => !q || gName(g).toLowerCase().includes(q) || g.d.toLowerCase().includes(q));
+    $("gcount").textContent = q ? hits.length + "개 찾음" : "강의 순서대로 " + GLOSS.length + "개";
+    $("gl").innerHTML = hits.length ? hits.map(g => '<div><dt>' + esc(gName(g)) + '</dt><dd>' + esc(g.d) + '</dd></div>').join("")
+      : '<div class="gempty">"' + esc(q) + '"에 맞는 용어가 없어요</div>';
+    typeset($("gl"));
+  }
+  let gTimer = null;
+  $("gsearch").addEventListener("input", () => { clearTimeout(gTimer); gTimer = setTimeout(renderGlist, 150); });
+  $("glist-btn").addEventListener("click", () => {
+    $("home").hidden = true; $("glist").hidden = false;
+    document.body.style.overflow = "hidden";
+    $("gsearch").value = "";
+    renderGlist();
+    $("glist-body").scrollTop = 0;
+  });
+  $("glist-close").addEventListener("click", () => {
+    $("glist").hidden = true; $("home").hidden = false;
+    document.body.style.overflow = "";
+  });
+  $("glist-sub").textContent = "전문용어 " + GLOSS.length + "개 모아보기";
+
+  renderHome();
+  connect();
+})();
+</script>
