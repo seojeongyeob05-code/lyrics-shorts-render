@@ -96,6 +96,15 @@ test('업로드: 오디오만 받고 한글 파일명을 제목으로 쓴다', a
   assert.equal(list.length, 1);
 });
 
+test('업로드: 자모가 분리된(NFD) 파일명은 NFC 제목으로 저장한다', async () => {
+  const form = new FormData();
+  form.append('files', new Blob([makeWav()], { type: 'audio/wav' }), '비 오는 날.wav'.normalize('NFD'));
+  const { added } = await (await call('POST', '/api/tracks', { form })).json();
+  assert.equal(added[0].title, '비 오는 날');
+  assert.equal(added[0].title.normalize('NFC'), added[0].title);
+  assert.equal((await call('DELETE', `/api/tracks/${added[0].id}`)).status, 204);
+});
+
 test('스트리밍은 Range 요청을 지원한다', async () => {
   const full = await call('GET', `/api/tracks/${trackId}/stream`);
   assert.equal(full.status, 200);

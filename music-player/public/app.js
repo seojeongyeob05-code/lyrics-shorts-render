@@ -1,3 +1,5 @@
+import { matchesQuery } from './search.js';
+
 // ───────────── 유틸 ─────────────
 const $ = (sel) => document.querySelector(sel);
 
@@ -82,7 +84,9 @@ const state = {
   byId: new Map(),
   playlists: [],
   view: { type: 'library' },
-  rows: [], // 현재 화면에 보이는 곡 (플레이리스트면 entryId 포함)
+  rows: [], // 현재 보기의 곡 (플레이리스트면 entryId 포함)
+  shown: [], // rows 중 검색어와 일치해 실제로 그려진 곡
+  query: '',
 };
 let dragTrackId = null;
 
@@ -98,6 +102,8 @@ async function loadPlaylists() {
 }
 
 async function openView(view) {
+  const sameView = view?.type === state.view.type && view?.id === state.view.id;
+  if (!sameView) setQuery('');
   if (view?.type === 'playlist') {
     const data = await api('GET', `/api/playlists/${view.id}`);
     state.view = { type: 'playlist', id: data.id, name: data.name };
@@ -149,19 +155,29 @@ function coverEl(track, cls = 'cover') {
   return el;
 }
 
+function setQuery(value) {
+  state.query = value;
+  $('#search').value = value;
+}
+
 function renderMain() {
-  const { view, rows } = state;
+  const { view, rows, query } = state;
   const isPlaylist = view.type === 'playlist';
-  const total = rows.reduce((sum, t) => sum + (t.duration || 0), 0);
+  const shown = query ? rows.filter((t) => matchesQuery(t, query)) : rows;
+  state.shown = shown;
+  const total = shown.reduce((sum, t) => sum + (t.duration || 0), 0);
 
   $('#view-kind').textContent = isPlaylist ? '플레이리스트' : '라이브러리';
   $('#view-title').textContent = isPlaylist ? view.name : '모든 곡';
-  $('#view-meta').textContent = `${rows.length}곡 · ${fmtTotal(total)}`;
+  $('#view-meta').textContent = query
+    ? `검색 결과 ${shown.length}곡 / 전체 ${rows.length}곡`
+    : `${rows.length}곡 · ${fmtTotal(total)}`;
+  $('#search').hidden = !rows.length;
 
-  const ids = rows.map((t) => t.id);
+  const ids = shown.map((t) => t.id);
   const actions = [
-    h('button', { class: 'btn primary', disabled: !rows.length, onclick: () => playList(ids, 0) }, '▶ 재생'),
-    h('button', { class: 'btn', disabled: !rows.length, onclick: () => playList(ids, 0, true) }, '셔플 재생'),
+    h('button', { class: 'btn primary', disabled: !shown.length, onclick: () => playList(ids, 0) }, '▶ 재생'),
+    h('button', { class: 'btn', disabled: !shown.length, onclick: () => playList(ids, 0, true) }, '셔플 재생'),
   ];
   if (isPlaylist) {
     actions.push(
@@ -182,11 +198,15 @@ function renderMain() {
         h('button', { class: 'btn primary', onclick: () => $('#file-input').click() }, '파일 선택')));
     return;
   }
+  if (!shown.length) {
+    list.replaceChildren(h('div', { class: 'empty' }, `'${query}'와(과) 일치하는 곡이 없습니다.`));
+    return;
+  }
 
   const head = h('div', { class: 'track-row head' },
     h('div', { class: 't-num' }, '#'), h('div', {}, '제목'), h('div', { class: 't-album' }, '앨범'),
     h('div', { class: 't-dur' }, '길이'), h('div'));
-  list.replaceChildren(head, ...rows.map((t, i) => h('div', {
+  list.replaceChildren(head, ...shown.map((t, i) => h('div', {
     class: 'track-row',
     role: 'listitem',
     draggable: 'true',
@@ -211,12 +231,12 @@ function renderMain() {
 function highlightPlaying() {
   const id = currentTrack()?.id;
   document.querySelectorAll('#track-list .track-row[data-idx]').forEach((row) => {
-    row.classList.toggle('playing', state.rows[row.dataset.idx]?.id === id);
+    row.classList.toggle('playing', state.shown[row.dataset.idx]?.id === id);
   });
 }
 
 function openTrackMenu(anchor, i) {
-  const t = state.rows[i];
+  const t = state.shown[i];
   showMenu(anchor, [
     ['다음에 재생', () => { playNext([t.id]); toast('다음에 재생합니다'); }],
     ['대기열에 추가', () => { addToQueue([t.id]); toast('대기열에 추가했습니다'); }],
@@ -424,7 +444,7 @@ function prev() {
 
 function togglePlay() {
   if (!currentTrack()) {
-    if (state.rows.length) playList(state.rows.map((t) => t.id), 0);
+    if (state.shown.length) playList(state.shown.map((t) => t.id), 0);
     return;
   }
   if (!audio.getAttribute('src')) return load(true);
@@ -642,9 +662,9 @@ function sortable(listEl, { canReorder, onMove, onStart, onEnd }) {
 }
 
 sortable($('#track-list'), {
-  canReorder: () => state.view.type === 'playlist',
+  canReorder: () => state.view.type === 'playlist' && !state.query, // 검색 중엔 보이는 순서와 실제 순서가 달라 막음
   onMove: (from, to) => reorderPlaylist(from, to),
-  onStart: (i) => { dragTrackId = state.rows[i]?.id ?? null; },
+  onStart: (i) => { dragTrackId = state.shown[i]?.id ?? null; },
   onEnd: () => { dragTrackId = null; },
 });
 
@@ -824,6 +844,11 @@ $('#logout').addEventListener('click', safe(async () => {
   showAuth(false);
 }));
 
+$('#search').addEventListener('input', (e) => {
+  state.query = e.target.value;
+  renderMain();
+});
+
 $('#file-input').addEventListener('change', (e) => {
   uploadFiles(e.target.files);
   e.target.value = '';
@@ -853,7 +878,14 @@ addEventListener('drop', (e) => {
 document.addEventListener('click', (e) => { if (!e.target.closest('#menu')) hideMenu(); }, true);
 $('#main').addEventListener('scroll', hideMenu);
 addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') hideMenu();
+  if (e.key === 'Escape') {
+    hideMenu();
+    if (e.target.id === 'search') { setQuery(''); renderMain(); e.target.blur(); }
+  }
+  if (e.key === '/' && !e.target.closest('input, textarea, dialog') && !$('#app').hidden) {
+    e.preventDefault();
+    $('#search').focus();
+  }
   const typing = e.target.closest('input, textarea, button, dialog');
   if (e.code === 'Space' && !typing && !$('#app').hidden) {
     e.preventDefault();

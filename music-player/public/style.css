@@ -96,6 +96,7 @@ input:focus { border-color: var(--accent); }
 .view-head p { margin: 0; }
 .eyebrow { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
 .view-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.search { width: min(420px, 100%); margin-bottom: 12px; }
 
 /* 곡 목록 */
 .track-row {

@@ -33,10 +33,13 @@ export function toTrackJson(row) {
 }
 
 // 브라우저가 multipart 파일명을 UTF-8로 보내도 latin1로 해석되는 경우가 있어 되돌린다.
+// macOS는 한글을 자모 분리(NFD) 형태로 보내므로 NFC로 합쳐 검색·정렬이 되게 한다.
 function decodeName(name) {
   const fixed = Buffer.from(name, 'latin1').toString('utf8');
-  return fixed.includes('�') ? name : fixed;
+  return (fixed.includes('�') ? name : fixed).normalize('NFC');
 }
+
+const tagText = (value) => value?.trim().normalize('NFC') || null;
 
 async function readMetadata(filePath) {
   try {
@@ -93,11 +96,11 @@ export function createTracksRouter(db, config) {
         await fs.writeFile(path.join(coverDir, cover), pic.data);
       }
 
-      const title = common.title?.trim() || path.basename(file.originalname, path.extname(file.originalname));
+      const title = tagText(common.title) || path.basename(file.originalname, path.extname(file.originalname));
       const { lastInsertRowid } = insert.run(
         title,
-        common.artist?.trim() || null,
-        common.album?.trim() || null,
+        tagText(common.artist),
+        tagText(common.album),
         common.track?.no ?? null,
         common.disk?.no ?? null,
         duration,
