@@ -383,6 +383,13 @@ w: $y = x\ln|x| + Cx$
 w: $y^2 = 2\ln|x| + C$
 e: $u + xu' = u + \dfrac1u \Rightarrow u\,du = \dfrac{dx}{x} \Rightarrow \dfrac{u^2}{2} = \ln|x| + C$. $u = y/x$ 를 넣고 정리해요.
 
+Q mc
+q: $y' = \dfrac{y}{x} + 1$ 의 일반해는?
+a: $y = x\ln|x| + Cx$
+w: $y = \ln|x| + C$
+w: $y = x + Cx^2$
+w: $y = Cxe^{x}$
+e: $y = ux$ 이면 $u + xu' = u + 1 \Rightarrow u' = \dfrac1x \Rightarrow u = \ln|x| + C$. 양변에 $x$를 곱해요.
 ## 03 | 1계 ODE | 완전 상미분방정식
 c: $M(x,y)\,dx + N(x,y)\,dy = 0$ 에서 $\dfrac{\partial M}{\partial y} = \dfrac{\partial N}{\partial x}$ 이면 **완전**이에요.
 c: 그러면 $F_x = M,\; F_y = N$ 인 $F$가 있고, 해는 $F(x,y) = C$ 예요.
@@ -412,6 +419,13 @@ s: $F_y = N$ 에서 $h'(y)$ 를 구한다
 s: 해를 $F(x,y) = C$ 로 쓴다
 e: $\int N\,dy + g(x)$ 로 시작해도 같은 결과가 나와요.
 
+Q mc
+q: $(y\cos x + 2x)\,dx + (\sin x + 1)\,dy = 0$ 의 해는?
+a: $y\sin x + x^2 + y = C$
+w: $y\sin x + x^2 = C$
+w: $y\cos x + x^2 + y = C$
+w: $y\sin x + 2x + y = C$
+e: $M_y = N_x = \cos x$ 로 완전. $F = y\sin x + x^2 + h(y)$, $F_y = \sin x + h' = \sin x + 1 \Rightarrow h = y$
 ## 04 | 1계 ODE | 적분인자
 c: 완전이 아닐 때 적분인자 $\mu$를 곱해서 완전으로 만들어요.
 c: $\dfrac{M_y - N_x}{N}$ 이 $x$만의 함수이면 $\mu(x) = e^{\int \frac{M_y - N_x}{N}dx}$
@@ -556,6 +570,10 @@ w: $v' + \dfrac{1}{x}v = 1$
 w: $v' = v^2$
 e: 일반적으로 $v' = -(q + 2ry_1)v - r$ 이고, 여기서 $q = 0,\; r = 1$ 이에요.
 
+Q in
+q: $y' = y^2 - \dfrac{2}{x^2}$ 의 특수해를 $y = \dfrac{a}{x}$ 로 둘 때, $a = 1$ 말고 가능한 다른 $a$는?
+a: -2
+e: 대입하면 $-\dfrac{a}{x^2} = \dfrac{a^2 - 2}{x^2}$, 즉 $a^2 + a - 2 = (a - 1)(a + 2) = 0$
 ## 08 | 1계 ODE | 활용: 토리첼리 법칙
 c: 구멍으로 나가는 물의 속도는 **토리첼리 법칙** $v = \sqrt{2gh}$ 예요.
 c: 단면적 $A$인 탱크, 구멍 면적 $a$: $A\dfrac{dh}{dt} = -a\sqrt{2gh}$. 변수분리하면 $\sqrt{h}$ 가 시간에 대해 일정하게 줄어요.
@@ -585,6 +603,13 @@ q: 수위 $h_0$에서 다 비우는 데 시간 $T$가 걸린다면, 수위가 $h
 a: 1/2
 e: $\sqrt h$ 가 시간에 대해 일차로 줄어요. $\sqrt{h_0/4} = \frac12\sqrt{h_0}$ 이므로 정확히 절반 시간이에요.
 
+Q mc
+q: 다른 조건은 그대로 두고 탱크 단면적 $A$만 2배로 키우면, 물을 다 비우는 시간은?
+a: 2배가 된다
+w: $\sqrt{2}$배가 된다
+w: 절반이 된다
+w: 변하지 않는다
+e: $\sqrt{h_0} = \dfrac{a\sqrt{2g}}{2A}T$ 이므로 $T = \dfrac{2A\sqrt{h_0}}{a\sqrt{2g}}$, $A$에 정비례해요.
 ## 09 | 2계 ODE | 치환 계수내림
 c: **$y$가 없는** 식 $F(x, y', y'') = 0$: $p = y'$, $y'' = p'$
 c: **$x$가 없는** 식 $F(y, y', y'') = 0$: $p = y'$, $y'' = p\dfrac{dp}{dy}$
@@ -618,6 +643,13 @@ w: 하나 늘어난다
 w: 0계가 된다
 e: 이름 그대로 계수(계)를 내리는 방법이에요.
 
+Q mc
+q: $y'' = y'$ 를 $p = y'$ 로 치환해서 풀면?
+a: $y = C_1e^{x} + C_2$
+w: $y = C_1e^{x}$
+w: $y = C_1x + C_2$
+w: $y = C_1e^{-x} + C_2$
+e: $p' = p \Rightarrow p = C_1e^{x}$, 한 번 더 적분하면 상수 $C_2$가 생겨요.
 ## 10 | 2계 ODE | 공식 계수내림
 c: $y'' + p(x)y' + q(x)y = 0$ 의 해 $y_1$ 하나를 알면 두 번째 해는
 c: $y_2 = y_1\displaystyle\int \frac{e^{-\int p\,dx}}{y_1^2}\,dx$
@@ -651,6 +683,13 @@ w: 특성방정식의 근
 w: 적분상수
 e: Abel 공식 $W = Ce^{-\int p\,dx}$ 가 그대로 들어간 모양이에요. 13강에서 다시 나와요.
 
+Q mc
+q: $x^2y'' + xy' - y = 0$, $y_1 = x$ 일 때 공식으로 구한 $y_2$는? (상수배는 무시)
+a: $\dfrac{1}{x}$
+w: $x\ln x$
+w: $x^2$
+w: $\ln x$
+e: 표준형 $p = \dfrac1x$, $e^{-\int p\,dx} = \dfrac1x$, $\displaystyle\int \frac{1/x}{x^2}dx = -\frac{1}{2x^2}$ 에 $y_1 = x$를 곱하면 $-\dfrac{1}{2x}$
 ## 11 | 2계 ODE | 상수계수 제차
 c: $y'' + ay' + by = 0$ 에 $y = e^{\lambda x}$ 를 넣으면 특성방정식 $\lambda^2 + a\lambda + b = 0$
 c: 서로 다른 실근: $C_1e^{\lambda_1x} + C_2e^{\lambda_2x}$ / 중근: $(C_1 + C_2x)e^{\lambda x}$
@@ -869,6 +908,13 @@ w: $x^3$
 w: $1$
 e: $x\cdot 2x - 1\cdot x^2 = x^2$
 
+Q mc
+q: $x^2y'' - 2xy' + 2y = x^3$ 의 일반해는?
+a: $y = C_1x + C_2x^2 + \dfrac{x^3}{2}$
+w: $y = C_1x + C_2x^2 + x^3$
+w: $y = C_1x + C_2x^2$
+w: $y = C_1x^2 + C_2x^3 + \dfrac{x}{2}$
+e: 일반해 = 제차해 $C_1x + C_2x^2$ + 특수해 $\dfrac{x^3}{2}$
 ## 17 | 2계 ODE | 활용: 질량-스프링-댐퍼
 c: 운동방정식 $my'' + cy' + ky = F(t)$
 c: $c^2 > 4mk$ 과감쇠, $c^2 = 4mk$ 임계감쇠, $c^2 < 4mk$ 부족감쇠(진동하며 줄어듦)
@@ -961,6 +1007,17 @@ w: $C_1x + C_2x^{-1} + C_3x^{2}$
 w: $x\left[C_1 + C_2\ln x + C_3(\ln x)^2\right]$
 e: $m(m-1)(m-2) + 3m(m-1) - 2m + 2 = (m-1)^2(m+2)$
 
+Q in
+q: $x^3y''' + xy' - y = 0$ 의 보조방정식은 3중근을 가져요. 그 근 $m$은?
+a: 1
+e: 보조방정식이 $(m - 1)^3 = 0$ 으로 인수분해돼요.
+Q mc
+q: 보조방정식이 3중근 $m$을 가질 때, 세 번째 독립 해는?
+a: $x^m(\ln x)^2$
+w: $x^{m+2}$
+w: $x^m\ln(x^2)$
+w: $x^{3m}$
+e: $x^m,\; x^m\ln x,\; x^m(\ln x)^2$. $\ln(x^2) = 2\ln x$ 는 두 번째 해의 상수배예요.
 ## 20 | 라플라스 변환 | 기초, 제1이동정리
 c: 정의 $\mathcal{L}\{f\} = F(s) = \displaystyle\int_0^\infty e^{-st}f(t)\,dt$
 c: $\mathcal{L}\{1\} = \frac1s,\; \mathcal{L}\{t^n\} = \frac{n!}{s^{n+1}},\; \mathcal{L}\{e^{at}\} = \frac{1}{s-a}$
