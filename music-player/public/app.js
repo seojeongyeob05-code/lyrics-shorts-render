@@ -1,4 +1,5 @@
 import { matchesQuery } from './search.js';
+import { setupMediaSession } from './media-session.js';
 
 // ───────────── 유틸 ─────────────
 const $ = (sel) => document.querySelector(sel);
@@ -357,6 +358,7 @@ function uploadFiles(fileList) {
 // ───────────── 플레이어 ─────────────
 const audio = new Audio();
 audio.preload = 'metadata';
+let mediaSession = { update() {} }; // 아래 이벤트 연결부에서 설정
 
 // 대기열 항목은 같은 곡이 여러 번 들어가도 구분되도록 고유 key를 가진다.
 let nextKey = 1;
@@ -586,6 +588,7 @@ function renderPlayer() {
   $('#btn-mute').innerHTML = audio.muted || audio.volume === 0 ? ICON.mute : ICON.volume;
   $('#volume').value = audio.muted ? 0 : audio.volume;
   setFill($('#volume'));
+  mediaSession.update();
 }
 
 function renderQueue() {
@@ -769,6 +772,14 @@ async function startApp(user) {
 
 // ───────────── 이벤트 연결 ─────────────
 $('#btn-play').addEventListener('click', togglePlay);
+mediaSession = setupMediaSession({
+  audio,
+  getTrack: currentTrack,
+  onPlay: () => { if (audio.paused) togglePlay(); },
+  onPause: () => audio.pause(),
+  onNext: () => next(),
+  onPrev: prev,
+});
 $('#btn-next').addEventListener('click', () => next());
 $('#btn-prev').addEventListener('click', prev);
 $('#btn-shuffle').innerHTML = ICON.shuffle;
