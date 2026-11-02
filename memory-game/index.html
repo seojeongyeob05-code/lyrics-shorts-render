@@ -165,6 +165,12 @@ main.play { display: grid; gap: 16px; grid-template-columns: minmax(0, 1.15fr) m
 .phr li { font-size: 0.9rem; }
 .phr .arrow { color: var(--muted); }
 .phr em { font-style: normal; font-weight: 700; color: var(--ok); }
+.levels { display: grid; gap: 8px; }
+.lvl { text-align: left; border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 10px 12px; display: grid; gap: 2px; }
+.lvl:hover { border-color: var(--amber); }
+.lvl span { font-family: var(--f-mono); font-size: 0.72rem; color: var(--muted); letter-spacing: 0.05em; }
+.lvl b { font-family: var(--f-display); font-size: 1.1rem; }
+.lvl small { color: var(--muted); font-size: 0.82rem; }
 .how { display: grid; gap: 6px; margin: 0; padding-left: 18px; font-size: 0.9rem; }
 </style>
 
@@ -177,14 +183,15 @@ main.play { display: grid; gap: 16px; grid-template-columns: minmax(0, 1.15fr) m
     <div class="hud">
       <span class="loop" id="loopLabel">1회차</span>
       <span class="clock" id="clock">5:20 PM</span>
+      <button class="ghost" id="levelBtn" type="button">상황 선택</button>
       <button class="ghost" id="journalBtn" type="button">단어 도감</button>
     </div>
   </header>
 
   <section class="goal" aria-live="polite">
-    <strong>목표: 경비실로 가서 지갑을 무사히 되찾기</strong>
+    <strong id="goalTitle">목표: 경비실로 가서 지갑을 무사히 되찾기</strong>
     <span class="meta wallet" id="walletDesc">당신의 지갑: <b>갈색</b> · 안에 <b>학생증</b></span>
-    <span class="meta">경비실은 오후 6시에 문을 닫습니다. 걷기·말하기·몸짓·번역기 모두 시간이 흘러요.</span>
+    <span class="meta" id="goalMeta">경비실은 오후 6시에 문을 닫습니다. 걷기·말하기·몸짓·번역기 모두 시간이 흘러요.</span>
   </section>
 
   <main class="play">
@@ -266,6 +273,19 @@ const CONTENTS = {
   photo: { en: 'family photo', ko: '가족사진', model: "There's a family photo inside." },
   ticket: { en: 'concert ticket', ko: '콘서트 표', model: "There's a concert ticket inside." },
 };
+// Situation 2: grandma's errand. Her order is told only in English.
+const DRINKS = { latte: '라테', 'hot chocolate': '핫초코', 'chai tea': '차이 티' };
+const SIZES = { small: '작은 사이즈', medium: '중간 사이즈', large: '큰 사이즈' };
+const MILKS = { regular: '일반 우유', oat: '귀리 우유', almond: '아몬드 우유' };
+const SIZE_SHAPE = { small: 'a tiny cup shape', medium: 'a middle-sized cup shape', large: 'a big cup shape' };
+const LEVELS = {
+  1: { name: '잃어버린 지갑', goal: '목표: 경비실로 가서 지갑을 무사히 되찾기', target: 'security',
+       story: '길을 걷던 중 문득 지갑이 없다는 걸 깨달았다. 방금 전까지 머물던 건물로 돌아왔지만, 누군가 분실물인 줄 알고 경비실에 맡겨둔 것 같다.' },
+  2: { name: '할머니의 심부름', goal: '목표: 할머니의 부탁을 알아듣고, 부탁한 음료를 사다 드리기', target: 'cafe',
+       story: '로비에 들어서자 벤치에 앉은 옆집 할머니가 손짓한다. 무릎이 아파서 부탁할 게 있다고 한다. 할머니는 5시 50분에 TV를 보러 집에 들어간다.' },
+};
+const orderEn = o => `a ${o.size} ${o.drink} with ${o.milk} milk`;
+const orderKo = o => `${MILKS[o.milk]}를 넣은 ${SIZES[o.size]} ${DRINKS[o.drink]}`;
 const OBJECTS = {
   hall: [
     { icon: '🪴', ko: '화분', color: 'green', en: 'the plant' },
@@ -301,6 +321,8 @@ const VOCAB = [
   ['color', '색깔'], ['black', '검은색'], ['brown', '갈색'], ['red', '빨간색'], ['blue', '파란색'], ['look like', '~처럼 생기다'],
   ['inside', '안에'], ['card', '카드'], ['photo', '사진'], ['ticket', '표'], ['restroom', '화장실'], ['mail', '우편'],
   ['gym', '헬스장'], ['package', '택배, 소포'], ['help', '돕다'], ['closed', '문을 닫은'],
+  ['small', '작은'], ['medium', '중간'], ['large', '큰'], ['size', '크기'], ['milk', '우유'], ['oat', '귀리'], ['almond', '아몬드'],
+  ['to go', '가지고 갈게요 (포장)'], ['for here', '여기서 먹을게요'], ['favor', '부탁'],
   ['patrol', '순찰'], ['rounds', '순찰 (한 바퀴 돌기)'], ['back', '돌아온'], ['quarter', '15분 (한 시간의 4분의 1)'],
 ];
 // Grandma explains words in easy English (never in Korean)
@@ -326,6 +348,11 @@ const GLOSSARY = {
   look: '"What does it LOOK LIKE?" means: tell me about it. What color? Big or small?',
   package: 'A PACKAGE is a box that comes in the mail.',
   closed: 'CLOSED means the door is shut. No one is working.',
+  size: 'SIZE means how big something is. Small, medium, large!',
+  oat: 'OAT is a grain. Oat milk is made from oats, not from cows. It is good for my tummy.',
+  almond: 'An ALMOND is a little nut. Almond milk is made from those nuts.',
+  favor: '"Do me a FAVOR" means please help me with something.',
+  medium: 'MEDIUM means in the middle. Not small, not large.',
   patrol: 'PATROL means walking around to check that everything is safe. The guard does it every evening!',
   rounds: '"On my rounds" means walking around the building to check things. Like a patrol.',
   quarter: 'A QUARTER is one of four parts. A quarter of an hour is 15 minutes. "A quarter to six" is 5:45!',
@@ -351,6 +378,8 @@ const store = {
 };
 let journal = store.get('ag520.journal', {});
 let totalLoops = store.get('ag520.loops', 0);
+let cleared = store.get('ag520.cleared', []);
+let LEVEL = 1;
 function mark(word, field) {
   const j = journal[word] || (journal[word] = {});
   if (!j[field]) { j[field] = true; store.set('ag520.journal', journal); }
@@ -388,6 +417,9 @@ function newLoop() {
     loop: S ? S.loop + 1 : 1, t: START, x: 7, y: 11, zone: 'hall', roomAt, slotOf,
     color: pick(Object.keys(COLORS)), content: pick(Object.keys(CONTENTS)),
     guardStage: 0, janitorTold: false, janitorAsked: false,
+    level: LEVEL, end: LEVEL === 2 ? GRANDMA_LEAVES : END,
+    order: { drink: pick(Object.keys(DRINKS)), size: pick(Object.keys(SIZES)), milk: pick(Object.keys(MILKS)) },
+    bOrder: { drink: null, size: null, milk: null, here: null }, bAsk: null, bSaid: [], carrying: null, heardRequest: false,
     mistakes: [], visited: new Set(), greeted: new Set(), phrases: [], done: false, lastNpc: null,
   };
   S.npcs = {
@@ -397,8 +429,15 @@ function newLoop() {
   $('log').innerHTML = '';
   renderStatic();
   render();
-  $('walletDesc').innerHTML = `당신의 지갑: <b>${COLORS[S.color]}</b> · 안에 <b>${CONTENTS[S.content].ko}</b>`;
-  sys(S.loop === 1 ? '오후 5시 20분. 방금 전까지 있던 건물 로비로 돌아왔다.' : '…눈을 떠보니 다시 오후 5시 20분, 건물 입구였다. 그런데 어딘가 배치가 달라 보인다.');
+  $('goalTitle').textContent = LEVELS[S.level].goal;
+  if (S.level === 1) {
+    $('walletDesc').innerHTML = `당신의 지갑: <b>${COLORS[S.color]}</b> · 안에 <b>${CONTENTS[S.content].ko}</b>`;
+    $('goalMeta').textContent = '경비실은 오후 6시에 문을 닫습니다. 걷기·말하기·몸짓·번역기 모두 시간이 흘러요.';
+  } else {
+    $('walletDesc').innerHTML = '할머니가 무엇을 원하는지는 <b>직접 알아들어야</b> 해요.';
+    $('goalMeta').textContent = '할머니는 오후 5시 50분에 집으로 들어갑니다. 그 전에 전해드려야 해요.';
+  }
+  sys(S.loop === 1 ? (S.level === 1 ? '오후 5시 20분. 방금 전까지 있던 건물 로비로 돌아왔다.' : '오후 5시 20분. 벤치에 앉은 옆집 할머니가 이쪽을 보며 손짓한다.') : '…눈을 떠보니 다시 오후 5시 20분, 건물 입구였다. 그런데 어딘가 배치가 달라 보인다.');
   place('MAPLE COURT — Welcome, residents and guests.', '메이플 코트 — 입주민과 방문객 여러분, 환영합니다.');
 }
 
@@ -435,8 +474,8 @@ function render() {
   for (const id in S.npcs) { const [x, y] = S.npcs[id]; add(x, y, NPC_INFO[id].icon, near === id ? 'near' : ''); }
   add(S.x, S.y, '🧑', 'you');
   $('clock').textContent = clockStr(S.t);
-  $('clock').classList.toggle('late', END - S.t <= 600);
-  $('dusk').style.opacity = Math.min(0.5, (S.t - START) / (END - START) * 0.5);
+  $('clock').classList.toggle('late', S.end - S.t <= 600);
+  $('dusk').style.opacity = Math.min(0.5, (S.t - START) / (S.end - START) * 0.5);
   $('loopLabel').textContent = `${S.loop}회차`;
   $('whoName').textContent = near ? `${NPC_INFO[near].name} (${NPC_INFO[near].ko})` : '없음';
   $('whereName').textContent = S.zone === 'hall' ? '로비' : ROOMS[S.roomAt[S.zone]].name;
@@ -460,7 +499,7 @@ function nearNpc() {
   return null;
 }
 function zoneAt(x, y) { const ch = MAP[y][x]; return DOOR[ch] || (SLOTS[ch] ? ch : 'hall'); }
-function spend(sec) { S.t += sec; updateSchedule(); render(); if (S.t >= END && !S.done && !S.won) setTimeout(fail, 450); }
+function spend(sec) { S.t += sec; updateSchedule(); render(); if (S.t >= S.end && !S.done && !S.won) setTimeout(fail, 450); }
 
 function updateSchedule() {
   const t = S.t, P = S.npcs, near = nearNpc();
@@ -502,25 +541,28 @@ function move(dx, dy) {
   closePointer();
   spend(COST.move);
   const n = nearNpc();
-  if (n && !S.greeted.has(n) && !S.done) { S.greeted.add(n); greet(n); }
+  if (n && !S.greeted.has(n) && !S.done) { S.greeted.add(n); greet(n); if (n === 'grandma') return; }
+  const g = S.npcs.grandma;
+  if (S.level === 2 && S.carrying && !S.done && g && Math.abs(g[0] - S.x) + Math.abs(g[1] - S.y) === 1) { const [en, ko] = R.grandma2(new Set(), ''); npcSay('grandma', en, ko); }
 }
 
 function enterRoom(slot) {
   const key = S.roomAt[slot], room = ROOMS[key];
   if (key === 'security' && S.guardOnPatrol) officeSign();
   else place(room.place[0], room.place[1]);
-  if (key === 'security' || S.visited.has(key)) { S.visited.add(key); return; }
+  const target = LEVELS[S.level].target, T = ROOMS[target];
+  if (key === target || S.visited.has(key)) { S.visited.add(key); return; }
   S.visited.add(key);
-  const sec = S.slotOf.security;
+  const sec = S.slotOf[target], who = S.level === 1 ? '청소부' : '청소부나 할머니';
   if (S.janitorTold) {
     const opp = (SLOTS[sec].side === 'L' && SLOTS[slot].side === 'R') || (SLOTS[sec].side === 'R' && SLOTS[slot].side === 'L');
     if (opp) miss('정반대', `${room.name}에 들어감`,
-      `청소부는 "It's ${SLOTS[sec].dir}."라고 했어요. ${SLOTS[sec].dir}는 '${SLOTS[sec].dirKo}'예요. 당신은 반대쪽에 있는 ${room.name}(${room.ko})에 들어갔어요.`,
+      `${who}는 "It's ${SLOTS[sec].dir}."라고 했어요. ${SLOTS[sec].dir}는 '${SLOTS[sec].dirKo}'예요. 당신은 반대쪽에 있는 ${room.name}(${room.ko})에 들어갔어요.`,
       [SLOTS[sec].side === 'L' ? 'left' : 'right']);
     else miss('무관', `${room.name}에 들어감`,
-      `청소부가 알려준 방향은 "${SLOTS[sec].dir}"(${SLOTS[sec].dirKo})였어요. 간판의 ${room.name}은 '${room.ko}'예요. 경비실은 SECURITY OFFICE라고 적혀 있어요.`, ['security office']);
+      `알려준 방향은 "${SLOTS[sec].dir}"(${SLOTS[sec].dirKo})였어요. 간판의 ${room.name}은 '${room.ko}'예요. ${T.ko} 간판에는 ${T.name}라고 적혀 있어요.`, S.level === 1 ? ['security office'] : []);
   } else {
-    miss('무관', `${room.name}에 들어감`, `간판의 ${room.name}은 '${room.ko}'예요. 경비실은 SECURITY OFFICE라고 적혀 있어요.`, ['security office']);
+    miss('무관', `${room.name}에 들어감`, `간판의 ${room.name}은 '${room.ko}'예요. ${T.ko} 간판에는 ${T.name}라고 적혀 있어요.`, S.level === 1 ? ['security office'] : []);
   }
 }
 
@@ -547,13 +589,33 @@ function parse(text) {
   if (has(/\b(photo|picture|pic|photograph)\b/)) out.add('c:photo');
   if (has(/\b(ticket|concert)\b/)) out.add('c:ticket');
   if (has(/\b(money|cash|dollar|dollars|won)\b/)) out.add('c:money');
+  if (has(/\blatte\b/)) out.add('d:latte');
+  if (has(/\b(hot chocolate|chocolate|cocoa)\b/)) out.add('d:hot chocolate');
+  if (has(/\b(chai|tea)\b/)) out.add('d:chai tea');
+  if (has(/\b(americano|cappuccino|espresso)\b/)) out.add('d:' + t.match(/\b(americano|cappuccino|espresso)\b/)[1]);
+  for (const z of ['small', 'medium', 'large']) if (has(new RegExp('\\b' + z + '\\b'))) out.add('s:' + z);
+  if (has(/\boat\b/)) out.add('m:oat');
+  if (has(/\balmond\b/)) out.add('m:almond');
+  if (has(/\b(regular|whole|normal|plain) ?(milk)?\b/)) out.add('m:regular');
+  if (has(/\b(to go|take ?out|takeaway|take away|carry out)\b/)) out.add('h:togo');
+  else if (has(/\b(for )?here\b/)) out.add('h:here');
   for (const w in GLOSSARY) if (has(new RegExp('\\b' + w + '\\b'))) out.add('g:' + w);
   return out;
 }
 const colorsIn = I => [...I].filter(i => i.startsWith('k:')).map(i => i.slice(2));
+const first = (I, p) => { const f = [...I].find(i => i.startsWith(p)); return f ? f.slice(p.length) : null; };
 const contentsIn = I => [...I].filter(i => i.startsWith('c:')).map(i => i.slice(2));
 
 function greet(id) {
+  if (S.level === 2 && id === 'grandma') {
+    if (S.carrying) { const [en, ko] = R.grandma2(new Set(), ''); return npcSay(id, en, ko); }
+    S.heardRequest = true;
+    const o = S.order;
+    return npcSay(id, `Oh, sweetie, could you do me a favor? My knees hurt today. Could you get me ${orderEn(o)} from the Daily Grind? To go, please!`,
+      `얘야, 부탁 하나 들어줄래? 오늘 무릎이 아파서. 데일리 그라인드에서 ${orderKo(o)} 하나 사다 줄 수 있니? 포장으로!`);
+  }
+  if (S.level === 2 && id === 'janitor') { S.janitorAsked = true; return npcSay(id, 'Hi, honey! Running an errand?', '안녕! 심부름 가는 중이야?'); }
+  if (S.level === 2 && id === 'barista' && !S.carrying) { S.bAsk = 'drink'; return npcSay(id, "Hey! Welcome to the Daily Grind! What can I get started for you?", '어서 오세요, 데일리 그라인드예요! 뭐로 시작해 드릴까요?'); }
   if (id === 'guard') {
     if (S.guardOnPatrol) { S.sawPatrol = true; npcSay(id, "Oh, hi. I'm on my rounds right now. I'll be back in my office at a quarter to six.", '아, 안녕하세요. 지금 순찰 중이에요. 6시 15분 전(5시 45분)에 사무실로 돌아갈게요.'); }
     else if (S.patrolDone && S.guardStage === 0) npcSay(id, 'Sorry for the wait! Can I help you?', '기다리게 해서 죄송해요! 도와드릴까요?');
@@ -574,6 +636,11 @@ const R = {
       if (I.has('confused')) return say('(He taps his watch, then points toward his office.) Office. Five... forty-five. Back soon!', '(시계를 톡톡 치고 사무실 쪽을 가리키며) 사무실. 5시… 45분. 곧 돌아가요!');
       if (I.has('wallet') || I.has('lost')) return say("A lost wallet? It's locked in my office. Come back at a quarter to six, okay?", '잃어버린 지갑이요? 제 사무실에 잠겨 있어요. 6시 15분 전(5시 45분)에 다시 오세요, 알겠죠?');
       return say("I'm on my rounds right now. See you at the office at a quarter to six.", '지금 순찰 중이에요. 6시 15분 전(5시 45분)에 사무실에서 봬요.');
+    }
+    if (S.level === 2) {
+      const c = SLOTS[S.slotOf.cafe];
+      if (I.has('coffee') || I.has('where') || [...I].some(i => i.startsWith('d:'))) return say(`Coffee? The Daily Grind is ${c.dir}. They close at six.`, `커피요? 데일리 그라인드는 ${c.dirKo}에 있어요. 6시에 닫아요.`);
+      return say('Have a good evening! Let me know if you need anything.', '좋은 저녁 보내세요! 필요한 거 있으면 말씀하세요.');
     }
     const colors = colorsIn(I), contents = contentsIn(I);
     if (S.guardStage === 0) {
@@ -642,6 +709,13 @@ const R = {
       if (S.janitorTold) return [`(She points ${sec.point}.) Wallet... security office. That way!`, `(${sec.dirKo}을 가리키며) 지갑… 경비실. 저쪽!`, true];
       return ['(She pats her own pockets.) You... lost... something?', '(자기 주머니를 두드리며) 너… 뭐… 잃어버렸어?', true];
     }
+    if (S.level === 2) {
+      const c = SLOTS[S.slotOf.cafe];
+      if (I.has('coffee') || I.has('where') || I.has('help') || [...I].some(i => i.startsWith('d:'))) { S.janitorTold = true; return [`For coffee? The Daily Grind is ${c.dir}. Get me a cookie! Just kidding.`, `커피 사러? 데일리 그라인드는 ${c.dirKo}에 있어. 나도 쿠키 하나! 농담이야.`, true]; }
+      if (I.has('yes')) return ['Oh, good for you! What do you need?', '착하네! 뭐가 필요해?', true];
+      if (I.has('greet') || I.has('thanks')) return ['Hi, honey!', '안녕!', true];
+      return ["Sorry, honey, I didn't catch that.", '미안, 잘 못 들었어.', false];
+    }
     if (I.has('wallet') || I.has('lost') || I.has('where') || I.has('help') || I.has('security') || (I.has('yes') && S.janitorAsked)) {
       S.janitorTold = true;
       return [`Oh! Someone found a wallet this morning. They took it to the security office. It's ${sec.dir}.`, `아! 오늘 아침에 누가 지갑을 주웠어. 경비실에 맡겼대. ${sec.dirKo}에 있어.`, true];
@@ -660,6 +734,61 @@ const R = {
     if (I.has('greet')) return ["Hello again! Take your time, dear.", '또 왔구나! 천천히 하렴.', true];
     return ["Hmm? Tell me just one word you don't know, dear.", '응? 모르는 단어 하나만 말해주렴.', false];
   },
+  grandma2(I, raw) {
+    const o = S.order;
+    if (I.has('korean')) return ["Oh, I'm sorry, dear. I don't speak Korean. Try one English word, slowly!", '어머, 미안하구나. 난 한국어를 못 해. 영어 단어 하나를 천천히 말해보렴!', false];
+    if (S.carrying) return deliver();
+    if (!S.heardRequest) { S.heardRequest = true; return [`Could you do me a favor, sweetie? Get me ${orderEn(o)} from the Daily Grind. To go!`, `부탁 좀 들어줄래? 데일리 그라인드에서 ${orderKo(o)} 하나. 포장으로!`, true]; }
+    const d = first(I, 'd:'), z = first(I, 's:'), m = first(I, 'm:');
+    if (d || z || m) {
+      const wrong = [];
+      if (d && d !== o.drink) wrong.push([`not ${d}`, `${cap(o.drink)}. (She mimes sipping.)`]);
+      if (z && z !== o.size) wrong.push([`not ${z}`, `${cap(o.size)}. (She makes ${SIZE_SHAPE[o.size]} with her hands.)`]);
+      if (m && m !== o.milk) wrong.push([`not ${m}`, `${cap(o.milk)} milk.`]);
+      if (!wrong.length) return [`Yes, that's right, dear! ${cap(orderEn(o))}. To go!`, `그래, 맞아! ${orderKo(o)}. 포장으로!`, true];
+      return [`No, no, dear. ${wrong.map(w => cap(w[0]) + '. ' + w[1]).join(' ')}`, `아니, 아니. ${wrong.map(w => w[0]).join(', ')} — 그게 아니란다.`, true];
+    }
+    if (I.has('confused')) return [`${cap(o.size)}. (She makes ${SIZE_SHAPE[o.size]} with her hands.) ${cap(o.drink)}. (She mimes sipping.) With... ${o.milk} milk. To go. Okay?`, `${SIZES[o.size]}. (손으로 컵 크기를 보여주며) ${DRINKS[o.drink]}. (마시는 시늉) ${MILKS[o.milk]}. 포장. 알겠니?`, true];
+    const g = [...I].find(i => i.startsWith('g:'));
+    if (g) { const w = g.slice(2); scanKnown(w); return [GLOSSARY[w], '(할머니가 쉬운 영어로 설명해준다)', true]; }
+    if (I.has('yes') || I.has('thanks')) return [`Thank you, sweetie! The Daily Grind is ${SLOTS[S.slotOf.cafe].dir}. Please hurry, my show starts at ten to six!`, `고마워! 데일리 그라인드는 ${SLOTS[S.slotOf.cafe].dirKo}에 있어. 서둘러주렴, 내 드라마가 6시 10분 전에 시작해!`, true];
+    return [`${cap(orderEn(o))}, from the Daily Grind. To go, please, dear.`, `데일리 그라인드에서 ${orderKo(o)}. 포장으로 부탁해.`, true];
+  },
+  barista2(I, raw) {
+    if (I.has('korean')) { miss('한국어', `"${raw}"`, '카페 직원은 한국어를 못 알아들어요.'); return ["Sorry—what? I don't speak... that. What can I get you?", '네? 그 말은… 못 해요. 뭐 드릴까요?', false]; }
+    if (S.carrying) return ['Enjoy! Come again!', '맛있게 드세요! 또 오세요!', true];
+    const B = S.bOrder, ask = S.bAsk;
+    const d = first(I, 'd:'), z = first(I, 's:'), m = first(I, 'm:'), h = first(I, 'h:');
+    const got = !!(d || z || m || h);
+    if (d) B.drink = d; if (z) B.size = z; if (m) B.milk = m; if (h) B.here = h;
+    if (got && raw) S.bSaid.push(raw);
+    const Q = {
+      drink: ["What would you like? A latte? Hot chocolate? Chai tea?", '뭐로 드릴까요? 라테? 핫초코? 차이 티?', '(She taps the menu board.) Drink? Latte... hot chocolate... chai?'],
+      size: ['What size? Small, medium, or large?', '사이즈는요? 작은 거, 중간, 큰 거?', '(She holds up three cups: tiny, middle, big.) Size? Small... medium... large?'],
+      milk: ["And what kind of milk? We've got regular, oat, and almond.", '우유는 어떤 걸로요? 일반, 귀리, 아몬드 있어요.', '(She points at three milk cartons.) Milk? Regular... oat... almond?'],
+      here: ['For here or to go?', '드시고 가세요, 가져가세요?', '(She holds a mug in one hand and a paper cup in the other.) Here? (mug) Or to go? (paper cup)'],
+    };
+    const QKO = { drink: '"What would you like?"는 "뭐로 드릴까요?"예요.', size: '"What size?"는 "어떤 크기로요?"예요. small(작은)·medium(중간)·large(큰) 중에 골라야 해요.', milk: '"What kind of milk?"는 "어떤 우유로요?"예요. regular(일반)·oat(귀리)·almond(아몬드) 중에 골라야 해요.', here: '"For here or to go?"는 "드시고 가세요, 가져가세요?"예요. 할머니께 가져가려면 to go라고 해야 해요.' };
+    if (!got) {
+      if (I.has('confused') && ask) return [Q[ask][2], Q[ask][1], true];
+      if (ask && (I.has('yes') || I.has('no'))) {
+        miss('무관', `"${raw}"`, `${QKO[ask]} yes나 no로는 답할 수 없어요.`, ask === 'here' ? ['to go', 'for here'] : [ask === 'drink' ? 'milk' : ask]);
+        return [`Sorry, I mean... ${Q[ask][0]}`, Q[ask][1], false];
+      }
+      if (I.has('coffee')) return ["Sure! What kind? We've got lattes, hot chocolate, chai tea, americanos...", '그럼요! 어떤 걸로요? 라테, 핫초코, 차이 티, 아메리카노…', true];
+      if (I.has('greet')) return [`Hi hi! ${Q[ask || 'drink'][0]}`, `안녕하세요! ${Q[ask || 'drink'][1]}`, true];
+      if (ask) miss('무관', `"${raw}"`, `카페 직원은 이렇게 물었어요. ${QKO[ask]}`, ask === 'here' ? ['to go', 'for here'] : []);
+      return [`Sorry, it's super busy. ${Q[ask || 'drink'][0]}`, `죄송해요, 지금 너무 바빠서요. ${Q[ask || 'drink'][1]}`, false];
+    }
+    const next = ['drink', 'size', 'milk', 'here'].find(k => !B[k]);
+    const heard = [B.size, B.drink].filter(Boolean).join(' ') + (B.milk ? ` with ${B.milk} milk` : '');
+    if (next) { S.bAsk = next; return [`${heard ? cap(heard) + ', got it. ' : 'Got it. '}${Q[next][0]}`, `${heard ? '알겠어요. ' : '네. '}${Q[next][1]}`, true]; }
+    S.carrying = { ...B }; S.bAsk = null; S.t += COST.coffee;
+    S.phrases.push([S.bSaid.join(' / '), `Can I get ${orderEn(B)} to go, please?`]);
+    const mug = B.here === 'here' ? ' (She hands you a heavy ceramic mug.)' : ' (She hands you a paper cup with a lid.)';
+    return [`One ${B.size} ${B.drink} with ${B.milk} milk, ${B.here === 'here' ? 'for here' : 'to go'}. Coming right up! ... Here you go!${mug}`,
+      `${orderKo(B)} 하나, ${B.here === 'here' ? '드시고 가시는 걸로' : '포장으로'}. 바로 나갑니다! … 여기요!${B.here === 'here' ? ' (무거운 머그잔을 건네준다)' : ' (뚜껑 덮인 종이컵을 건네준다)'}`, true];
+  },
   barista(I, raw) {
     if (I.has('korean')) return ["Sorry—what? I don't speak... that. What can I get you?", '네? 그 말은… 못 해요. 뭐 드릴까요?', false];
     if (I.has('wallet') || I.has('lost')) {
@@ -676,12 +805,29 @@ const R = {
   },
 };
 
+function deliver() {
+  const o = S.order, c = S.carrying, wrong = [];
+  for (const [k, label, names] of [['drink', '음료', DRINKS], ['size', '크기', SIZES], ['milk', '우유', MILKS]]) {
+    if (c[k] !== o[k]) {
+      wrong.push(k);
+      miss('거의 맞음', `${label}: ${c[k]}`, `할머니는 ${o[k]}(${names[o[k]]})를 부탁했어요. 당신은 ${c[k]}(${names[c[k]] || '메뉴에 없던 것'})를 주문했어요.`, [o[k], k === 'size' ? 'size' : 'milk'].filter(w => VOCAB.some(v => v[0] === w)));
+    }
+  }
+  if (c.here === 'here') { wrong.push('here'); miss('정반대', '"for here"로 주문함', '"For here"는 "여기서 마실게요"예요. 들고 나가려면 "to go"(포장)라고 해야 했어요. 그래서 머그잔에 담아줬어요.', ['to go', 'for here']); }
+  if (!wrong.length) { S.won = true; setTimeout(win, 700); return [`Oh, ${orderEn(o)}! Exactly what I wanted. You're an angel, sweetie!`, `어머, ${orderKo(o)}! 딱 내가 원하던 거야. 넌 천사구나!`, true]; }
+  S.failTitle = '할머니가 고개를 갸웃했다.';
+  setTimeout(fail, 900);
+  const mug = c.here === 'here' ? " And oh my, that's the café's mug! We'll have to take it back." : '';
+  return [`Oh, thank you, dear... but I asked for ${orderEn(o)}.${mug} Never mind, I'll go myself tomorrow.`, `고마워… 그런데 난 ${orderKo(o)}를 부탁했었단다.${mug ? ' 어머, 그건 카페 머그잔이잖니! 돌려줘야겠다.' : ''} 괜찮아, 내일 내가 가지 뭐.`, true];
+}
+
 function act(I, raw, cost, meText, meKind) {
   if (S.done || !overlayClosed()) return;
   const id = nearNpc();
   if (!id) { sys('말을 걸 사람이 없어요. 사람 옆으로 가보세요.'); return; }
   push(meKind, esc(meText));
-  const [en, ko, ok] = R[id](I, raw);
+  const fn = S.level === 2 && R[id + '2'] ? R[id + '2'] : R[id];
+  const [en, ko, ok] = fn(I, raw);
   npcSay(id, en, ko);
   if (ok && meKind === 'me') {
     const t = raw.toLowerCase();
@@ -757,57 +903,77 @@ const overlayClosed = () => $('overlay').hidden;
 function show(html, onReady) { $('sheet').innerHTML = html; $('overlay').hidden = false; onReady && onReady(); }
 function hide() { $('overlay').hidden = true; }
 
+function levelButtons() {
+  return `<div class="levels">${Object.entries(LEVELS).map(([n, L]) => `<button class="lvl" type="button" data-level="${n}"><span>상황 ${n}${cleared.includes(+n) ? ' · 해결함' : ''}</span><b>${L.name}</b><small>${L.story}</small></button>`).join('')}</div>`;
+}
+function bindLevels() {
+  document.querySelectorAll('.lvl').forEach(b => b.addEventListener('click', () => { LEVEL = +b.dataset.level; S = null; hide(); newLoop(); $('sayInput').focus(); }));
+}
+function chooseLevel() {
+  show(`<h2>상황 선택</h2><p class="lead">같은 건물, 같은 오후. 다른 일이 벌어져요.</p>${levelButtons()}<button class="ghost" id="close" type="button">닫기</button>`, () => { bindLevels(); $('close').addEventListener('click', hide); });
+}
+$('levelBtn').addEventListener('click', () => { if (overlayClosed()) chooseLevel(); });
 function intro() {
   show(`
     <h2>다시, 5시 20분</h2>
-    <p>길을 걷던 중 문득 지갑이 없다는 걸 깨달았다. 방금 전까지 머물던 건물로 돌아왔지만, 누군가 분실물인 줄 알고 경비실에 맡겨둔 것 같다.</p>
-    <p><b>목표: 경비실로 가서 지갑을 무사히 되찾기.</b> 경비실은 오후 6시에 닫는다.</p>
+    <p>영어로만 돌아가는 건물 메이플 코트. 오후 5시 20분부터, 정해진 시간 안에 목표를 이뤄야 해요.</p>
     <ul class="how">
       <li>이 건물의 간판과 사람들의 말은 전부 <b>영어</b>예요. 한국어는 통하지 않아요.</li>
       <li>문법은 신경 쓰지 마세요. <b>통하면 장땡</b>이에요.</li>
       <li>말이 안 나오면 <b>몸짓</b>을, 정 모르겠으면 <b>번역기</b>를 쓰세요. 대신 시간이 더 들어요.</li>
       <li>옆집 할머니(👵)에게 모르는 단어를 말하면 쉬운 영어로 설명해줘요.</li>
       <li>사람들은 각자 <b>일과대로</b> 움직여요. 시간이 지나면 있던 사람이 자리를 비우기도 해요.</li>
-      <li>6시가 되면 <b>주마등</b>이 스치고, 같은 오후 5시 20분으로 돌아가요. 매번 배치가 조금씩 달라져요.</li>
+      <li>시간이 다 되면 <b>주마등</b>이 스치고, 같은 오후 5시 20분으로 돌아가요. 매번 배치가 조금씩 달라져요.</li>
     </ul>
-    <button class="primary" id="go" type="button">오후 5시 20분으로</button>`, () => $('go').addEventListener('click', () => { hide(); $('sayInput').focus(); }));
+    <p><b>상황을 고르세요.</b></p>
+    ${levelButtons()}`, bindLevels);
 }
 
 function fail() {
   if (S.done || S.won) return; S.done = true;
   const items = S.mistakes.slice();
-  if (S.guardStage === 0 && !S.mistakes.some(m => m.words.includes('security office'))) {
+  if (S.level === 2) {
+    const o = S.order;
+    if (!S.heardRequest) items.push({ cat: '놓친 정보', act: '할머니의 부탁을 듣지 못함', explain: '벤치의 할머니(👵)에게 먼저 다가가 부탁을 들어야 했어요.', at: clockStr(S.t), words: [] });
+    else if (!S.carrying) {
+      items.push({ cat: '놓친 정보', act: '할머니의 부탁', explain: `할머니는 "${orderEn(o)}, to go"라고 했어요. ${orderKo(o)}, 포장이라는 뜻이에요. 카페 간판은 DAILY GRIND · COFFEE예요.`, at: clockStr(S.t), words: [o.size, 'milk', 'to go', 'favor'] });
+      if (S.bAsk && S.bAsk !== 'drink') items.push({ cat: '놓친 정보', act: '카페 직원의 질문', explain: { size: '"What size?"는 "어떤 크기로요?"예요.', milk: '"What kind of milk?"는 "어떤 우유로요?"예요.', here: '"For here or to go?"는 "드시고 가세요, 가져가세요?"예요.' }[S.bAsk], at: clockStr(S.t), words: [S.bAsk === 'here' ? 'to go' : S.bAsk] });
+    }
+  }
+  if (S.level === 1 && S.guardStage === 0 && !S.mistakes.some(m => m.words.includes('security office'))) {
     items.push({ cat: '무관', act: '경비실에 도착하지 못함', explain: '경비실은 간판에 SECURITY OFFICE라고 적혀 있어요. security는 보안·경비, office는 사무실이에요. 모르면 청소부(🧹)에게 물어보거나 할머니(👵)에게 단어를 물어보세요.', at: '6:00 PM', words: ['security office', 'security', 'office'] });
   }
-  if (S.guardStage === 1 && !items.some(m => m.words.includes('color'))) {
+  if (S.level === 1 && S.guardStage === 1 && !items.some(m => m.words.includes('color'))) {
     items.push({ cat: '무관', act: '경비원의 질문에 답하지 못함', explain: '"What does it look like? What color is it?"는 "어떻게 생겼어요? 무슨 색이에요?"예요. 같은 색 물건을 가리키기만 해도 통했어요.', at: '6:00 PM', words: ['color', 'look like'] });
   }
-  if (S.guardStage === 2 && !items.some(m => m.words.includes('inside'))) {
+  if (S.level === 1 && S.guardStage === 2 && !items.some(m => m.words.includes('inside'))) {
     items.push({ cat: '무관', act: '안에 든 것을 말하지 못함', explain: `"What's inside it?"는 "안에 뭐가 들었어요?"예요. ${CONTENTS[S.content].ko}은 ${CONTENTS[S.content].en}이고, 시늉으로도 보여줄 수 있었어요.`, at: '6:00 PM', words: ['inside'] });
   }
-  if (S.sawPatrol) {
+  if (S.sawPatrol && S.level === 1) {
     items.push({ cat: '놓친 정보', act: '경비원의 순찰 시간', explain: '"Back at 5:45 PM"은 "오후 5시 45분에 돌아옴"이에요. "a quarter to six"(6시 15분 전)도 5시 45분이라는 뜻이에요. 경비원은 매일 5:35부터 5:45까지 순찰을 돌아요. 그 전에 도착하거나, 그 시간에 맞춰 돌아오세요.', at: '6:00 PM', words: ['back', 'quarter', 'patrol', 'rounds'] });
   }
   items.forEach(m => m.words.forEach(w => { mark(w, 'seen'); mark(w, 'known'); }));
   const list = items.map(m => `<li><span class="tag ${m.cat.split(' ')[0]}">${m.cat}</span><span class="act">${m.at} · ${esc(m.act)}</span><span>${esc(m.explain)}</span></li>`).join('');
   show(`
-    <h2>6:00 PM. 경비실 불이 꺼졌다.</h2>
+    <h2>${S.failTitle || (S.level === 1 ? '6:00 PM. 경비실 불이 꺼졌다.' : '5:50 PM. 할머니가 집으로 들어갔다.')}</h2>
     <p class="lead">…눈앞에 오늘 오후가 주마등처럼 스친다.</p>
     <ul class="miss">${list || '<li>이번 판에는 기록된 실수가 없어요. 조금만 더 빨랐으면!</li>'}</ul>
-    <p class="lead">주마등에서 뜻을 알게 된 단어는 도감에 💡로 기록돼요. 다음 회차에서는 방 배치와 지갑 생김새가 바뀌어요.</p>
+    <p class="lead">주마등에서 뜻을 알게 된 단어는 도감에 💡로 기록돼요. 다음 회차에서는 방 배치와 ${S.level === 1 ? '지갑 생김새' : '할머니의 주문'}가 바뀌어요.</p>
     <button class="primary" id="again" type="button">다시, 5시 20분</button>`, () => $('again').addEventListener('click', () => { hide(); newLoop(); }));
 }
 
 function win() {
   if (S.done) return; S.done = true;
+  if (!cleared.includes(S.level)) { cleared.push(S.level); store.set('ag520.cleared', cleared); }
   const used = Math.round((S.t - START) / 60);
   const phr = S.phrases.map(([said, model]) => `<li>"${esc(said)}" <span class="arrow">→ 더 자연스럽게</span> <em>${esc(model)}</em></li>`).join('');
   show(`
-    <h2>지갑을 되찾았다!</h2>
+    <h2>${S.level === 1 ? '지갑을 되찾았다!' : '할머니가 활짝 웃었다!'}</h2>
     <p class="lead">${S.loop}회차 · ${used}분 사용 · 실수 ${S.mistakes.length}번</p>
     <p>당신의 말은 통했어요. 다음엔 이렇게 말해보세요.</p>
     <ul class="phr">${phr || '<li>몸짓만으로 해냈어요! 다음엔 한 단어라도 영어로 말해보세요.</li>'}</ul>
-    <button class="primary" id="again" type="button">새로운 오후 시작</button>`, () => $('again').addEventListener('click', () => { hide(); S = null; newLoop(); }));
+    <p><b>다른 상황도 해보세요.</b></p>
+    ${levelButtons()}`, bindLevels);
 }
 
 function showJournal() {
