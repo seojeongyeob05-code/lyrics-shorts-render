@@ -79,6 +79,11 @@ class FrameRenderer:
             self._draw_rows(draw, rows, top, step, self._next_font, s.next_color)
         return img
 
+    def state_key(self, lyrics: Lyrics, t: float) -> tuple[int | None, int | None]:
+        """화면 내용을 결정하는 값. 키가 같으면 render() 결과도 같다."""
+        i = lyrics.index_at(t)
+        return i, self._next_index(lyrics, t, i)
+
     def _draw_rows(self, draw, rows, top, step, font, color):
         cx = self.style.width / 2
         for k, row in enumerate(rows):

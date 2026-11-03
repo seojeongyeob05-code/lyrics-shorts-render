@@ -20,6 +20,10 @@ def _rows_with(img, color, tol=10):
     return rows
 
 
+def _colors(img):
+    return {c for _, c in img.getcolors(img.width * img.height)}
+
+
 class CoverFitTest(unittest.TestCase):
     def test_wide_image_fills_and_crops_center(self):
         src = Image.new("RGB", (400, 100), (255, 0, 0))
@@ -45,7 +49,7 @@ class RenderTest(unittest.TestCase):
     def test_size_and_background_when_no_text(self):
         img = self.r.render(lyrics=lrc.Lyrics([]), t=0)
         self.assertEqual(img.size, (270, 480))
-        self.assertEqual(set(img.getdata()), {self.style.bg_color})
+        self.assertEqual(_colors(img), {self.style.bg_color})
 
     def test_current_line_is_above_next_line(self):
         img = self.r.render(LYRICS, 1.5)
@@ -70,7 +74,7 @@ class RenderTest(unittest.TestCase):
         r = FrameRenderer(self.style, background=bg)
         r.render(LYRICS, 1.5)
         img = r.render(lrc.Lyrics([]), 0)
-        self.assertEqual(set(img.getdata()), {(200, 30, 30)})
+        self.assertEqual(_colors(img), {(200, 30, 30)})
 
 
 if __name__ == "__main__":

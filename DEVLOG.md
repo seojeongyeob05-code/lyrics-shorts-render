@@ -20,3 +20,12 @@
 - 테스트 8개 추가(전체 23개 통과). 한글 렌더 테스트는 폰트가 없는 환경에선 건너뜀
 - 메모: 이 컨테이너는 외부 폰트 다운로드가 막혀 있어 wqy-zenhei로 확인함. 실제 사용 시엔 `SHORTS_FONT=나눔고딕Bold.ttf` 같은 식으로 지정 권장
 - 다음: 4단계 — 프레임을 ffmpeg 파이프로 흘려 mp4 만들고 음원 합치기
+
+## 2026-11-03 — 4일차: mp4 출력 + 음원 합치기
+- `shorts/video.py`
+  - `render_video(lyrics, out, duration, renderer, opts, audio, audio_start)`: 프레임을 raw RGB로 ffmpeg 표준입력에 흘려 H.264 mp4(yuv420p, faststart) 생성. 음원이 있으면 `audio_start`초부터 잘라 AAC로 함께 넣음
+  - 화면에 보이는 줄이 같으면 직전 프레임을 재사용(`FrameRenderer.state_key`) → 10초·300프레임 중 실제로 그린 건 6장, 1080x1920 렌더 약 2.6초
+  - ffmpeg가 실패하면 에러 메시지를 담아 `RuntimeError`
+- 테스트 6개 추가(전체 29개 통과): 명령 구성, 상태 키, 실제 인코딩(영상만/음원 구간 포함/실패 보고)
+- 정리: 파이프 닫기 누락으로 인한 ResourceWarning, Pillow 14에서 사라질 `getdata()` 사용 제거
+- 다음: 5단계 — CLI(`python -m shorts render song.lrc --audio a.mp3 --bg bg.jpg --start 0:45 --duration 30`). `--start`가 있으면 `Lyrics.clip()` + `audio_start`로 이어 붙이면 되므로 6단계(구간 자르기)도 거의 같이 끝날 듯
