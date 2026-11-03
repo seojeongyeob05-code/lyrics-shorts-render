@@ -49,9 +49,17 @@ CREATE TABLE IF NOT EXISTS playlist_tracks (
 CREATE INDEX IF NOT EXISTS idx_playlist_tracks ON playlist_tracks(playlist_id, position);
 `;
 
+// 이미 만들어진 DB에 나중에 추가된 컬럼을 붙인다. 컬럼 추가만 하므로 기존 데이터는 그대로다.
+function migrate(db) {
+  const trackColumns = db.prepare('PRAGMA table_info(tracks)').all().map((c) => c.name);
+  if (!trackColumns.includes('hash')) db.exec('ALTER TABLE tracks ADD COLUMN hash TEXT');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_tracks_hash ON tracks(hash)');
+}
+
 export function openDb(file) {
   const db = new DatabaseSync(file);
   db.exec(SCHEMA);
+  migrate(db);
   return db;
 }
 

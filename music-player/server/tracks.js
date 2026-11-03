@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { createReadStream } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { Router } from 'express';
@@ -41,6 +42,27 @@ function decodeName(name) {
 
 const tagText = (value) => value?.trim().normalize('NFC') || null;
 
+// 파일 내용의 SHA-256. 같은 파일을 다시 올렸는지 확인하는 데 쓴다.
+export async function hashFile(filePath) {
+  const hash = crypto.createHash('sha256');
+  for await (const chunk of createReadStream(filePath)) hash.update(chunk);
+  return hash.digest('hex');
+}
+
+// 중복 검사 기능 이전에 올라간 곡의 해시를 백그라운드에서 채운다.
+export async function backfillHashes(db, musicDir) {
+  const missing = db.prepare('SELECT id, filename FROM tracks WHERE hash IS NULL').all();
+  const update = db.prepare('UPDATE tracks SET hash = ? WHERE id = ?');
+  for (const { id, filename } of missing) {
+    try {
+      update.run(await hashFile(path.join(musicDir, filename)), id);
+    } catch {
+      // 파일이 없거나 읽을 수 없으면 건너뛴다.
+    }
+  }
+  return missing.length;
+}
+
 async function readMetadata(filePath) {
   try {
     const { common, format } = await parseFile(filePath);
@@ -81,12 +103,22 @@ export function createTracksRouter(db, config) {
 
   router.post('/', upload.array('files'), async (req, res) => {
     const insert = db.prepare(`
-      INSERT INTO tracks (title, artist, album, track_no, disc_no, duration, filename, mime, size, cover, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO tracks (title, artist, album, track_no, disc_no, duration, filename, mime, size, cover, created_at, hash)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
+    const findByHash = db.prepare('SELECT id, title FROM tracks WHERE hash = ?');
     const added = [];
+    const duplicates = [];
     for (const file of req.files ?? []) {
       const ext = path.extname(file.filename);
+      // 내용이 같은 파일이 이미 있으면 새로 받은 파일은 지우고 건너뛴다 (같은 요청 안의 중복도 포함).
+      const hash = await hashFile(file.path);
+      const existing = findByHash.get(hash);
+      if (existing) {
+        await fs.rm(file.path, { force: true });
+        duplicates.push({ name: file.originalname, existing: { id: existing.id, title: existing.title } });
+        continue;
+      }
       const { common, duration } = await readMetadata(file.path);
 
       let cover = null;
@@ -109,10 +141,11 @@ export function createTracksRouter(db, config) {
         file.size,
         cover,
         Date.now(),
+        hash,
       );
       added.push(toTrackJson(getTrack(lastInsertRowid)));
     }
-    res.status(201).json({ added, rejected: req.rejected ?? [] });
+    res.status(201).json({ added, duplicates, rejected: req.rejected ?? [] });
   });
 
   router.delete('/:id', async (req, res) => {

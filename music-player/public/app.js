@@ -348,8 +348,11 @@ function uploadFiles(fileList) {
     if (xhr.status >= 300) return toast(data?.error || `업로드 실패 (${xhr.status})`);
     await loadLibrary();
     if (state.view.type === 'library') await refreshView();
-    let msg = `${data.added.length}곡을 추가했습니다`;
-    if (data.rejected.length) msg += ` (지원하지 않는 파일 ${data.rejected.length}개 제외)`;
+    let msg = data.added.length ? `${data.added.length}곡을 추가했습니다` : '새로 추가된 곡이 없습니다';
+    const skipped = [];
+    if (data.duplicates?.length) skipped.push(`이미 있는 곡 ${data.duplicates.length}개`);
+    if (data.rejected.length) skipped.push(`지원하지 않는 파일 ${data.rejected.length}개`);
+    if (skipped.length) msg += ` (${skipped.join(', ')} 건너뜀)`;
     toast(msg, 4000);
   });
   xhr.send(form);

@@ -96,9 +96,27 @@ test('업로드: 오디오만 받고 한글 파일명을 제목으로 쓴다', a
   assert.equal(list.length, 1);
 });
 
+test('업로드: 내용이 같은 파일은 이름이 달라도 건너뛴다', async () => {
+  const form = new FormData();
+  form.append('files', new Blob([makeWav()], { type: 'audio/wav' }), '복사본.wav');
+  form.append('files', new Blob([makeWav(2)], { type: 'audio/wav' }), '새 곡.wav');
+  form.append('files', new Blob([makeWav(2)], { type: 'audio/wav' }), '새 곡 (1).wav');
+  const res = await call('POST', '/api/tracks', { form });
+  assert.equal(res.status, 201);
+  const { added, duplicates } = await res.json();
+  assert.deepEqual(added.map((t) => t.title), ['새 곡']);
+  assert.deepEqual(duplicates, [
+    { name: '복사본.wav', existing: { id: trackId, title: '봄날의 노래' } },
+    { name: '새 곡 (1).wav', existing: { id: added[0].id, title: '새 곡' } },
+  ]);
+  // 건너뛴 파일은 디스크에 남지 않는다.
+  assert.equal(fs.readdirSync(path.join(dataDir, 'music')).length, 2);
+  assert.equal((await call('DELETE', `/api/tracks/${added[0].id}`)).status, 204);
+});
+
 test('업로드: 자모가 분리된(NFD) 파일명은 NFC 제목으로 저장한다', async () => {
   const form = new FormData();
-  form.append('files', new Blob([makeWav()], { type: 'audio/wav' }), '비 오는 날.wav'.normalize('NFD'));
+  form.append('files', new Blob([makeWav(3)], { type: 'audio/wav' }), '비 오는 날.wav'.normalize('NFD'));
   const { added } = await (await call('POST', '/api/tracks', { form })).json();
   assert.equal(added[0].title, '비 오는 날');
   assert.equal(added[0].title.normalize('NFC'), added[0].title);

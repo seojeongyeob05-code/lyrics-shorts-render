@@ -4,7 +4,7 @@ import express from 'express';
 import multer from 'multer';
 import { openDb } from './db.js';
 import { createAuth } from './auth.js';
-import { createTracksRouter } from './tracks.js';
+import { backfillHashes, createTracksRouter } from './tracks.js';
 import { createPlaylistsRouter } from './playlists.js';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
@@ -60,7 +60,8 @@ export function createApp(config) {
 
 if (process.argv[1] === import.meta.filename) {
   const config = loadConfig();
-  const { app, purgeExpired } = createApp(config);
+  const { app, db, purgeExpired } = createApp(config);
+  backfillHashes(db, config.musicDir).then((n) => n && console.log(`기존 곡 ${n}개의 중복 검사용 해시를 계산했습니다`));
   setInterval(purgeExpired, 60 * 60 * 1000).unref();
   app.listen(config.port, () => {
     console.log(`음악 서버 실행 중: http://localhost:${config.port}  (데이터: ${config.dataDir})`);
