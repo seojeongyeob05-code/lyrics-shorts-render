@@ -114,6 +114,8 @@ main.play { display: grid; gap: 16px; grid-template-columns: minmax(0, 1.15fr) m
 @media (max-width: 860px) { .talk { height: 520px; } }
 .talk .who { padding: 10px 14px; border-bottom: 1px solid var(--line); font-size: 0.85rem; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; }
 .talk .who b { color: var(--ink); }
+.swap { border: 1px solid var(--amber); background: var(--bg); border-radius: 999px; padding: 1px 9px; font-size: 0.78rem; margin-left: 4px; }
+.swap:hover { background: color-mix(in srgb, var(--amber) 15%, var(--bg)); }
 .log { overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .msg { max-width: 92%; padding: 7px 11px; border-radius: 8px; overflow-wrap: anywhere; }
 .msg .name { display: block; font-size: 0.72rem; color: var(--muted); letter-spacing: 0.04em; }
@@ -212,7 +214,7 @@ main.play { display: grid; gap: 16px; grid-template-columns: minmax(0, 1.15fr) m
     </div>
 
     <section class="talk">
-      <div class="who"><span>대화 상대: <b id="whoName">없음</b></span><span id="whereName">로비</span></div>
+      <div class="who"><span>대화 상대: <b id="whoName">없음</b> <span id="whoSwap"></span></span><span id="whereName">로비</span></div>
       <div class="log" id="log" aria-live="polite"></div>
       <div class="controls">
         <form class="say" id="sayForm" autocomplete="off">
@@ -478,6 +480,8 @@ function render() {
   $('dusk').style.opacity = Math.min(0.5, (S.t - START) / (S.end - START) * 0.5);
   $('loopLabel').textContent = `${S.loop}회차`;
   $('whoName').textContent = near ? `${NPC_INFO[near].name} (${NPC_INFO[near].ko})` : '없음';
+  const others = nearAll().filter(id => id !== near);
+  $('whoSwap').innerHTML = others.map(id => `<button class="swap" type="button" data-id="${id}">${NPC_INFO[id].icon} ${NPC_INFO[id].ko}에게 말 걸기</button>`).join('');
   $('whereName').textContent = S.zone === 'hall' ? '로비' : ROOMS[S.roomAt[S.zone]].name;
 }
 function push(kind, html) {
@@ -494,9 +498,17 @@ function npcSay(id, en, ko) {
 
 // ---------- world ----------
 function npcAt(x, y) { for (const id in S.npcs) { const [nx, ny] = S.npcs[id]; if (nx === x && ny === y) return id; } return null; }
+function nearAll() {
+  return [[0, -1], [1, 0], [0, 1], [-1, 0]].map(([dx, dy]) => npcAt(S.x + dx, S.y + dy)).filter(Boolean);
+}
+// When two people stand next to you, keep talking to the one you picked.
 function nearNpc() {
-  for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) { const id = npcAt(S.x + dx, S.y + dy); if (id) return id; }
-  return null;
+  const all = nearAll();
+  return all.includes(S.talkTo) ? S.talkTo : all[0] || null;
+}
+function talkTo(id) {
+  S.talkTo = id; closePointer(); render();
+  if (!S.greeted.has(id) && !S.done) { S.greeted.add(id); greet(id); }
 }
 function zoneAt(x, y) { const ch = MAP[y][x]; return DOOR[ch] || (SLOTS[ch] ? ch : 'hall'); }
 function spend(sec) { S.t += sec; updateSchedule(); render(); if (S.t >= S.end && !S.done && !S.won) setTimeout(fail, 450); }
@@ -845,6 +857,7 @@ $('sayForm').addEventListener('submit', e => {
   act(parse(raw), raw, COST.say, raw, 'me');
 });
 
+$('whoSwap').addEventListener('click', e => { const b = e.target.closest('.swap'); if (b && !S.done && overlayClosed()) talkTo(b.dataset.id); });
 const gBox = $('gestures');
 for (const g of GESTURES) {
   const b = document.createElement('button'); b.type = 'button'; b.className = 'chip';
