@@ -615,6 +615,19 @@ function parse(text) {
   return out;
 }
 const colorsIn = I => [...I].filter(i => i.startsWith('k:')).map(i => i.slice(2));
+// Grandma explains a word when you say just that word or ask what it means;
+// a full sentence about your problem gets help first.
+const asksMeaning = raw => {
+  const t = raw.toLowerCase(), words = t.match(/[a-z']+/g) || [];
+  return words.length === 1 || /\bwhat('s| is| does| do)\b/.test(t) || /\bmean(s|ing)?\b/.test(t);
+};
+const glossWord = raw => {
+  const t = raw.toLowerCase();
+  let best = null, at = Infinity;
+  for (const w in GLOSSARY) { const m = t.search(new RegExp('\\b' + w + '\\b')); if (m >= 0 && m < at) { best = w; at = m; } }
+  return best;
+};
+function explain(w) { scanKnown(w); return [GLOSSARY[w], '(할머니가 쉬운 영어로 설명해준다)', true]; }
 const first = (I, p) => { const f = [...I].find(i => i.startsWith(p)); return f ? f.slice(p.length) : null; };
 const contentsIn = I => [...I].filter(i => i.startsWith('c:')).map(i => i.slice(2));
 
@@ -738,9 +751,16 @@ const R = {
   },
   grandma(I, raw) {
     if (I.has('korean')) return ["Oh, I'm sorry, dear. I don't speak Korean. Try one English word, slowly!", '어머, 미안하구나. 난 한국어를 못 해. 영어 단어 하나를 천천히 말해보렴!', false];
-    const g = [...I].find(i => i.startsWith('g:'));
-    if (g) { const w = g.slice(2); const en = GLOSSARY[w]; scanKnown(w); return [en, '(할머니가 쉬운 영어로 설명해준다)', true]; }
-    if (I.has('lost') || I.has('wallet')) return ['Oh dear! When people find lost things here, they take them to the guard. Look for the door that says SECURITY OFFICE.', '어머나! 여기선 누가 물건을 주우면 경비원한테 맡긴단다. SECURITY OFFICE라고 적힌 문을 찾아보렴.', true];
+    const w = glossWord(raw);
+    const help = I.has('lost') || I.has('wallet');
+    if (w && asksMeaning(raw)) {
+      const [en, ko, ok] = explain(w);
+      if (help) return [`${en} Oh, did you lose yours? Ask the guard. His door says SECURITY OFFICE.`, `${ko} 어머, 네 걸 잃어버렸니? 경비원한테 물어보렴. 문에 SECURITY OFFICE라고 적혀 있단다.`, ok];
+      return [en, ko, ok];
+    }
+    if (I.has('where') && I.has('security')) { const d = SLOTS[S.slotOf.security]; return [`The security office? It's ${d.dir}, dear. (She points ${d.point}.)`, `경비실? ${d.dirKo}에 있단다. (${d.dirKo}을 가리키며)`, true]; }
+    if (w && !help) return explain(w);
+    if (help) return ['Oh dear! When people find lost things here, they take them to the guard. Look for the door that says SECURITY OFFICE.', '어머나! 여기선 누가 물건을 주우면 경비원한테 맡긴단다. SECURITY OFFICE라고 적힌 문을 찾아보렴.', true];
     if (I.has('confused')) return ["Just say one word you don't know, dear. Like... 'office'?", "모르는 단어 하나만 말해보렴. 예를 들면… 'office'?", true];
     if (I.has('thanks')) return ["Anytime, sweetie. Good luck!", '언제든지, 얘야. 행운을 빈다!', true];
     if (I.has('greet')) return ["Hello again! Take your time, dear.", '또 왔구나! 천천히 하렴.', true];
@@ -751,6 +771,8 @@ const R = {
     if (I.has('korean')) return ["Oh, I'm sorry, dear. I don't speak Korean. Try one English word, slowly!", '어머, 미안하구나. 난 한국어를 못 해. 영어 단어 하나를 천천히 말해보렴!', false];
     if (S.carrying) return deliver();
     if (!S.heardRequest) { S.heardRequest = true; return [`Could you do me a favor, sweetie? Get me ${orderEn(o)} from the Daily Grind. To go!`, `부탁 좀 들어줄래? 데일리 그라인드에서 ${orderKo(o)} 하나. 포장으로!`, true]; }
+    const gw = glossWord(raw);
+    if (gw && asksMeaning(raw) && /\b(what|mean|meaning)\b/i.test(raw)) return explain(gw);
     const d = first(I, 'd:'), z = first(I, 's:'), m = first(I, 'm:');
     if (d || z || m) {
       const wrong = [];
@@ -761,8 +783,7 @@ const R = {
       return [`No, no, dear. ${wrong.map(w => cap(w[0]) + '. ' + w[1]).join(' ')}`, `아니, 아니. ${wrong.map(w => w[0]).join(', ')} — 그게 아니란다.`, true];
     }
     if (I.has('confused')) return [`${cap(o.size)}. (She makes ${SIZE_SHAPE[o.size]} with her hands.) ${cap(o.drink)}. (She mimes sipping.) With... ${o.milk} milk. To go. Okay?`, `${SIZES[o.size]}. (손으로 컵 크기를 보여주며) ${DRINKS[o.drink]}. (마시는 시늉) ${MILKS[o.milk]}. 포장. 알겠니?`, true];
-    const g = [...I].find(i => i.startsWith('g:'));
-    if (g) { const w = g.slice(2); scanKnown(w); return [GLOSSARY[w], '(할머니가 쉬운 영어로 설명해준다)', true]; }
+    if (gw) return explain(gw);
     if (I.has('yes') || I.has('thanks')) return [`Thank you, sweetie! The Daily Grind is ${SLOTS[S.slotOf.cafe].dir}. Please hurry, my show starts at ten to six!`, `고마워! 데일리 그라인드는 ${SLOTS[S.slotOf.cafe].dirKo}에 있어. 서둘러주렴, 내 드라마가 6시 10분 전에 시작해!`, true];
     return [`${cap(orderEn(o))}, from the Daily Grind. To go, please, dear.`, `데일리 그라인드에서 ${orderKo(o)}. 포장으로 부탁해.`, true];
   },
