@@ -741,6 +741,8 @@ e: $C_1 + C_2 = 2$, $C_1 - C_2 = 0$ 이므로 $C_1 = C_2 = 1$. $2\cosh x$ 와 �
 c: $x^2y'' + axy' + by = 0$ 에 $y = x^m$ 을 넣으면 보조방정식 $m^2 + (a - 1)m + b = 0$
 c: 서로 다른 실근: $C_1x^{m_1} + C_2x^{m_2}$ / 중근: $x^m(C_1 + C_2\ln x)$
 c: 복소근 $\alpha \pm \beta i$: $x^{\alpha}\left[A\cos(\beta\ln x) + B\sin(\beta\ln x)\right]$
+c: $(x - a)^2y'' + a_1(x - a)y' + by = 0$ 처럼 $x$ 대신 $x - a$ 가 들어간 꼴은 $t = x - a$ 로 치환하면 보통의 오일러-코시가 돼요.
+c: $x = e^t$ 로 두면 $xy' = \dfrac{dy}{dt}$, $x^2y'' = \dfrac{d^2y}{dt^2} - \dfrac{dy}{dt}$ 가 되어 상수계수 ODE로 풀 수 있어요. 마지막에 $t = \ln x$ 로 되돌려요.
 Q mc
 q: $x^2y'' + axy' + by = 0$ 의 보조방정식은?
 a: $m^2 + (a - 1)m + b = 0$
@@ -776,7 +778,34 @@ w: $y = e^{x}$
 w: $x = \ln t$
 w: $y = ux$
 e: $x = e^t$ 이면 $x\dfrac{d}{dx} = \dfrac{d}{dt}$ 가 되어 상수계수가 돼요.
-
+Q mc
+q: $(x - 2)^2y'' - 2(x - 2)y' + 2y = 0$ 의 일반해는?
+a: $C_1(x - 2) + C_2(x - 2)^2$
+w: $C_1x + C_2x^2$
+w: $C_1(x + 2) + C_2(x + 2)^2$
+w: $(x - 2)\left[C_1 + C_2\ln(x - 2)\right]$
+e: $t = x - 2$ 로 두면 $t^2y'' - 2ty' + 2y = 0$, 보조방정식 $m^2 - 3m + 2 = 0 \Rightarrow m = 1, 2$. 마지막에 $t$ 를 $x - 2$ 로 되돌려요.
+Q mc
+q: $x = e^t$ 로 치환할 때 $x^2y''$ 는 무엇이 될까요?
+a: $\dfrac{d^2y}{dt^2} - \dfrac{dy}{dt}$
+w: $\dfrac{d^2y}{dt^2}$
+w: $\dfrac{d^2y}{dt^2} + \dfrac{dy}{dt}$
+w: $e^{2t}\dfrac{d^2y}{dt^2}$
+e: $y' = \dfrac1x\dfrac{dy}{dt}$ 를 한 번 더 $x$로 미분하면 $y'' = \dfrac{1}{x^2}\left(\dfrac{d^2y}{dt^2} - \dfrac{dy}{dt}\right)$. 곱의 미분에서 $-\dfrac{dy}{dt}$ 가 생겨요.
+Q mc
+q: $x^2y'' + 3xy' + y = 0$ 에 $x = e^t$ 를 넣으면 어떤 상수계수 ODE가 될까요?
+a: $\dfrac{d^2y}{dt^2} + 2\dfrac{dy}{dt} + y = 0$
+w: $\dfrac{d^2y}{dt^2} + 3\dfrac{dy}{dt} + y = 0$
+w: $\dfrac{d^2y}{dt^2} + 4\dfrac{dy}{dt} + y = 0$
+w: $\dfrac{d^2y}{dt^2} - 2\dfrac{dy}{dt} + y = 0$
+e: $\left(\dfrac{d^2y}{dt^2} - \dfrac{dy}{dt}\right) + 3\dfrac{dy}{dt} + y$. $y'$ 계수 $3$에서 $1$을 빼는 게 보조방정식의 $(a - 1)$ 과 같은 이유예요.
+Q mc
+q: 위 식을 풀어 $x$로 되돌린 일반해는?
+a: $\dfrac{C_1 + C_2\ln x}{x}$
+w: $\dfrac{C_1}{x} + C_2x$
+w: $(C_1 + C_2x)e^{-x}$
+w: $x(C_1 + C_2\ln x)$
+e: 특성근 $\lambda = -1$ 중근이라 $y = (C_1 + C_2t)e^{-t}$. $t = \ln x$, $e^{-t} = \dfrac1x$ 를 넣어요. 오일러-코시로 바로 풀면 $m^2 + 2m + 1 = 0$ 으로 같은 답이에요.
 ## 13 | 2계 ODE | 론스키안과 해의 독립
 c: $W(y_1, y_2) = \begin{vmatrix} y_1 & y_2 \\ y_1' & y_2' \end{vmatrix} = y_1y_2' - y_1'y_2$
 c: $W \ne 0$ 이면 두 해는 **선형독립**이고, 일반해를 만들 수 있어요.
