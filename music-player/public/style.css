@@ -204,6 +204,7 @@ input[type=range]::-moz-range-thumb { width: 12px; height: 12px; border: 0; bord
 .dialog::backdrop { background: rgba(0,0,0,.6); }
 .dialog h3 { margin: 0 0 14px; }
 .dialog input { width: 100%; }
+.field-list { display: grid; gap: 12px; }
 .dialog-actions { display: flex; flex-direction: row-reverse; justify-content: flex-start; gap: 8px; margin-top: 18px; }
 .choice-list { display: grid; gap: 4px; max-height: 300px; overflow: auto; }
 .choice-list button { text-align: left; background: var(--panel-2); border: 1px solid transparent; padding: 10px 12px; border-radius: 8px; }

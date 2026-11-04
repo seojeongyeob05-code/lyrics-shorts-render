@@ -41,13 +41,14 @@ export function setupMediaSession({ audio, getTrack, onPlay, onPause, onNext, on
   };
   ['loadedmetadata', 'seeked', 'ratechange', 'play', 'pause'].forEach((e) => audio.addEventListener(e, updatePosition));
 
-  let shownId;
+  let shownKey;
   return {
-    // 곡이 바뀔 때만 메타데이터를 새로 만들고, 재생 상태는 매번 맞춘다.
+    // 곡이나 곡 정보가 바뀔 때만 메타데이터를 새로 만들고, 재생 상태는 매번 맞춘다.
     update() {
       const track = getTrack();
-      if (track?.id !== shownId) {
-        shownId = track?.id;
+      const key = track ? JSON.stringify([track.id, track.title, track.artist, track.album, track.hasCover]) : null;
+      if (key !== shownKey) {
+        shownKey = key;
         const meta = trackMetadata(track, location.origin);
         session.metadata = meta ? new MediaMetadata(meta) : null;
       }

@@ -242,6 +242,7 @@ function openTrackMenu(anchor, i) {
     ['다음에 재생', () => { playNext([t.id]); toast('다음에 재생합니다'); }],
     ['대기열에 추가', () => { addToQueue([t.id]); toast('대기열에 추가했습니다'); }],
     ['플레이리스트에 추가…', safe(() => addToPlaylistFlow([t.id]))],
+    ['곡 정보 수정…', safe(() => editTrack(t))],
     null,
     state.view.type === 'playlist'
       ? ['플레이리스트에서 제거', safe(() => removeFromPlaylist(t.entryId)), 'danger']
@@ -256,6 +257,25 @@ async function deleteTrack(t) {
   await Promise.all([loadLibrary(), loadPlaylists()]);
   await refreshView();
   toast('삭제했습니다');
+}
+
+async function editTrack(t) {
+  const field = (label, name, value, required) => h('label', {}, label,
+    h('input', { name, value: value ?? '', maxlength: 200, required: required || null }));
+  const inputs = [
+    field('제목', 'title', t.title, true),
+    field('아티스트', 'artist', t.artist),
+    field('앨범', 'album', t.album),
+  ];
+  const result = await openDialog('곡 정보 수정', [h('div', { class: 'field-list' }, inputs)]);
+  if (result !== 'ok') return;
+  const value = (name) => inputs.find((el) => el.querySelector('input').name === name).querySelector('input').value.trim();
+  await api('PATCH', `/api/tracks/${t.id}`, { title: value('title'), artist: value('artist'), album: value('album') });
+  await loadLibrary();
+  await refreshView();
+  renderPlayer();
+  renderQueue();
+  toast('곡 정보를 바꿨습니다');
 }
 
 async function createPlaylist() {

@@ -123,6 +123,32 @@ test('업로드: 자모가 분리된(NFD) 파일명은 NFC 제목으로 저장�
   assert.equal((await call('DELETE', `/api/tracks/${added[0].id}`)).status, 204);
 });
 
+test('곡 정보 수정: 제목·아티스트·앨범을 바꾸고 잘못된 값은 거부한다', async () => {
+  const patch = (body) => call('PATCH', `/api/tracks/${trackId}`, { body });
+
+  let res = await patch({ title: '  봄날 (Remastered) ', artist: '정엽', album: 'Spring'.normalize('NFD') });
+  assert.equal(res.status, 200);
+  assert.deepEqual(
+    (({ title, artist, album }) => ({ title, artist, album }))(await res.json()),
+    { title: '봄날 (Remastered)', artist: '정엽', album: 'Spring' },
+  );
+
+  // 보낸 필드만 바뀌고, 빈 문자열은 '없음'(null)이 된다.
+  res = await patch({ album: '' });
+  const updated = await res.json();
+  assert.equal(updated.title, '봄날 (Remastered)');
+  assert.equal(updated.album, null);
+
+  assert.equal((await patch({ title: '   ' })).status, 400);
+  assert.equal((await patch({ artist: 123 })).status, 400);
+  assert.equal((await patch({ title: 'x'.repeat(201) })).status, 400);
+  assert.equal((await patch({})).status, 400);
+  assert.equal((await call('PATCH', '/api/tracks/9999', { body: { title: 'a' } })).status, 404);
+
+  const list = await (await call('GET', '/api/tracks')).json();
+  assert.equal(list.find((t) => t.id === trackId).artist, '정엽');
+});
+
 test('스트리밍은 Range 요청을 지원한다', async () => {
   const full = await call('GET', `/api/tracks/${trackId}/stream`);
   assert.equal(full.status, 200);

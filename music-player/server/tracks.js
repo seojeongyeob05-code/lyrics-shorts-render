@@ -148,6 +148,26 @@ export function createTracksRouter(db, config) {
     res.status(201).json({ added, duplicates, rejected: req.rejected ?? [] });
   });
 
+  // 곡 정보 수정. 제목은 필수, 아티스트·앨범은 비우면 '알 수 없음'으로 돌아간다. 파일 태그는 건드리지 않는다.
+  router.patch('/:id', (req, res) => {
+    const track = getTrack(req.params.id);
+    if (!track) return res.status(404).json({ error: '곡을 찾을 수 없습니다' });
+    const fields = {};
+    for (const key of ['title', 'artist', 'album']) {
+      if (!(key in (req.body ?? {}))) continue;
+      const value = req.body[key];
+      if (value !== null && typeof value !== 'string') return res.status(400).json({ error: '값이 올바르지 않습니다' });
+      const text = tagText(value ?? '');
+      if (text && text.length > 200) return res.status(400).json({ error: '200자를 넘을 수 없습니다' });
+      fields[key] = text;
+    }
+    if ('title' in fields && !fields.title) return res.status(400).json({ error: '제목은 비울 수 없습니다' });
+    if (!Object.keys(fields).length) return res.status(400).json({ error: '바꿀 내용이 없습니다' });
+    const sets = Object.keys(fields).map((k) => `${k} = ?`).join(', ');
+    db.prepare(`UPDATE tracks SET ${sets} WHERE id = ?`).run(...Object.values(fields), track.id);
+    res.json(toTrackJson(getTrack(track.id)));
+  });
+
   router.delete('/:id', async (req, res) => {
     const track = getTrack(req.params.id);
     if (!track) return res.status(404).json({ error: '곡을 찾을 수 없습니다' });
