@@ -1,0 +1,107 @@
+"""명령줄 진입점.
+
+    python -m shorts render song.lrc --audio song.mp3 --bg bg.jpg --start 0:45 --duration 30
+    python -m shorts frame song.lrc --at 0:50 -o preview.png
+"""
+
+from __future__ import annotations
+
+import argparse
+import os
+import re
+import subprocess
+import sys
+import time
+
+from PIL import Image
+
+from . import lrc
+from .frame import FrameRenderer, Style
+from .video import VideoOptions, render_video
+
+_TIME = re.compile(r"^(?:(\d+):)?(\d+(?:\.\d+)?)$")
+
+
+def parse_time(text: str) -> float:
+    """'45', '0:45', '1:02.5' 같은 표기를 초로."""
+    m = _TIME.match(text.strip())
+    if not m:
+        raise argparse.ArgumentTypeError(f"시간 형식이 아닙니다: {text!r} (예: 45, 0:45, 1:02.5)")
+    minutes, seconds = m.group(1), float(m.group(2))
+    if minutes is not None and seconds >= 60:
+        raise argparse.ArgumentTypeError(f"초는 60 미만이어야 합니다: {text!r}")
+    return int(minutes or 0) * 60 + seconds
+
+
+def probe_duration(path: str) -> float:
+    out = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+         "-of", "default=nw=1:nk=1", path],
+        capture_output=True, text=True)
+    if out.returncode != 0:
+        raise SystemExit(f"음원 길이를 읽지 못했습니다: {path}\n{out.stderr.strip()}")
+    return float(out.stdout)
+
+
+def _renderer(args) -> FrameRenderer:
+    bg = Image.open(args.bg) if args.bg else None
+    return FrameRenderer(Style(font_path=args.font), background=bg)
+
+
+def cmd_render(args) -> None:
+    song_len = probe_duration(args.audio) if args.audio else None
+    lyrics = lrc.load(args.lrc, duration=song_len)
+    if not lyrics.lines:
+        raise SystemExit(f"가사 줄이 없습니다: {args.lrc}")
+
+    end_of_song = song_len if song_len is not None else lyrics.lines[-1].end
+    if args.start >= end_of_song:
+        raise SystemExit(f"--start({args.start:g}s)가 곡 길이({end_of_song:g}s)를 넘습니다")
+    duration = args.duration or end_of_song - args.start
+    duration = min(duration, end_of_song - args.start)
+
+    clip = lyrics.clip(args.start, args.start + duration)
+    out = args.out or os.path.splitext(args.lrc)[0] + ".mp4"
+    t0 = time.perf_counter()
+    drawn = render_video(clip, out, duration, _renderer(args), VideoOptions(fps=args.fps),
+                         audio=args.audio, audio_start=args.start)
+    print(f"{out}  ({duration:.1f}s, 그린 프레임 {drawn}장, {time.perf_counter() - t0:.1f}s 소요)")
+
+
+def cmd_frame(args) -> None:
+    lyrics = lrc.load(args.lrc)
+    out = args.out or os.path.splitext(args.lrc)[0] + ".png"
+    _renderer(args).render(lyrics, args.at).save(out)
+    print(out)
+
+
+def build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(prog="python -m shorts", description="가사 쇼츠 렌더러")
+    sub = p.add_subparsers(dest="command", required=True)
+
+    common = argparse.ArgumentParser(add_help=False)
+    common.add_argument("lrc", help="LRC 가사 파일")
+    common.add_argument("-o", "--out", help="출력 파일 (기본: 가사 파일 이름)")
+    common.add_argument("--bg", help="배경 이미지")
+    common.add_argument("--font", help="폰트 파일 (기본: 한글 폰트 자동 탐색)")
+
+    r = sub.add_parser("render", parents=[common], help="mp4 영상 만들기")
+    r.add_argument("--audio", help="음원 파일")
+    r.add_argument("--start", type=parse_time, default=0.0, help="시작 지점 (예: 0:45)")
+    r.add_argument("--duration", type=parse_time, help="길이 (기본: 곡 끝까지)")
+    r.add_argument("--fps", type=int, default=30)
+    r.set_defaults(func=cmd_render)
+
+    f = sub.add_parser("frame", parents=[common], help="한 장면 PNG 미리보기")
+    f.add_argument("--at", type=parse_time, default=0.0, help="미리볼 시각 (예: 0:50)")
+    f.set_defaults(func=cmd_frame)
+    return p
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = build_parser().parse_args(argv)
+    args.func(args)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

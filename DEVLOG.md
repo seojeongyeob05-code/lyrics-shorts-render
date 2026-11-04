@@ -29,3 +29,12 @@
 - 테스트 6개 추가(전체 29개 통과): 명령 구성, 상태 키, 실제 인코딩(영상만/음원 구간 포함/실패 보고)
 - 정리: 파이프 닫기 누락으로 인한 ResourceWarning, Pillow 14에서 사라질 `getdata()` 사용 제거
 - 다음: 5단계 — CLI(`python -m shorts render song.lrc --audio a.mp3 --bg bg.jpg --start 0:45 --duration 30`). `--start`가 있으면 `Lyrics.clip()` + `audio_start`로 이어 붙이면 되므로 6단계(구간 자르기)도 거의 같이 끝날 듯
+
+## 2026-11-04 — 5일차: CLI + 구간 렌더
+- `shorts/cli.py`, `python -m shorts`
+  - `render`: `--audio`, `--bg`, `--font`, `--start`, `--duration`, `--fps`, `-o`. 음원이 있으면 ffprobe로 곡 길이를 읽어 마지막 줄 끝과 `--duration` 상한으로 씀. `--start` 구간은 `Lyrics.clip()` + 음원 `audio_start`로 맞춤 → 로드맵 6단계(구간 자르기)도 함께 완료
+  - `frame`: 특정 시각 한 장면을 PNG로 미리보기 (영상 뽑기 전에 배경/폰트 확인용)
+  - 시간 표기 `45` / `0:45` / `1:02.5` 지원, 잘못된 입력·곡 길이를 넘는 시작점은 알기 쉬운 에러로
+- README에 사용법 추가
+- 테스트 6개 추가(전체 35개 통과). 12초 하이라이트 1080x1920 렌더 약 2.5초
+- 다음: 7단계 — 효과. 우선 줄이 바뀔 때 짧은 페이드(이게 들어가면 프레임 재사용 키에 "전환 중" 상태가 추가돼야 함)와 하단 진행 바

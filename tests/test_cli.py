@@ -1,0 +1,84 @@
+import argparse
+import contextlib
+import io
+import json
+import os
+import shutil
+import subprocess
+import tempfile
+import unittest
+
+from PIL import Image
+
+from shorts import cli
+
+HAVE_FFMPEG = shutil.which("ffmpeg") and shutil.which("ffprobe")
+LRC = "[00:01.00]하나\n[00:03.00]둘\n[00:05.00]셋\n[00:07.00]넷\n"
+
+
+class ParseTimeTest(unittest.TestCase):
+    def test_formats(self):
+        self.assertEqual(cli.parse_time("45"), 45)
+        self.assertEqual(cli.parse_time("0:45"), 45)
+        self.assertEqual(cli.parse_time("1:02.5"), 62.5)
+        self.assertEqual(cli.parse_time(" 2:00 "), 120)
+
+    def test_rejects_bad_input(self):
+        for bad in ["", "abc", "1:2:3", "1:75", "-3"]:
+            with self.assertRaises(argparse.ArgumentTypeError, msg=bad):
+                cli.parse_time(bad)
+
+
+class CliTest(unittest.TestCase):
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.dir)
+        self.lrc = os.path.join(self.dir, "song.lrc")
+        with open(self.lrc, "w", encoding="utf-8") as f:
+            f.write(LRC)
+
+    def run_cli(self, *argv):
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            cli.main(list(argv))
+        return buf.getvalue()
+
+    def test_frame_preview_default_name_and_background(self):
+        bg = os.path.join(self.dir, "bg.png")
+        Image.new("RGB", (50, 50), (10, 120, 200)).save(bg)
+        out = self.run_cli("frame", self.lrc, "--at", "0:00.5", "--bg", bg)
+        png = os.path.join(self.dir, "song.png")
+        self.assertIn(png, out)
+        img = Image.open(png)
+        self.assertEqual(img.size, (1080, 1920))
+        self.assertEqual(img.getpixel((5, 5)), (10, 120, 200))
+
+    def test_start_after_song_end_is_an_error(self):
+        with self.assertRaises(SystemExit) as cm:
+            self.run_cli("render", self.lrc, "--start", "1:00")
+        self.assertIn("곡 길이", str(cm.exception))
+
+    @unittest.skipUnless(HAVE_FFMPEG, "ffmpeg 없음")
+    def test_render_segment_with_audio(self):
+        audio = os.path.join(self.dir, "a.m4a")
+        subprocess.run(["ffmpeg", "-loglevel", "error", "-f", "lavfi", "-i",
+                        "sine=duration=9", "-c:a", "aac", audio], check=True)
+        out = os.path.join(self.dir, "clip.mp4")
+        msg = self.run_cli("render", self.lrc, "--audio", audio, "--start", "2.5",
+                           "--duration", "3", "--fps", "10", "-o", out)
+        self.assertIn("clip.mp4", msg)
+        info = json.loads(subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "format=duration:stream=codec_type",
+             "-of", "json", out], capture_output=True, text=True, check=True).stdout)
+        self.assertAlmostEqual(float(info["format"]["duration"]), 3, delta=0.1)
+        self.assertEqual(len(info["streams"]), 2)
+
+    @unittest.skipUnless(HAVE_FFMPEG, "ffmpeg 없음")
+    def test_duration_is_capped_at_song_end(self):
+        # 음원 없이: 마지막 줄 끝(7초 + 최대 8초 = 15초)까지만
+        msg = self.run_cli("render", self.lrc, "--start", "10", "--duration", "30", "--fps", "5")
+        self.assertIn("(5.0s", msg)
+
+
+if __name__ == "__main__":
+    unittest.main()
