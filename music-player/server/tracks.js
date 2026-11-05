@@ -29,6 +29,7 @@ export function toTrackJson(row) {
     discNo: row.disc_no,
     duration: row.duration,
     hasCover: Boolean(row.cover),
+    hasLyrics: Boolean(row.lyrics),
     createdAt: row.created_at,
   };
 }
@@ -61,6 +62,22 @@ export async function backfillHashes(db, musicDir) {
     }
   }
   return missing.length;
+}
+
+export const MAX_LYRICS = 100_000;
+
+function lrcTimestamp(ms) {
+  const cs = Math.round(ms / 10);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `[${pad(Math.floor(cs / 6000))}:${pad(Math.floor(cs / 100) % 60)}.${pad(cs % 100)}]`;
+}
+
+// 파일 태그에 들어 있는 가사를 LRC 텍스트로 바꾼다. 싱크 가사가 있으면 그것을, 없으면 일반 가사를 쓴다.
+export function lyricsFromTags(tags = []) {
+  const synced = tags.find((t) => t.syncText?.length && t.timeStampFormat === 2); // 2 = 밀리초
+  if (synced) return synced.syncText.map((l) => lrcTimestamp(l.timestamp ?? 0) + (l.text ?? '')).join('\n');
+  const plain = tags.find((t) => t.text?.trim());
+  return plain ? plain.text.trim().slice(0, MAX_LYRICS) : null;
 }
 
 async function readMetadata(filePath) {
@@ -103,8 +120,8 @@ export function createTracksRouter(db, config) {
 
   router.post('/', upload.array('files'), async (req, res) => {
     const insert = db.prepare(`
-      INSERT INTO tracks (title, artist, album, track_no, disc_no, duration, filename, mime, size, cover, created_at, hash)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO tracks (title, artist, album, track_no, disc_no, duration, filename, mime, size, cover, created_at, hash, lyrics)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const findByHash = db.prepare('SELECT id, title FROM tracks WHERE hash = ?');
     const added = [];
@@ -142,6 +159,7 @@ export function createTracksRouter(db, config) {
         cover,
         Date.now(),
         hash,
+        lyricsFromTags(common.lyrics),
       );
       added.push(toTrackJson(getTrack(lastInsertRowid)));
     }
@@ -165,6 +183,24 @@ export function createTracksRouter(db, config) {
     if (!Object.keys(fields).length) return res.status(400).json({ error: '바꿀 내용이 없습니다' });
     const sets = Object.keys(fields).map((k) => `${k} = ?`).join(', ');
     db.prepare(`UPDATE tracks SET ${sets} WHERE id = ?`).run(...Object.values(fields), track.id);
+    res.json(toTrackJson(getTrack(track.id)));
+  });
+
+  router.get('/:id/lyrics', (req, res) => {
+    const track = getTrack(req.params.id);
+    if (!track) return res.status(404).json({ error: '곡을 찾을 수 없습니다' });
+    res.json({ lyrics: track.lyrics ?? null });
+  });
+
+  // 가사 저장. 빈 값이나 null이면 가사를 지운다.
+  router.put('/:id/lyrics', (req, res) => {
+    const track = getTrack(req.params.id);
+    if (!track) return res.status(404).json({ error: '곡을 찾을 수 없습니다' });
+    const value = req.body?.lyrics;
+    if (value != null && typeof value !== 'string') return res.status(400).json({ error: '가사는 문자열이어야 합니다' });
+    const lyrics = value?.replace(/\r\n?/g, '\n').trim().normalize('NFC') || null;
+    if (lyrics && lyrics.length > MAX_LYRICS) return res.status(400).json({ error: '가사가 너무 깁니다' });
+    db.prepare('UPDATE tracks SET lyrics = ? WHERE id = ?').run(lyrics, track.id);
     res.json(toTrackJson(getTrack(track.id)));
   });
 

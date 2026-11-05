@@ -149,6 +149,38 @@ test('곡 정보 수정: 제목·아티스트·앨범을 바꾸고 잘못된 값
   assert.equal(list.find((t) => t.id === trackId).artist, '정엽');
 });
 
+test('가사: 저장, 조회, 삭제와 잘못된 값 거부', async () => {
+  const url = `/api/tracks/${trackId}/lyrics`;
+  assert.deepEqual(await (await call('GET', url)).json(), { lyrics: null });
+
+  let res = await call('PUT', url, { body: { lyrics: '  [00:01.00]첫 줄\r\n[00:02.00]둘째 줄\n' } });
+  assert.equal(res.status, 200);
+  assert.equal((await res.json()).hasLyrics, true);
+  assert.deepEqual(await (await call('GET', url)).json(), { lyrics: '[00:01.00]첫 줄\n[00:02.00]둘째 줄' });
+  const list = await (await call('GET', '/api/tracks')).json();
+  assert.equal(list.find((t) => t.id === trackId).hasLyrics, true);
+
+  assert.equal((await call('PUT', url, { body: { lyrics: 42 } })).status, 400);
+  assert.equal((await call('PUT', url, { body: { lyrics: 'x'.repeat(100_001) } })).status, 400);
+  assert.equal((await call('PUT', '/api/tracks/9999/lyrics', { body: { lyrics: 'a' } })).status, 404);
+
+  res = await call('PUT', url, { body: { lyrics: '   ' } });
+  assert.equal((await res.json()).hasLyrics, false);
+  assert.deepEqual(await (await call('GET', url)).json(), { lyrics: null });
+});
+
+test('업로드: 파일에 들어 있는 싱크 가사를 LRC로 가져온다', async () => {
+  const form = new FormData();
+  const flac = fs.readFileSync(new URL('./fixtures/with-lyrics.flac', import.meta.url));
+  form.append('files', new Blob([flac], { type: 'audio/flac' }), 'with-lyrics.flac');
+  const { added } = await (await call('POST', '/api/tracks', { form })).json();
+  assert.equal(added[0].title, '가사 있는 곡');
+  assert.equal(added[0].hasLyrics, true);
+  const { lyrics } = await (await call('GET', `/api/tracks/${added[0].id}/lyrics`)).json();
+  assert.equal(lyrics, '[00:00.50]첫 줄\n[00:01.20]둘째 줄');
+  assert.equal((await call('DELETE', `/api/tracks/${added[0].id}`)).status, 204);
+});
+
 test('스트리밍은 Range 요청을 지원한다', async () => {
   const full = await call('GET', `/api/tracks/${trackId}/stream`);
   assert.equal(full.status, 200);

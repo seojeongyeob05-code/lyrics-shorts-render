@@ -53,6 +53,7 @@ CREATE INDEX IF NOT EXISTS idx_playlist_tracks ON playlist_tracks(playlist_id, p
 function migrate(db) {
   const trackColumns = db.prepare('PRAGMA table_info(tracks)').all().map((c) => c.name);
   if (!trackColumns.includes('hash')) db.exec('ALTER TABLE tracks ADD COLUMN hash TEXT');
+  if (!trackColumns.includes('lyrics')) db.exec('ALTER TABLE tracks ADD COLUMN lyrics TEXT');
   db.exec('CREATE INDEX IF NOT EXISTS idx_tracks_hash ON tracks(hash)');
 }
 

@@ -58,6 +58,14 @@
       <div id="queue-list" class="queue-list"></div>
     </aside>
 
+    <aside class="queue" id="lyrics" hidden>
+      <div class="queue-head">
+        <h3>가사</h3>
+        <button class="link" id="lyrics-edit">가사 편집</button>
+      </div>
+      <div id="lyrics-body" class="lyrics-body"></div>
+    </aside>
+
     <footer class="player">
       <div class="now">
         <div class="cover" id="now-cover"></div>
@@ -83,6 +91,7 @@
       <div class="extras">
         <button class="icon-btn" id="btn-mute" title="음소거"></button>
         <input type="range" id="volume" min="0" max="1" step="0.01" value="1" aria-label="볼륨">
+        <button class="icon-btn" id="btn-lyrics" title="가사"></button>
         <button class="icon-btn" id="btn-queue" title="재생 대기열"></button>
       </div>
     </footer>

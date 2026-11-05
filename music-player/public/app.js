@@ -1,5 +1,6 @@
 import { matchesQuery } from './search.js';
 import { setupMediaSession } from './media-session.js';
+import { parseLyrics, currentLineIndex } from './lyrics.js';
 
 // ───────────── 유틸 ─────────────
 const $ = (sel) => document.querySelector(sel);
@@ -52,6 +53,7 @@ const ICON = {
   repeatOne: '<svg viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2zm-4-2V9h-1l-2 1v1h1.5v4z"/></svg>',
   volume: '<svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4M14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6"/></svg>',
   mute: '<svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9zm13.6 3 2.7-2.7-1.4-1.4-2.7 2.7-2.7-2.7-1.4 1.4 2.7 2.7-2.7 2.7 1.4 1.4 2.7-2.7 2.7 2.7 1.4-1.4z"/></svg>',
+  lyrics: '<svg viewBox="0 0 24 24"><path fill-rule="evenodd" d="M4 3h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H8l-4 4zm3 5v2h10V8zm0 4v2h7v-2z"/></svg>',
   queue: '<svg viewBox="0 0 24 24"><path d="M3 6h12v2H3zm0 4h12v2H3zm0 4h8v2H3zm14 0V6h4v2h-2v8a3 3 0 1 1-2-2.83"/></svg>',
   more: '<svg viewBox="0 0 24 24"><path d="M6 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4m6 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4m6 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4"/></svg>',
   close: '<svg viewBox="0 0 24 24"><path d="M19 6.4 17.6 5 12 10.6 6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12z"/></svg>',
@@ -243,6 +245,7 @@ function openTrackMenu(anchor, i) {
     ['대기열에 추가', () => { addToQueue([t.id]); toast('대기열에 추가했습니다'); }],
     ['플레이리스트에 추가…', safe(() => addToPlaylistFlow([t.id]))],
     ['곡 정보 수정…', safe(() => editTrack(t))],
+    [t.hasLyrics ? '가사 편집…' : '가사 추가…', safe(() => editLyrics(t))],
     null,
     state.view.type === 'playlist'
       ? ['플레이리스트에서 제거', safe(() => removeFromPlaylist(t.entryId)), 'danger']
@@ -558,6 +561,7 @@ function cycleRepeat() {
 function queueChanged() {
   renderPlayer();
   renderQueue();
+  loadLyrics();
   highlightPlaying();
   savePlayer();
 }
@@ -641,6 +645,110 @@ function renderQueue() {
     h('div', { class: 'queue-label' }, `다음 곡 · ${upcoming.length}`),
     ...upcoming.map((it, k) => row(it, player.index + 1 + k)),
   );
+}
+
+// ───────────── 가사 ─────────────
+const lyricsState = { trackId: null, parsed: null, active: -1 };
+
+const currentPanel = () => (!$('#queue').hidden ? 'queue' : !$('#lyrics').hidden ? 'lyrics' : null);
+
+// 오른쪽 패널은 대기열과 가사 중 하나만 연다.
+function setPanel(name) {
+  $('#queue').hidden = name !== 'queue';
+  $('#lyrics').hidden = name !== 'lyrics';
+  $('#btn-queue').classList.toggle('active', name === 'queue');
+  $('#btn-lyrics').classList.toggle('active', name === 'lyrics');
+  store.set('mp_panel', name);
+  if (name === 'lyrics') loadLyrics(true);
+}
+const togglePanel = (name) => setPanel(currentPanel() === name ? null : name);
+
+async function loadLyrics(force = false) {
+  if ($('#lyrics').hidden) return;
+  const t = currentTrack();
+  if (!force && lyricsState.trackId === (t?.id ?? null)) return;
+  lyricsState.trackId = t?.id ?? null;
+  lyricsState.parsed = null;
+  if (!t) return renderLyrics();
+  if (!t.hasLyrics) {
+    lyricsState.parsed = parseLyrics('');
+    return renderLyrics();
+  }
+  renderLyrics();
+  let parsed;
+  try {
+    parsed = parseLyrics((await api('GET', `/api/tracks/${t.id}/lyrics`)).lyrics);
+  } catch (err) {
+    toast(err.message);
+    parsed = parseLyrics('');
+  }
+  if (lyricsState.trackId !== t.id) return; // 불러오는 사이 곡이 바뀜
+  lyricsState.parsed = parsed;
+  renderLyrics();
+}
+
+function renderLyrics() {
+  const box = $('#lyrics-body');
+  const t = currentTrack();
+  const parsed = lyricsState.parsed;
+  $('#lyrics-edit').hidden = !t;
+  box.classList.toggle('synced', Boolean(parsed?.synced));
+  lyricsState.active = -1;
+  if (!t) return box.replaceChildren(h('div', { class: 'empty' }, '재생 중인 곡이 없습니다'));
+  if (!parsed) return box.replaceChildren(h('div', { class: 'empty' }, '가사를 불러오는 중…'));
+  if (!parsed.lines.length) {
+    return box.replaceChildren(h('div', { class: 'empty' },
+      h('div', {}, '이 곡에는 가사가 없습니다.'),
+      h('button', { class: 'btn', onclick: safe(() => editLyrics(t)) }, '가사 추가')));
+  }
+  box.replaceChildren(...parsed.lines.map((line, i) => h('p', {
+    class: 'lyric-line',
+    dataset: { idx: i },
+    title: parsed.synced ? '이 부분부터 재생' : null,
+    onclick: parsed.synced ? () => {
+      audio.currentTime = line.time;
+      if (audio.paused) audio.play().catch(() => {});
+    } : null,
+  }, line.text || (parsed.synced ? '♪' : '\u00a0'))));
+  syncLyrics(true);
+}
+
+// 재생 위치에 맞는 줄을 강조하고 가운데로 스크롤한다.
+function syncLyrics(jump = false) {
+  const parsed = lyricsState.parsed;
+  if ($('#lyrics').hidden || !parsed?.synced || lyricsState.trackId !== currentTrack()?.id) return;
+  const i = currentLineIndex(parsed.lines, audio.currentTime);
+  if (i === lyricsState.active) return;
+  lyricsState.active = i;
+  const box = $('#lyrics-body');
+  box.querySelector('.lyric-line.active')?.classList.remove('active');
+  const el = box.querySelector(`.lyric-line[data-idx="${i}"]`);
+  if (!el) return;
+  el.classList.add('active');
+  box.scrollTo({ top: el.offsetTop - box.clientHeight / 2 + el.offsetHeight / 2, behavior: jump ? 'auto' : 'smooth' });
+}
+
+async function editLyrics(t) {
+  const current = t.hasLyrics ? (await api('GET', `/api/tracks/${t.id}/lyrics`)).lyrics : '';
+  const textarea = h('textarea', { name: 'lyrics', placeholder: '[00:12.34] 가사 첫 줄\n[00:17.80] 가사 둘째 줄', spellcheck: 'false' });
+  textarea.value = current ?? '';
+  const fileInput = h('input', { type: 'file', accept: '.lrc,.txt,text/plain', hidden: true, onchange: async (e) => {
+    const file = e.target.files[0];
+    if (file) textarea.value = await file.text();
+  } });
+  const result = await openDialog(`가사 · ${t.title}`, [
+    h('p', { class: 'dialog-hint' }, '싱크 가사(.lrc, [분:초] 형식)나 일반 가사를 붙여 넣으세요. 비우고 확인하면 가사가 지워집니다.'),
+    textarea,
+    h('div', { class: 'dialog-tools' },
+      h('button', { type: 'button', class: 'link', onclick: () => fileInput.click() }, '.lrc 파일 불러오기'),
+      fileInput),
+  ]);
+  if (result !== 'ok') return;
+  const updated = await api('PUT', `/api/tracks/${t.id}/lyrics`, { lyrics: textarea.value });
+  await loadLibrary();
+  await refreshView();
+  if (currentTrack()?.id === t.id) loadLyrics(true);
+  toast(updated.hasLyrics ? '가사를 저장했습니다' : '가사를 지웠습니다');
 }
 
 // ───────────── 드래그 정렬 ─────────────
@@ -811,12 +919,11 @@ $('#btn-repeat').addEventListener('click', cycleRepeat);
 $('#btn-prev').innerHTML = ICON.prev;
 $('#btn-next').innerHTML = ICON.next;
 $('#btn-queue').innerHTML = ICON.queue;
-$('#btn-queue').addEventListener('click', () => {
-  $('#queue').hidden = !$('#queue').hidden;
-  $('#btn-queue').classList.toggle('active', !$('#queue').hidden);
-  store.set('mp_queue_open', !$('#queue').hidden);
-});
-if (store.get('mp_queue_open', false)) $('#btn-queue').click();
+$('#btn-queue').addEventListener('click', () => togglePanel('queue'));
+$('#btn-lyrics').innerHTML = ICON.lyrics;
+$('#btn-lyrics').addEventListener('click', () => togglePanel('lyrics'));
+$('#lyrics-edit').addEventListener('click', safe(() => currentTrack() && editLyrics(currentTrack())));
+setPanel(store.get('mp_panel', store.get('mp_queue_open', false) ? 'queue' : null));
 $('#queue-clear').addEventListener('click', clearUpcoming);
 
 $('#btn-mute').addEventListener('click', () => {
@@ -846,8 +953,10 @@ audio.addEventListener('timeupdate', () => {
     $('#time-cur').textContent = fmt(audio.currentTime);
     setFill(seek);
   }
+  syncLyrics();
   if (Date.now() - lastSave > 5000) { lastSave = Date.now(); savePlayer(); }
 });
+audio.addEventListener('seeked', () => syncLyrics(true));
 audio.addEventListener('loadedmetadata', () => {
   seek.max = audio.duration || 0;
   $('#time-dur').textContent = fmt(audio.duration);
