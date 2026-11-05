@@ -94,6 +94,7 @@ main.play { display: grid; gap: 16px; grid-template-columns: minmax(0, 1.15fr) m
 .t.gym { background: var(--room-gym); }
 .t.entry { background: var(--hall); box-shadow: inset 0 -0.6cqw 0 var(--sign); }
 .label { position: absolute; display: grid; place-items: start center; padding-top: 0.6cqw; pointer-events: none; }
+.label.far span { background: color-mix(in srgb, var(--sign) 45%, var(--wall)); color: color-mix(in srgb, var(--sign-ink) 55%, transparent); letter-spacing: 0.2em; }
 .label span { font-family: var(--f-sign); font-weight: 800; font-size: 1.85cqw; line-height: 1.05; letter-spacing: 0.04em; text-align: center; background: var(--sign); color: var(--sign-ink); padding: 0.4cqw 0.8cqw; border-radius: 0.5cqw; max-width: 96%; white-space: pre-line; }
 .sprite { position: absolute; width: calc(100% / 15); height: calc(100% / 12); display: grid; place-items: center; font-size: 4.1cqw; line-height: 1; transition: left 0.12s, top 0.12s; pointer-events: none; }
 .sprite.you::after { content: ""; position: absolute; inset: 8%; border-radius: 50%; border: 0.45cqw solid var(--amber); }
@@ -422,7 +423,7 @@ function newLoop() {
     level: LEVEL, end: LEVEL === 2 ? GRANDMA_LEAVES : END,
     order: { drink: pick(Object.keys(DRINKS)), size: pick(Object.keys(SIZES)), milk: pick(Object.keys(MILKS)) },
     bOrder: { drink: null, size: null, milk: null, here: null }, bAsk: null, bSaid: [], carrying: null, heardRequest: false,
-    mistakes: [], visited: new Set(), greeted: new Set(), phrases: [], done: false, lastNpc: null,
+    mistakes: [], read: new Set(), visited: new Set(), greeted: new Set(), phrases: [], done: false, lastNpc: null,
   };
   S.npcs = {
     janitor: [5, 8], grandma: [9, 10],
@@ -457,12 +458,27 @@ function renderStatic() {
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     const d = document.createElement('div'); d.className = tileClass(x, y); tiles.appendChild(d);
   }
+  renderLabels();
+}
+// Signs are only readable from the doorway; once read they stay readable for this loop.
+const DOORS = {};
+MAP.forEach((row, y) => [...row].forEach((ch, x) => { if (DOOR[ch]) DOORS[DOOR[ch]] = [x, y]; }));
+function readSigns() {
+  for (const s in DOORS) {
+    const [dx, dy] = DOORS[s];
+    if (S.read.has(s) || Math.abs(dx - S.x) + Math.abs(dy - S.y) > 1) continue;
+    S.read.add(s);
+    const room = ROOMS[S.roomAt[s]];
+    place(room.name, `${room.ko} 간판`);
+  }
+}
+function renderLabels() {
   const labels = $('labels'); labels.innerHTML = '';
   for (const s in SLOTS) {
     const [bx, by, bw, bh] = SLOTS[s].box;
-    const el = document.createElement('div'); el.className = 'label';
+    const el = document.createElement('div'); el.className = 'label' + (S.read.has(s) ? '' : ' far');
     Object.assign(el.style, { left: bx / W * 100 + '%', top: by / H * 100 + '%', width: bw / W * 100 + '%', height: bh / H * 100 + '%' });
-    el.innerHTML = `<span>${ROOMS[S.roomAt[s]].sign}</span>`;
+    el.innerHTML = `<span>${S.read.has(s) ? ROOMS[S.roomAt[s]].sign : '· · ·'}</span>`;
     labels.appendChild(el);
   }
 }
@@ -475,6 +491,7 @@ function render() {
   };
   for (const id in S.npcs) { const [x, y] = S.npcs[id]; add(x, y, NPC_INFO[id].icon, near === id ? 'near' : ''); }
   add(S.x, S.y, '🧑', 'you');
+  renderLabels();
   $('clock').textContent = clockStr(S.t);
   $('clock').classList.toggle('late', S.end - S.t <= 600);
   $('dusk').style.opacity = Math.min(0.5, (S.t - START) / (S.end - START) * 0.5);
@@ -549,6 +566,7 @@ function move(dx, dy) {
   if (nx < 0 || ny < 0 || nx >= W || ny >= H || MAP[ny][nx] === '#' || npcAt(nx, ny)) return;
   S.x = nx; S.y = ny;
   const z = zoneAt(nx, ny);
+  readSigns();
   if (z !== S.zone) { S.zone = z; if (z !== 'hall') enterRoom(z); }
   closePointer();
   spend(COST.move);
@@ -953,6 +971,7 @@ function intro() {
     <p>영어로만 돌아가는 건물 메이플 코트. 오후 5시 20분부터, 정해진 시간 안에 목표를 이뤄야 해요.</p>
     <ul class="how">
       <li>이 건물의 간판과 사람들의 말은 전부 <b>영어</b>예요. 한국어는 통하지 않아요.</li>
+      <li>간판은 <b>문 앞까지 가야</b> 읽혀요. 하나씩 확인하면 시간이 드니, 사람들에게 길을 묻는 게 빠를 수 있어요.</li>
       <li>문법은 신경 쓰지 마세요. <b>통하면 장땡</b>이에요.</li>
       <li>말이 안 나오면 <b>몸짓</b>을, 정 모르겠으면 <b>번역기</b>를 쓰세요. 대신 시간이 더 들어요.</li>
       <li>옆집 할머니(👵)에게 모르는 단어를 말하면 쉬운 영어로 설명해줘요.</li>
