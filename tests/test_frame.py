@@ -20,6 +20,12 @@ def _rows_with(img, color, tol=10):
     return rows
 
 
+def _ink(img):
+    """배경(검정)이 아닌 픽셀 좌표 집합."""
+    px = img.load()
+    return {(x, y) for y in range(img.height) for x in range(img.width) if px[x, y] != (0, 0, 0)}
+
+
 def _colors(img):
     return {c for _, c in img.getcolors(img.width * img.height)}
 
@@ -75,6 +81,59 @@ class RenderTest(unittest.TestCase):
         r.render(LYRICS, 1.5)
         img = r.render(lrc.Lyrics([]), 0)
         self.assertEqual(_colors(img), {(200, 30, 30)})
+
+
+class EffectsTest(unittest.TestCase):
+    def setUp(self):
+        self.style = Style(width=270, height=480, font_size=24, next_font_size=18, line_gap=12,
+                           bg_color=(0, 0, 0), text_color=(255, 255, 255),
+                           next_color=(255, 200, 0), fade=0.4)
+
+    def _brightest(self, img):
+        return max(max(c) for _, c in img.getcolors(img.width * img.height))
+
+    def test_fade_out_then_in_without_overlap(self):
+        r = FrameRenderer(self.style)
+        # 3.0초에 first → second. 페이드 0.4초: 0.1초 뒤엔 이전 화면이 흐려지는 중,
+        # 0.2초엔 배경만, 0.3초엔 새 화면이 나타나는 중, 0.4초 뒤엔 완전히 새 화면.
+        before = r.render(LYRICS, 2.9)
+        out = r.render(LYRICS, 3.1)
+        blank = r.render(LYRICS, 3.2)
+        into = r.render(LYRICS, 3.3)
+        done = r.render(LYRICS, 3.5)
+        self.assertEqual(self._brightest(before), 255)
+        self.assertLess(self._brightest(out), 255)
+        self.assertEqual(_colors(blank), {self.style.bg_color})
+        self.assertLess(self._brightest(into), 255)
+        self.assertEqual(self._brightest(done), 255)
+        # 사라지는 중엔 이전 화면, 나타나는 중엔 새 화면과 같은 자리에 글자가 있다
+        self.assertLessEqual(_ink(out), _ink(before))
+        self.assertLessEqual(_ink(into), _ink(done))
+        self.assertNotEqual(_ink(before), _ink(done))
+
+    def test_fade_off_matches_plain_frame(self):
+        plain = FrameRenderer(Style(**{**self.style.__dict__, "fade": 0}))
+        self.assertEqual(plain.render(LYRICS, 1.1).tobytes(),
+                         FrameRenderer(self.style).render(LYRICS, 1.5).tobytes())
+
+    def test_progress_bar(self):
+        r = FrameRenderer(self.style)
+        img = r.render(LYRICS, 0.2, progress=0.5)
+        s = self.style
+        y = s.height - s.progress_bottom - s.progress_height // 2
+        w = round(s.width * s.progress_width)
+        x0 = (s.width - w) // 2
+        self.assertEqual(img.getpixel((x0 + 2, y)), s.progress_color)
+        self.assertEqual(img.getpixel((x0 + w - 3, y)), s.progress_track)
+        self.assertEqual(img.getpixel((x0 - 3, y)), s.bg_color)
+        # 진행 바가 캐시된 화면에 남지 않아야 한다
+        self.assertEqual(r.render(LYRICS, 0.2).getpixel((x0 + 2, y)), s.bg_color)
+
+    def test_layers_are_cached(self):
+        r = FrameRenderer(self.style)
+        for k in range(80):
+            r.render(LYRICS, k / 10)
+        self.assertEqual(r.layers_drawn, 4)  # 시작 전, first, second, third
 
 
 if __name__ == "__main__":

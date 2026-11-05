@@ -46,24 +46,18 @@ def render_video(lyrics: Lyrics, out_path: str, duration: float,
     s = renderer.style
     cmd = build_ffmpeg_cmd(out_path, (s.width, s.height), duration, opts, audio, audio_start)
     n_frames = round(duration * opts.fps)
-    drawn = 0
-    last_key = None
-    last_bytes = b""
+    drawn_before = renderer.layers_drawn
     with subprocess.Popen(cmd, stdin=subprocess.PIPE, stderr=subprocess.PIPE) as proc:
         try:
             for k in range(n_frames):
                 t = k / opts.fps
-                # 화면에 보이는 줄이 그대로면 직전 프레임을 재사용한다.
-                key = renderer.state_key(lyrics, t)
-                if key != last_key:
-                    last_bytes = renderer.render(lyrics, t).tobytes()
-                    last_key = key
-                    drawn += 1
-                proc.stdin.write(last_bytes)
+                # 가사 화면은 renderer가 캐시하므로 줄이 바뀔 때만 새로 그린다.
+                img = renderer.render(lyrics, t, progress=t / duration)
+                proc.stdin.write(img.tobytes())
             proc.stdin.close()
         except BrokenPipeError:
             pass  # ffmpeg가 먼저 죽었다. 아래에서 에러 메시지를 보여준다.
         err = proc.stderr.read().decode(errors="replace")
         if proc.wait() != 0:
             raise RuntimeError(f"ffmpeg 실패 (code {proc.returncode}):\n{err.strip()}")
-    return drawn
+    return renderer.layers_drawn - drawn_before
