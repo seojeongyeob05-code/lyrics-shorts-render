@@ -251,6 +251,11 @@ const ROOMS = {
     place: ['MAIL ROOM — Residents only. Packages are picked up at 7 PM.', '우편물실 — 입주민 전용. 택배는 오후 7시에 수거합니다.'] },
   gym: { sign: 'GYM', name: 'GYM', ko: '헬스장',
     place: ['GYM — Open 6 AM to 10 PM. Please wipe the machines after use.', '헬스장 — 오전 6시~오후 10시. 사용 후 기구를 닦아 주세요.'] },
+  // Look-alike signs: "OFFICE" alone is not enough to find the security office.
+  management: { sign: 'MANAGEMENT\nOFFICE', name: 'MANAGEMENT OFFICE', ko: '관리사무소',
+    place: ['MANAGEMENT OFFICE — Rent, parking permits, and repairs. Closed at 5 PM.', '관리사무소 — 월세, 주차 허가, 수리 접수. 오후 5시에 문을 닫아요.'] },
+  staff: { sign: 'STAFF\nONLY', name: 'STAFF ONLY', ko: '직원 전용',
+    place: ['STAFF ONLY — Employees only beyond this point.', '직원 전용 — 이 너머는 직원만 들어갈 수 있어요.'] },
 };
 const COLORS = { black: '검은색', brown: '갈색', red: '빨간색', blue: '파란색' };
 const CONTENTS = {
@@ -305,7 +310,7 @@ const VOCAB = [
   ['found', '찾았다, 발견했다'], ['lost and found', '분실물 보관소'], ['left', '왼쪽'], ['right', '오른쪽'], ['straight ahead', '곧장 앞으로'],
   ['color', '색깔'], ['black', '검은색'], ['brown', '갈색'], ['red', '빨간색'], ['blue', '파란색'], ['look like', '~처럼 생기다'],
   ['inside', '안에'], ['card', '카드'], ['photo', '사진'], ['ticket', '표'], ['restroom', '화장실'], ['mail', '우편'],
-  ['gym', '헬스장'], ['package', '택배, 소포'], ['help', '돕다'], ['closed', '문을 닫은'],
+  ['gym', '헬스장'], ['management office', '관리사무소'], ['staff', '직원'], ['only', '~만, 오직'], ['package', '택배, 소포'], ['help', '돕다'], ['closed', '문을 닫은'],
   ['small', '작은'], ['medium', '중간'], ['large', '큰'], ['size', '크기'], ['milk', '우유'], ['oat', '귀리'], ['almond', '아몬드'],
   ['to go', '가지고 갈게요 (포장)'], ['for here', '여기서 먹을게요'], ['favor', '부탁'],
   ['patrol', '순찰'], ['rounds', '순찰 (한 바퀴 돌기)'], ['back', '돌아온'], ['quarter', '15분 (한 시간의 4분의 1)'],
@@ -329,6 +334,8 @@ const GLOSSARY = {
   mail: 'MAIL is letters and packages. The MAIL ROOM has boxes for everyone.',
   restroom: 'The RESTROOM is the toilet, dear.',
   gym: 'A GYM is where young people run and lift heavy things. Not for me!',
+  management: 'The MANAGEMENT office runs the building. Rent, repairs, parking. Not lost things, dear!',
+  staff: 'STAFF means the people who work here. STAFF ONLY means only workers can go in.',
   describe: 'DESCRIBE means tell what it looks like. Big? Small? What color?',
   look: '"What does it LOOK LIKE?" means: tell me about it. What color? Big or small?',
   package: 'A PACKAGE is a box that comes in the mail.',
@@ -394,7 +401,9 @@ let S = null;
 function newLoop() {
   const prevSec = S ? S.slotOf.security : null;
   let order;
-  do { order = shuffle(Object.keys(ROOMS)); } while (prevSec && order[['a','b','c','d','e'].indexOf(prevSec)] === 'security');
+  // Always the three rooms the situations need, plus the office look-alike and one more extra room.
+  const pool = ['security', 'cafe', 'restroom', 'management', pick(['mail', 'gym', 'staff'])];
+  do { order = shuffle(pool); } while (prevSec && order[['a','b','c','d','e'].indexOf(prevSec)] === 'security');
   const roomAt = {}, slotOf = {};
   ['a', 'b', 'c', 'd', 'e'].forEach((s, i) => { roomAt[s] = order[i]; slotOf[order[i]] = s; });
   totalLoops += 1; store.set('ag520.loops', totalLoops);
@@ -510,6 +519,8 @@ function drawFloor(g, kind, x, y) {
   } else if (kind === 'security') speckle(g, px, py, x, y, '#7c8ea8', ['#6d7f98', '#8c9db5']);
   else if (kind === 'mail') speckle(g, px, py, x, y, '#6a6283', ['#625a7a', '#746c8e', '#5b5372']);
   else if (kind === 'gym') speckle(g, px, py, x, y, '#40474f', ['#4b535c', '#363c44']);
+  else if (kind === 'management') speckle(g, px, py, x, y, '#8b7a63', ['#7f6f59', '#978670']);
+  else if (kind === 'staff') speckle(g, px, py, x, y, '#6f7378', ['#65696e', '#7a7e83', '#5c6065']);
   else if (kind === 'restroom') {
     g.fillStyle = '#d4e6e2'; g.fillRect(px, py, TS, TS);
     g.fillStyle = '#a7c2bd'; for (let i = 0; i < TS; i += 4) { g.fillRect(px + i, py, 1, TS); g.fillRect(px, py + i, TS, 1); }
@@ -533,7 +544,7 @@ function drawFloor(g, kind, x, y) {
     g.fillStyle = '#9fd0e0'; g.fillRect(px, py + 14, TS, 2);
   }
 }
-const FACE = { hall: ['#bba77f', '#7d5b3e'], security: ['#8fa0b8', '#55657d'], cafe: ['#a24f3b', '#6e2f22'], restroom: ['#d7e7e3', '#93aea9'], mail: ['#9a90b3', '#5f557a'], gym: ['#5b626f', '#3a3f49'] };
+const FACE = { hall: ['#bba77f', '#7d5b3e'], security: ['#8fa0b8', '#55657d'], cafe: ['#a24f3b', '#6e2f22'], restroom: ['#d7e7e3', '#93aea9'], mail: ['#9a90b3', '#5f557a'], gym: ['#5b626f', '#3a3f49'], management: ['#c9b48f', '#7d6a4c'], staff: ['#7d8590', '#4a5059'] };
 function drawWall(g, x, y) {
   const px = x * TS, py = y * TS;
   g.fillStyle = '#2a2338'; g.fillRect(px, py, TS, TS);
@@ -564,6 +575,11 @@ function drawWallDecor(g, kind, tiles) {
       if (mid || tiles.length < 3) { rect(g, px + 4, py + 5, 8, 6, '#bfe3f0'); rect(g, px + 5, py + 6, 2, 3, '#ffffff'); rect(g, px + 4, py + 12, 8, 3, '#f3f6f6'); }
     } else if (kind === 'mail') {
       for (let r = 0; r < 3; r++) for (let k = 0; k < 3; k++) { rect(g, px + 2 + k * 4, py + 5 + r * 3, 3, 2, '#b8913f'); rect(g, px + 2 + k * 4, py + 6 + r * 3, 3, 1, '#5e4a20'); }
+    } else if (kind === 'management') {
+      if (i % 2 === 0) { rect(g, px + 3, py + 5, 10, 10, '#7d8590'); for (let k = 0; k < 3; k++) { rect(g, px + 3, py + 8 + k * 3, 10, 1, '#4a5059'); rect(g, px + 7, py + 6 + k * 3, 2, 1, '#c9ccd6'); } }
+      else { rect(g, px + 3, py + 6, 10, 6, '#f3ead8'); rect(g, px + 4, py + 7, 8, 1, '#8b7a63'); rect(g, px + 4, py + 9, 5, 1, '#8b7a63'); }
+    } else if (kind === 'staff') {
+      for (let k = 0; k < 3; k++) { rect(g, px + 1 + k * 5, py + 5, 4, 10, '#5a7fa8'); rect(g, px + 2 + k * 5, py + 7, 2, 1, '#2c3d70'); rect(g, px + 4 + k * 5, py + 10, 1, 2, '#c9ccd6'); }
     } else if (kind === 'gym') {
       rect(g, px + 1, py + 5, 14, 7, '#9fb7c9'); rect(g, px + 3, py + 6, 1, 5, '#e6f2fa'); rect(g, px + 1, py + 12, 14, 1, '#2a2f37');
     } else if (kind === 'hall') {
@@ -763,6 +779,10 @@ function enterRoom(slot) {
   if (key === target || S.visited.has(key)) { S.visited.add(key); return; }
   S.visited.add(key);
   const sec = S.slotOf[target], who = S.level === 1 ? '청소부' : '청소부나 할머니';
+  if (key === 'management' && target === 'security') {
+    miss('거의 맞음', `${room.name}에 들어감`, 'OFFICE(사무실)를 찾은 건 맞았어요! 하지만 MANAGEMENT OFFICE는 관리사무소예요. 경비실은 SECURITY OFFICE예요. security는 보안·경비라는 뜻이에요.', ['security office', 'management office', 'security']);
+    return;
+  }
   if (S.janitorTold) {
     const opp = (SLOTS[sec].side === 'L' && SLOTS[slot].side === 'R') || (SLOTS[sec].side === 'R' && SLOTS[slot].side === 'L');
     if (opp) miss('정반대', `${room.name}에 들어감`,
