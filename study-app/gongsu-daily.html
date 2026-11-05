@@ -2,7 +2,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
 <script>
 window.MathJax = {
   tex: { inlineMath: [['$', '$']], displayMath: [['$$', '$$']] },
@@ -30,7 +30,12 @@ window.MathJax = {
   --bad: #C2341F;
   --bad-soft: #FCEBE7;
   --flame: #EA6A12;
-  --radius: 16px;
+  --radius: 18px;
+  --f-display: "Jua", "IBM Plex Sans KR", system-ui, sans-serif;
+  --f-body: "Gowun Dodum", "IBM Plex Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif;
+  --u0: #0E9F8E; --u1: #3A9E4F; --u2: #2F6FE4; --u3: #8B55D9; --u4: #E8702A;
+  --u: var(--accent);
+  --on-u: #FFFFFF;
   --f-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
   --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
 }
@@ -39,12 +44,14 @@ window.MathJax = {
     --bg: #0F1114; --surface: #181B20; --sunken: #20242A; --ink: #ECEEF1; --ink-2: #C3C8D0; --muted: #8B93A0;
     --line: #2A2F37; --accent: #7EA2FF; --accent-ink: #0C1424; --accent-soft: #1C2742; --ok: #4ADE80; --ok-soft: #12291C;
     --bad: #FF8A73; --bad-soft: #2E1814; --flame: #FB923C; color-scheme: dark;
+    --u0: #2DC2AE; --u1: #5CC46F; --u2: #6E9BFF; --u3: #B48BF5; --u4: #FF9550; --on-u: #0E1217;
   }
 }
 :root[data-theme="dark"] {
   --bg: #0F1114; --surface: #181B20; --sunken: #20242A; --ink: #ECEEF1; --ink-2: #C3C8D0; --muted: #8B93A0;
   --line: #2A2F37; --accent: #7EA2FF; --accent-ink: #0C1424; --accent-soft: #1C2742; --ok: #4ADE80; --ok-soft: #12291C;
   --bad: #FF8A73; --bad-soft: #2E1814; --flame: #FB923C; color-scheme: dark;
+    --u0: #2DC2AE; --u1: #5CC46F; --u2: #6E9BFF; --u3: #B48BF5; --u4: #FF9550; --on-u: #0E1217;
 }
 html, body { min-height: 100%; }
 body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
@@ -217,6 +224,65 @@ main.home { padding-block: 4px 64px; display: grid; gap: 28px; }
 .ma b { flex: none; font-size: 12px; color: var(--ok); }
 .ma span { min-width: 0; overflow-x: auto; }
 .me { font-size: 14px; color: var(--ink-2); }
+/* ---- playful layer: unit colors, chunky pressable blocks, rounded display type ---- */
+body { line-height: 1.65; }
+.qtext { font-family: var(--f-display); font-weight: 400; font-size: 22px; letter-spacing: 0; line-height: 1.5; }
+.disc, .pill, .unit-head span, .ring span b, .opt .k, .chip .n, .missed h3 .num, .gcount { font-family: var(--f-display); font-weight: 400; }
+.pill { font-size: 16px; }
+.row .tx b, .review .tx b, .mq, .gl dt, .ma b, .explain b, .missed h3, .unit-head h2 { font-family: var(--f-display); font-weight: 400; letter-spacing: 0; }
+.row .tx b, .review .tx b { font-size: 17px; }
+.eyebrow { font-family: var(--f-display); font-weight: 400; font-size: 14px; letter-spacing: 0.02em; }
+.btn { font-family: var(--f-display); font-weight: 400; font-size: 19px; }
+.brand { font-family: var(--f-display); font-weight: 400; font-size: 23px; letter-spacing: 0; color: var(--accent); }
+.hero, .unit, #lesson { --accent: var(--u); --accent-ink: var(--on-u); --accent-soft: color-mix(in srgb, var(--u) 15%, var(--surface)); }
+.row.done .disc { color: var(--on-u); }
+.hero { border: 2px solid var(--line); box-shadow: 0 4px 0 var(--line); border-radius: 24px; }
+.hero h1 { font-family: var(--f-display); font-weight: 400; font-size: 27px; letter-spacing: 0; }
+.hero .eyebrow { color: var(--u); }
+.btn { border-radius: 16px; font-weight: 700; letter-spacing: 0.01em; box-shadow: 0 4px 0 color-mix(in srgb, var(--accent) 62%, #000); transition: transform .08s, box-shadow .08s, filter .15s; }
+.btn:active { transform: translateY(4px); box-shadow: 0 0 0 transparent; }
+.btn.ok { box-shadow: 0 4px 0 color-mix(in srgb, var(--ok) 62%, #000); }
+.btn.bad { box-shadow: 0 4px 0 color-mix(in srgb, var(--bad) 62%, #000); }
+.btn:disabled { box-shadow: 0 4px 0 var(--line); transform: none; }
+.review { border: 2px solid var(--line); box-shadow: 0 4px 0 var(--line); border-radius: 20px; transition: transform .08s, box-shadow .08s; }
+.review:not(:disabled):active { transform: translateY(4px); box-shadow: none; }
+.unit-head { background: var(--u); color: var(--on-u); border-radius: 20px; padding: 14px 18px; box-shadow: 0 4px 0 color-mix(in srgb, var(--u) 62%, #000); align-items: center; }
+.unit-head h2 { font-family: var(--f-display); font-weight: 400; font-size: 23px; letter-spacing: 0; }
+.unit-head span { color: var(--on-u); opacity: .9; background: color-mix(in srgb, var(--on-u) 18%, transparent); border-radius: 99px; padding: 2px 10px; }
+.unit-bar { display: none; }
+.steps { border: 2px solid var(--line); border-radius: 22px; padding: 8px 0; }
+.steps li.was-done + li::before { background: var(--u); }
+.row.done .disc { background: var(--u); border-color: color-mix(in srgb, var(--u) 70%, #000); box-shadow: 0 3px 0 color-mix(in srgb, var(--u) 62%, #000); }
+.row.next { background: color-mix(in srgb, var(--u) 9%, var(--surface)); }
+.row.next .disc { background: var(--u); color: var(--on-u); border-color: var(--u); box-shadow: 0 0 0 5px color-mix(in srgb, var(--u) 22%, transparent); animation: breathe 2.4s ease-in-out infinite; }
+.row .go { flex: none; font-family: var(--f-display); font-size: 15px; color: var(--on-u); background: var(--u); border-radius: 99px; padding: 3px 12px; box-shadow: 0 3px 0 color-mix(in srgb, var(--u) 62%, #000); }
+.row.next .chev { display: none; }
+@keyframes breathe { 0%, 100% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--u) 24%, transparent); } 50% { box-shadow: 0 0 0 9px color-mix(in srgb, var(--u) 8%, transparent); } }
+.concept h2, .finish h2 { font-family: var(--f-display); font-weight: 400; letter-spacing: 0; }
+.concept h2 { font-size: 30px; color: var(--u); }
+.finish h2 { font-size: 38px; }
+.concept li { border: 2px solid var(--line); }
+.opt, .chip { border: 2px solid var(--line); box-shadow: 0 4px 0 var(--line); border-radius: 16px; transition: transform .08s, box-shadow .08s, background .12s, border-color .12s; }
+.opt:active, .chip:active { transform: translateY(4px); box-shadow: none; }
+.opt.sel { box-shadow: 0 4px 0 color-mix(in srgb, var(--accent) 55%, var(--line)); }
+.opt.right { box-shadow: 0 4px 0 color-mix(in srgb, var(--ok) 55%, var(--line)); animation: pop .32s ease-out; }
+.opt.wrong { box-shadow: 0 4px 0 color-mix(in srgb, var(--bad) 55%, var(--line)); animation: shake .35s ease-in-out; }
+.opts.locked .opt { transform: none; }
+.slots .chip { box-shadow: 0 4px 0 color-mix(in srgb, var(--accent) 40%, var(--line)); }
+.prog { height: 14px; }
+.prog i { box-shadow: inset 0 -4px 0 rgba(0, 0, 0, .12); }
+.verdict { font-family: var(--f-display); font-weight: 400; font-size: 24px; flex-wrap: wrap; }
+.combo { font-family: var(--f-display); font-size: 14px; color: #fff; background: var(--flame); border-radius: 99px; padding: 2px 10px; animation: pop .35s ease-out; }
+.sheet .btn.ok, .sheet .btn.bad { font-family: var(--f-display); font-weight: 400; font-size: 19px; }
+.finish .badge { width: 88px; height: 88px; background: var(--u); color: var(--on-u); box-shadow: 0 5px 0 color-mix(in srgb, var(--u) 62%, #000); animation: pop .5s ease-out; }
+.finish .badge svg { width: 42px; height: 42px; }
+.tiles { border: 2px solid var(--line); border-radius: 20px; }
+.tile b { font-family: var(--f-display); font-weight: 400; font-size: 28px; }
+.gloss-card { border-radius: 26px 26px 0 0; }
+.gloss h3 { font-family: var(--f-display); font-weight: 400; font-size: 26px; letter-spacing: 0; color: var(--accent); }
+@keyframes pop { 0% { transform: scale(.92); } 60% { transform: scale(1.04); } 100% { transform: none; } }
+@keyframes shake { 0%, 100% { transform: none; } 25% { transform: translateX(-6px); } 50% { transform: translateX(5px); } 75% { transform: translateX(-3px); } }
+.confetti { position: fixed; inset: 0; z-index: 60; pointer-events: none; }
 mjx-container { font-size: 106% !important; }
 mjx-container[display="true"] { margin: .4em 0 !important; overflow-x: auto; overflow-y: hidden; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
@@ -1492,6 +1558,12 @@ e: $\sin t * \sin t$ 를 계산하면 나와요. 세 번째 $\sin t * \cos t$ �
   const CROSS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg>';
   const CHEV = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>';
   const mins = l => Math.max(2, Math.round(l.qs.length * 0.5 + 1));
+  const UNIT_NAMES = [...new Set(LESSONS.map(l => l.unit))];
+  const unitColor = name => "var(--u" + Math.max(0, UNIT_NAMES.indexOf(name)) % 5 + ")";
+  function greeting() {
+    const h = new Date().getHours();
+    return h < 5 ? "늦은 밤이에요" : h < 12 ? "좋은 아침이에요" : h < 18 ? "좋은 오후예요" : "좋은 저녁이에요";
+  }
   function renderHome() {
     rollDay();
     $("st-xp").textContent = S.xp;
@@ -1505,7 +1577,8 @@ e: $\sin t * \sin t$ 를 계산하면 나와요. 세 번째 $\sin t * \cos t$ �
 
     const next = LESSONS.find(l => !S.lessons[l.id]);
     const heroL = next || LESSONS[LESSONS.length - 1];
-    $("hero-eyebrow").textContent = next ? (Object.keys(S.lessons).length ? "이어서 학습" : "첫 레슨") : "모든 레슨 완료 · 다시 풀기";
+    $("hero-eyebrow").textContent = next ? greeting() + "! " + (Object.keys(S.lessons).length ? "이어서 해볼까요?" : "시작해볼까요?") : "전부 끝냈어요! 다시 풀어볼까요?";
+    document.querySelector(".hero").style.setProperty("--u", unitColor(heroL.unit));
     $("hero-title").textContent = heroL.id + "강 " + heroL.title;
     $("hero-meta").textContent = heroL.unit + " · " + heroL.qs.length + "문제 · 약 " + mins(heroL) + "분";
     $("hero-btn").onclick = () => startLesson(heroL);
@@ -1522,6 +1595,7 @@ e: $\sin t * \sin t$ 를 계산하면 나와요. 세 번째 $\sin t * \cos t$ �
       const done = u.ls.filter(l => S.lessons[l.id]).length;
       const sec = document.createElement("section");
       sec.className = "unit";
+      sec.style.setProperty("--u", unitColor(u.name));
       sec.innerHTML = '<div class="unit-head"><h2>' + esc(u.name) + '</h2><span>' + done + '/' + u.ls.length + '</span></div>' +
         '<div class="unit-bar"><i style="width:' + Math.round(done / u.ls.length * 100) + '%"></i></div><ol class="steps"></ol>';
       const list = sec.querySelector(".steps");
@@ -1532,7 +1606,7 @@ e: $\sin t * \sin t$ 를 계산하면 나와요. 세 번째 $\sin t * \cos t$ �
         if (rec) li.className = "was-done";
         const sub = isNext ? "다음 레슨 · 약 " + mins(l) + "분" : rec ? "정답률 " + rec.best + "% · " + rec.n + "회 완료" : l.qs.length + "문제";
         li.innerHTML = '<button type="button" class="row' + (rec ? " done" : "") + (isNext ? " next" : "") + '"><span class="disc">' + (rec ? CHECK : l.id) +
-          '</span><span class="tx"><b>' + l.id + '강 ' + esc(l.title) + '</b><span>' + sub + '</span></span>' + CHEV + '</button>';
+          '</span><span class="tx"><b>' + l.id + '강 ' + esc(l.title) + '</b><span>' + sub + '</span></span>' + (isNext ? '<span class="go">시작</span>' : "") + CHEV + '</button>';
         li.firstChild.addEventListener("click", () => startLesson(l));
         list.appendChild(li);
       });
@@ -1555,6 +1629,7 @@ e: $\sin t * \sin t$ 를 계산하면 나와요. 세 번째 $\sin t * \cos t$ �
   function openSession() {
     $("home").hidden = true; $("lesson").hidden = false;
     document.body.style.overflow = "hidden";
+    $("lesson").style.setProperty("--u", sess.kind === "lesson" ? unitColor(sess.lesson.unit) : "var(--u3)");
     showStep();
   }
   function closeSession() {
@@ -1665,17 +1740,52 @@ e: $\sin t * \sin t$ 를 계산하면 나와요. 세 번째 $\sin t * \cos t$ �
       sess.retries[q.id] = (sess.retries[q.id] || 0) + 1;
       if (sess.retries[q.id] <= 2) { sess.steps.push({ t: "q", q }); sess.total++; }
     }
+    sess.combo = ok ? (sess.combo || 0) + 1 : 0;
+    const pick = a => a[Math.floor(Math.random() * a.length)];
+    const word = ok ? pick(["정답이에요!", "좋아요!", "완벽해요!", "멋져요!", "바로 그거예요!"]) : pick(["아쉬워요", "괜찮아요, 지금 익히면 돼요", "다음엔 맞힐 수 있어요"]);
+    const combo = ok && sess.combo >= 3 ? '<span class="combo">' + sess.combo + '연속 정답</span>' : "";
     let ansHtml = "";
     if (!ok) {
       if (q.type === "in") ansHtml = '<p class="explain"><b>정답:</b> ' + md(q.a[0]) + '</p>';
       if (q.type === "ord") ansHtml = '<p class="explain"><b>올바른 순서:</b><br>' + q.s.map((s, i) => (i + 1) + ". " + md(s)).join("<br>") + '</p>';
     }
     const retryNote = !ok && sess.retries[q.id] <= 2 ? " 이 문제는 레슨 끝에 다시 나와요." : "";
-    sheet('<p class="verdict"><i>' + (ok ? CHECK : CROSS) + '</i>' + (ok ? "정답이에요" : "아쉬워요") + '</p>' + ansHtml + (q.e ? '<p class="explain">' + md(q.e) + retryNote + '</p>' : (retryNote ? '<p class="explain">' + retryNote + '</p>' : "")) +
+    sheet('<p class="verdict"><i>' + (ok ? CHECK : CROSS) + '</i>' + word + combo + '</p>' + ansHtml + (q.e ? '<p class="explain">' + md(q.e) + retryNote + '</p>' : (retryNote ? '<p class="explain">' + retryNote + '</p>' : "")) +
       '<button class="btn wide ' + (ok ? "ok" : "bad") + '" id="next" type="button">계속</button>', ok ? "ok" : "bad");
     const nx = $("next");
     nx.focus({ preventScroll: true });
     nx.addEventListener("click", () => { sess.i++; showStep(); });
+  }
+
+  function confetti() {
+    if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const cv = document.createElement("canvas");
+    cv.className = "confetti";
+    document.body.appendChild(cv);
+    const dpr = window.devicePixelRatio || 1;
+    cv.width = innerWidth * dpr; cv.height = innerHeight * dpr;
+    const ctx = cv.getContext("2d");
+    ctx.scale(dpr, dpr);
+    const cs = getComputedStyle(document.documentElement);
+    const colors = ["--u0", "--u1", "--u2", "--u3", "--u4", "--flame"].map(v => cs.getPropertyValue(v).trim() || "#2F6FE4");
+    const parts = Array.from({ length: 110 }, () => ({
+      x: innerWidth / 2 + (Math.random() - .5) * 60, y: innerHeight * .32,
+      vx: (Math.random() - .5) * 11, vy: -Math.random() * 11 - 4,
+      w: 6 + Math.random() * 6, h: 8 + Math.random() * 8, r: Math.random() * 6, vr: (Math.random() - .5) * .35,
+      c: colors[Math.floor(Math.random() * colors.length)]
+    }));
+    const t0 = performance.now();
+    (function frame(t) {
+      const age = t - t0;
+      ctx.clearRect(0, 0, innerWidth, innerHeight);
+      ctx.globalAlpha = Math.max(0, 1 - Math.max(0, age - 1300) / 500);
+      parts.forEach(pt => {
+        pt.vy += .32; pt.vx *= .99; pt.x += pt.vx; pt.y += pt.vy; pt.r += pt.vr;
+        ctx.save(); ctx.translate(pt.x, pt.y); ctx.rotate(pt.r); ctx.fillStyle = pt.c;
+        ctx.fillRect(-pt.w / 2, -pt.h / 2, pt.w, pt.h * Math.abs(Math.cos(pt.r * 2)) + 2); ctx.restore();
+      });
+      if (age < 1800) requestAnimationFrame(frame); else cv.remove();
+    })(t0);
   }
 
   function finish() {
@@ -1695,7 +1805,7 @@ e: $\sin t * \sin t$ 를 계산하면 나와요. 세 번째 $\sin t * \cos t$ �
     persist();
     $("prog-fill").style.width = "100%";
     const stage = $("stage");
-    const title = sess.kind === "review" ? "복습 완료" : acc === 100 ? "완벽해요" : "레슨 완료";
+    const title = sess.kind === "review" ? "복습 완료!" : acc === 100 ? "완벽해요!" : acc >= 70 ? "잘했어요!" : "레슨 완료!";
     const sub = sess.kind === "review" ? "맞힌 문제는 더 긴 간격 뒤에 다시 나와요." : acc === 100 ? "한 번도 안 틀렸어요. 보너스 10 XP." : "틀린 문제는 복습 목록에 들어갔어요.";
     stage.innerHTML = '<div class="finish"><div class="badge">' + CHECK + '</div><h2>' + title + '</h2><p>' + sub + '</p><div class="tiles">' +
       '<div class="tile xp"><b>+' + gained + '</b><span>XP</span></div>' +
@@ -1711,6 +1821,7 @@ e: $\sin t * \sin t$ 를 계산하면 나와요. 세 번째 $\sin t * \cos t$ �
       typeset(stage);
     }
     sheet('<button class="btn wide" id="done" type="button">계속</button>');
+    confetti();
     $("done").addEventListener("click", closeSession);
   }
 
