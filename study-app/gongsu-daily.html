@@ -690,6 +690,7 @@ e: $\sqrt{h_0} = \dfrac{a\sqrt{2g}}{2A}T$ 이므로 $T = \dfrac{2A\sqrt{h_0}}{a\
 c: **$y$가 없는** 식 $F(x, y', y'') = 0$: $p = y'$, $y'' = p'$
 c: **$x$가 없는** 식 $F(y, y', y'') = 0$: $p = y'$, $y'' = p\dfrac{dp}{dy}$
 c: 어느 쪽이든 2계가 1계로 내려가요.
+c: 내려온 1계 식이 변수분리가 안 되면 1계 **선형**으로 보고 적분인자를 써요. 초기조건이 있으면 $p$를 구한 직후 $y'(x_0)$ 로 $C_1$ 부터 정하면 계산이 쉬워져요.
 Q mc
 q: $x\,y'' + y' = 0$ 에서 $p = y'$ 로 치환하면 해는?
 a: $y = C_1\ln|x| + C_2$
@@ -726,6 +727,27 @@ w: $y = C_1e^{x}$
 w: $y = C_1x + C_2$
 w: $y = C_1e^{-x} + C_2$
 e: $p' = p \Rightarrow p = C_1e^{x}$, 한 번 더 적분하면 상수 $C_2$가 생겨요.
+Q mc
+q: $y'' = 1 + (y')^2$ 의 일반해는?
+a: $y = \ln|\sec(x + C_1)| + C_2$
+w: $y = \tan(x + C_1) + C_2$
+w: $y = \ln|\cos(x + C_1)| + C_2$
+w: $y = \arctan x + C_1x + C_2$
+e: $p' = 1 + p^2 \Rightarrow \arctan p = x + C_1 \Rightarrow p = \tan(x + C_1)$. $\int \tan u\,du = -\ln|\cos u| = \ln|\sec u|$ 라서 부호에 주의해요.
+Q mc
+q: $xy'' + y' = x$ 의 일반해는?
+a: $y = \dfrac{x^2}{4} + C_1\ln|x| + C_2$
+w: $y = \dfrac{x^2}{2} + C_1\ln|x| + C_2$
+w: $y = \dfrac{x^2}{4} + C_1x + C_2$
+w: $y = \dfrac{x^3}{6} + C_1\ln|x| + C_2$
+e: $p = y'$ 이면 $xp' + p = x$, 즉 $(xp)' = x$ (적분인자가 이미 곱해진 꼴). $xp = \dfrac{x^2}{2} + C_1 \Rightarrow p = \dfrac{x}{2} + \dfrac{C_1}{x}$ 를 적분해요.
+Q mc
+q: $y'' = y',\; y(0) = 1,\; y'(0) = 2$ 의 해는?
+a: $y = 2e^{x} - 1$
+w: $y = 2e^{x} + 1$
+w: $y = e^{2x}$
+w: $y = e^{x}$
+e: $p = C_1e^x$ 에 $p(0) = y'(0) = 2$ 를 먼저 넣으면 $C_1 = 2$. $y = 2e^x + C_2$ 에 $y(0) = 1$ 이면 $C_2 = -1$.
 ## 10 | 2계 ODE | 공식 계수내림
 c: $y'' + p(x)y' + q(x)y = 0$ 의 해 $y_1$ 하나를 알면 두 번째 해는
 c: $y_2 = y_1\displaystyle\int \frac{e^{-\int p\,dx}}{y_1^2}\,dx$
