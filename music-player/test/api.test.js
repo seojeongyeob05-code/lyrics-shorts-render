@@ -181,6 +181,36 @@ test('업로드: 파일에 들어 있는 싱크 가사를 LRC로 가져온다', 
   assert.equal((await call('DELETE', `/api/tracks/${added[0].id}`)).status, 204);
 });
 
+test('업로드: 같은 이름의 .lrc 파일을 함께 올리면 가사로 붙인다', async () => {
+  const form = new FormData();
+  form.append('files', new Blob([makeWav(4)], { type: 'audio/wav' }), '출근길 노래.wav');
+  form.append('files', new Blob(['﻿[00:01.00]아침\r\n[00:02.00]출근'], { type: 'text/plain' }), '출근길 노래.LRC');
+  const res = await call('POST', '/api/tracks', { form });
+  assert.equal(res.status, 201);
+  const { added, lyrics } = await res.json();
+  assert.equal(added[0].hasLyrics, true);
+  assert.deepEqual(lyrics, { attached: [{ name: '출근길 노래.LRC', trackId: added[0].id, title: '출근길 노래' }], unmatched: [] });
+  const saved = await (await call('GET', `/api/tracks/${added[0].id}/lyrics`)).json();
+  assert.equal(saved.lyrics, '[00:01.00]아침\n[00:02.00]출근');
+  assert.equal((await call('DELETE', `/api/tracks/${added[0].id}`)).status, 204);
+});
+
+test('업로드: .lrc만 올리면 제목이 같은 기존 곡에 붙이고, EUC-KR 파일도 읽는다', async () => {
+  // 이 시점의 trackId 제목은 '봄날 (Remastered)' (곡 정보 수정 테스트에서 바뀜)
+  const eucKr = Buffer.concat([Buffer.from('[00:01.00]'), Buffer.from([0xb0, 0xa1, 0xbb, 0xe7])]); // "가사"
+  const form = new FormData();
+  form.append('files', new Blob([eucKr], { type: 'text/plain' }), '봄날 (remastered).lrc');
+  form.append('files', new Blob(['[00:01.00]아무 곡'], { type: 'text/plain' }), '없는 곡.lrc');
+  form.append('files', new Blob(['   '], { type: 'text/plain' }), '빈 가사.lrc');
+  const { added, lyrics } = await (await call('POST', '/api/tracks', { form })).json();
+  assert.equal(added.length, 0);
+  assert.deepEqual(lyrics.attached, [{ name: '봄날 (remastered).lrc', trackId, title: '봄날 (Remastered)' }]);
+  assert.deepEqual(lyrics.unmatched, ['없는 곡.lrc', '빈 가사.lrc']);
+  assert.deepEqual(await (await call('GET', `/api/tracks/${trackId}/lyrics`)).json(), { lyrics: '[00:01.00]가사' });
+  // 가사 파일은 디스크에 남지 않는다.
+  assert.deepEqual(fs.readdirSync(path.join(dataDir, 'music')).filter((f) => f.endsWith('.lrc')), []);
+});
+
 test('스트리밍은 Range 요청을 지원한다', async () => {
   const full = await call('GET', `/api/tracks/${trackId}/stream`);
   assert.equal(full.status, 200);

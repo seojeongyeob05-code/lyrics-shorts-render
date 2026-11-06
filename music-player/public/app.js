@@ -348,6 +348,19 @@ async function reorderPlaylist(from, to) {
 }
 
 // ───────────── 업로드 ─────────────
+function uploadSummary({ added, duplicates = [], rejected = [], lyrics = { attached: [], unmatched: [] } }) {
+  const parts = [];
+  if (added.length) parts.push(`${added.length}곡을 추가했습니다`);
+  if (lyrics.attached.length) parts.push(`가사 ${lyrics.attached.length}개를 연결했습니다`);
+  let msg = parts.join(', ') || '새로 추가된 곡이 없습니다';
+  const skipped = [];
+  if (duplicates.length) skipped.push(`이미 있는 곡 ${duplicates.length}개`);
+  if (lyrics.unmatched.length) skipped.push(`짝을 못 찾은 가사 ${lyrics.unmatched.length}개`);
+  if (rejected.length) skipped.push(`지원하지 않는 파일 ${rejected.length}개`);
+  if (skipped.length) msg += ` (${skipped.join(', ')} 건너뜀)`;
+  return msg;
+}
+
 function uploadFiles(fileList) {
   const files = [...fileList];
   if (!files.length) return;
@@ -371,12 +384,8 @@ function uploadFiles(fileList) {
     if (xhr.status >= 300) return toast(data?.error || `업로드 실패 (${xhr.status})`);
     await loadLibrary();
     if (state.view.type === 'library') await refreshView();
-    let msg = data.added.length ? `${data.added.length}곡을 추가했습니다` : '새로 추가된 곡이 없습니다';
-    const skipped = [];
-    if (data.duplicates?.length) skipped.push(`이미 있는 곡 ${data.duplicates.length}개`);
-    if (data.rejected.length) skipped.push(`지원하지 않는 파일 ${data.rejected.length}개`);
-    if (skipped.length) msg += ` (${skipped.join(', ')} 건너뜀)`;
-    toast(msg, 4000);
+    toast(uploadSummary(data), 5000);
+    loadLyrics(true); // 지금 재생 중인 곡에 가사가 붙었을 수 있음
   });
   xhr.send(form);
 }

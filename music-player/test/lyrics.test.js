@@ -47,3 +47,9 @@ test('파일 태그의 가사를 LRC 텍스트로 바꾼다', async () => {
   assert.equal(lyricsFromTags([]), null);
   assert.equal(lyricsFromTags(undefined), null);
 });
+
+test('가사 파일은 UTF-8이 아니면 EUC-KR로 읽는다', async () => {
+  const { decodeLyricsFile } = await import('../server/tracks.js');
+  assert.equal(decodeLyricsFile(Buffer.from('[00:01.00]가사', 'utf8')), '[00:01.00]가사');
+  assert.equal(decodeLyricsFile(Buffer.from([0xb0, 0xa1, 0xbb, 0xe7])), '가사');
+});

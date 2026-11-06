@@ -17,6 +17,8 @@ export const AUDIO_TYPES = new Map([
   ['.webm', 'audio/webm'],
 ]);
 
+const LYRICS_EXT = '.lrc';
+
 const COVER_EXT = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'image/gif': '.gif' };
 
 export function toTrackJson(row) {
@@ -80,6 +82,18 @@ export function lyricsFromTags(tags = []) {
   return plain ? plain.text.trim().slice(0, MAX_LYRICS) : null;
 }
 
+// 가사 파일은 UTF-8이 아니면 한국어 환경에서 흔한 EUC-KR(CP949)로 읽는다.
+export function decodeLyricsFile(buffer) {
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+  } catch {
+    return new TextDecoder('euc-kr').decode(buffer);
+  }
+}
+
+// "봄날의 노래.mp3"와 "봄날의 노래.lrc"를 짝짓는 키 (확장자 제외, 대소문자·자모 분리 무시)
+const pairKey = (name) => path.basename(name, path.extname(name)).normalize('NFC').trim().toLowerCase();
+
 async function readMetadata(filePath) {
   try {
     const { common, format } = await parseFile(filePath);
@@ -101,7 +115,8 @@ export function createTracksRouter(db, config) {
     limits: { fileSize: config.maxUploadMb * 1024 * 1024, files: 100 },
     fileFilter: (req, file, cb) => {
       file.originalname = decodeName(file.originalname);
-      const ok = AUDIO_TYPES.has(path.extname(file.originalname).toLowerCase());
+      const ext = path.extname(file.originalname).toLowerCase();
+      const ok = AUDIO_TYPES.has(ext) || ext === LYRICS_EXT;
       if (!ok) (req.rejected ??= []).push(file.originalname);
       cb(null, ok);
     },
@@ -119,6 +134,17 @@ export function createTracksRouter(db, config) {
   });
 
   router.post('/', upload.array('files'), async (req, res) => {
+    const files = req.files ?? [];
+    const isLyrics = (f) => path.extname(f.filename) === LYRICS_EXT;
+    try {
+      res.status(201).json(await saveUploads(files.filter((f) => !isLyrics(f)), files.filter(isLyrics), req.rejected ?? []));
+    } finally {
+      // 가사 파일은 읽어서 DB에 넣었으니 디스크에 남기지 않는다.
+      await Promise.all(files.filter(isLyrics).map((f) => fs.rm(f.path, { force: true })));
+    }
+  });
+
+  async function saveUploads(audioFiles, lyricFiles, rejected) {
     const insert = db.prepare(`
       INSERT INTO tracks (title, artist, album, track_no, disc_no, duration, filename, mime, size, cover, created_at, hash, lyrics)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -126,7 +152,8 @@ export function createTracksRouter(db, config) {
     const findByHash = db.prepare('SELECT id, title FROM tracks WHERE hash = ?');
     const added = [];
     const duplicates = [];
-    for (const file of req.files ?? []) {
+    const batch = new Map(); // 이번에 올린 음원 파일 이름 → 곡 id (중복이면 기존 곡)
+    for (const file of audioFiles) {
       const ext = path.extname(file.filename);
       // 내용이 같은 파일이 이미 있으면 새로 받은 파일은 지우고 건너뛴다 (같은 요청 안의 중복도 포함).
       const hash = await hashFile(file.path);
@@ -134,6 +161,7 @@ export function createTracksRouter(db, config) {
       if (existing) {
         await fs.rm(file.path, { force: true });
         duplicates.push({ name: file.originalname, existing: { id: existing.id, title: existing.title } });
+        batch.set(pairKey(file.originalname), existing.id);
         continue;
       }
       const { common, duration } = await readMetadata(file.path);
@@ -162,9 +190,38 @@ export function createTracksRouter(db, config) {
         lyricsFromTags(common.lyrics),
       );
       added.push(toTrackJson(getTrack(lastInsertRowid)));
+      batch.set(pairKey(file.originalname), Number(lastInsertRowid));
     }
-    res.status(201).json({ added, duplicates, rejected: req.rejected ?? [] });
-  });
+
+    const lyrics = await attachLyricsFiles(lyricFiles, batch);
+    const refreshed = added.map((t) => toTrackJson(getTrack(t.id))); // 가사가 붙었으면 hasLyrics 반영
+    return { added: refreshed, duplicates, rejected, lyrics };
+  }
+
+  // .lrc 파일을 같은 이름의 음원(이번 업로드) 또는 제목이 같은 기존 곡 하나에 붙인다.
+  async function attachLyricsFiles(lyricFiles, batch) {
+    const attached = [];
+    const unmatched = [];
+    if (!lyricFiles.length) return { attached, unmatched };
+    const byTitle = new Map();
+    for (const { id, title } of db.prepare('SELECT id, title FROM tracks').all()) {
+      const key = pairKey(title + LYRICS_EXT);
+      byTitle.set(key, byTitle.has(key) ? null : id); // 같은 제목이 여럿이면 어느 곡인지 알 수 없음
+    }
+    const setLyrics = db.prepare('UPDATE tracks SET lyrics = ? WHERE id = ?');
+    for (const file of lyricFiles) {
+      const key = pairKey(file.originalname);
+      const id = batch.get(key) ?? byTitle.get(key);
+      const text = decodeLyricsFile(await fs.readFile(file.path)).replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n').trim().normalize('NFC');
+      if (!id || !text || text.length > MAX_LYRICS) {
+        unmatched.push(file.originalname);
+        continue;
+      }
+      setLyrics.run(text, id);
+      attached.push({ name: file.originalname, trackId: id, title: getTrack(id).title });
+    }
+    return { attached, unmatched };
+  }
 
   // 곡 정보 수정. 제목은 필수, 아티스트·앨범은 비우면 '알 수 없음'으로 돌아간다. 파일 태그는 건드리지 않는다.
   router.patch('/:id', (req, res) => {
