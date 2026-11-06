@@ -301,6 +301,7 @@ const GESTURES = [
   { id: 'card', label: '카드 내미는 시늉', act: '(카드를 꺼내 내미는 시늉을 한다)', intents: ['c:card'] },
   { id: 'photo', label: '사진 보여주는 시늉', act: '(작은 사진을 들어 보이는 시늉을 한다)', intents: ['c:photo'] },
   { id: 'ticket', label: '표 내미는 시늉', act: '(공연 표를 찢는 시늉을 한다)', intents: ['c:ticket'] },
+  { id: 'sign', label: '서명하는 시늉', act: '(펜을 받아 종이에 이름을 쓰는 시늉을 한다)', intents: ['sign'] },
   { id: 'bow', label: '고개 숙여 인사', act: '(고개를 숙여 인사한다)', intents: ['greet', 'thanks'] },
   { id: 'confused', label: '😕 갸웃하기', act: '(고개를 갸웃한다. 다시 말해달라는 뜻이다)', intents: ['confused'] },
 ];
@@ -310,7 +311,7 @@ const VOCAB = [
   ['found', '찾았다, 발견했다'], ['lost and found', '분실물 보관소'], ['left', '왼쪽'], ['right', '오른쪽'], ['straight ahead', '곧장 앞으로'],
   ['color', '색깔'], ['black', '검은색'], ['brown', '갈색'], ['red', '빨간색'], ['blue', '파란색'], ['look like', '~처럼 생기다'],
   ['inside', '안에'], ['card', '카드'], ['photo', '사진'], ['ticket', '표'], ['restroom', '화장실'], ['mail', '우편'],
-  ['gym', '헬스장'], ['management office', '관리사무소'], ['staff', '직원'], ['only', '~만, 오직'], ['package', '택배, 소포'], ['help', '돕다'], ['closed', '문을 닫은'],
+  ['gym', '헬스장'], ['management office', '관리사무소'], ['staff', '직원'], ['only', '~만, 오직'], ['package', '택배, 소포'], ['help', '돕다'], ['closed', '문을 닫은'], ['sign', '서명하다'], ['signature', '서명'],
   ['small', '작은'], ['medium', '중간'], ['large', '큰'], ['size', '크기'], ['milk', '우유'], ['oat', '귀리'], ['almond', '아몬드'],
   ['to go', '가지고 갈게요 (포장)'], ['for here', '여기서 먹을게요'], ['favor', '부탁'],
   ['patrol', '순찰'], ['rounds', '순찰 (한 바퀴 돌기)'], ['back', '돌아온'], ['quarter', '15분 (한 시간의 4분의 1)'],
@@ -339,6 +340,7 @@ const GLOSSARY = {
   describe: 'DESCRIBE means tell what it looks like. Big? Small? What color?',
   look: '"What does it LOOK LIKE?" means: tell me about it. What color? Big or small?',
   package: 'A PACKAGE is a box that comes in the mail.',
+  sign: 'To SIGN means to write your name, like on a birthday card. (She scribbles in the air.)',
   closed: 'CLOSED means the door is shut. No one is working.',
   size: 'SIZE means how big something is. Small, medium, large!',
   oat: 'OAT is a grain. Oat milk is made from oats, not from cows. It is good for my tummy.',
@@ -817,6 +819,7 @@ function parse(text) {
   if (has(/\b(card|id|student)\b/)) out.add('c:card');
   if (has(/\b(photo|picture|pic|photograph)\b/)) out.add('c:photo');
   if (has(/\b(ticket|concert)\b/)) out.add('c:ticket');
+  if (has(/\b(sign|signature|sure|write|pen)\b/) || /^\s*[A-Z][a-z]+( [A-Z][a-z]+)?\s*$/.test(text)) out.add('sign');
   if (has(/\b(money|cash|dollar|dollars|won)\b/)) out.add('c:money');
   if (has(/\blatte\b/)) out.add('d:latte');
   if (has(/\b(hot chocolate|chocolate|cocoa)\b/)) out.add('d:hot chocolate');
@@ -909,6 +912,7 @@ const R = {
       return say("I'm sorry, I can't just give it to anyone. What color is your wallet?", '죄송하지만 아무한테나 드릴 순 없어요. 지갑이 무슨 색이에요?', false);
     }
     if (S.guardStage === 2) return R.guardContent(I, raw);
+    if (S.guardStage === 3) return R.guardSign(I, raw);
     return say('Have a good evening!', '좋은 저녁 보내세요!');
   },
   guardColor(I, raw, combined) {
@@ -923,12 +927,22 @@ const R = {
     miss('거의 맞음', `"${raw}"`, `색깔로 답한 건 좋았어요! 하지만 당신 지갑은 ${COLORS[S.color]}(${S.color})이에요. 당신은 ${c}(${COLORS[c] || '다른 색'})이라고 했어요.`, [S.color, 'color']);
     return [`Hmm, a ${c} one? No, we don't have a ${c} wallet. Are you sure?`, `음, ${COLORS[c] || c} 지갑이요? 아뇨, ${COLORS[c] || c} 지갑은 없어요. 확실해요?`, true];
   },
+  // Last step: sign the lost-and-found log. Saying yes, writing a name or miming a signature all count.
+  guardSign(I, raw) {
+    if (I.has('sign') || I.has('yes')) {
+      S.guardStage = 4; S.won = true; S.phrases.push([raw, 'Sure. (sign your name)']);
+      setTimeout(win, 700);
+      return ["Thank you. Here's your wallet. Be careful next time!", '감사합니다. 지갑 여기 있어요. 다음엔 조심하세요!', true];
+    }
+    if (I.has('confused')) return ['(He taps the empty line with his pen.) Sign. Write your name. Here.', '(빈칸을 펜으로 톡톡 치며) 서명. 이름을 쓰세요. 여기.', true];
+    miss('무관', `"${raw}"`, '"Please sign here"는 "여기에 서명해 주세요"예요. 분실물을 찾아갈 때 장부에 이름을 쓰는 거예요. sure나 OK라고 하거나 서명하는 시늉을 하면 됐어요.', ['sign']);
+    return ["Sorry, I need your signature before I can give it to you. Just sign here, please.", '죄송하지만 서명을 받아야 드릴 수 있어요. 여기에 서명만 해주세요.', false];
+  },
   guardContent(I, raw) {
     const contents = contentsIn(I);
     if (contents.includes(S.content)) {
-      S.guardStage = 3; S.won = true; S.phrases.push([raw, CONTENTS[S.content].model]);
-      setTimeout(win, 700);
-      return [`A ${CONTENTS[S.content].en}? Let me check... Yep, here it is! Here's your wallet. Be careful next time!`, `${CONTENTS[S.content].ko}이요? 확인해볼게요… 네, 여기 있네요! 지갑 여기요. 다음엔 조심하세요!`, true];
+      S.guardStage = 3; S.phrases.push([raw, CONTENTS[S.content].model]);
+      return [`A ${CONTENTS[S.content].en}? Let me check... Yep, this one is yours. Last thing: please sign here. (He holds out a clipboard and a pen.)`, `${CONTENTS[S.content].ko}이요? 확인해볼게요… 네, 당신 거 맞네요. 마지막으로 여기에 서명해 주세요. (클립보드와 펜을 내민다)`, true];
     }
     if (I.has('confused')) return ["Inside the wallet. What's in it? (He mimes opening a wallet.) A card? A photo? A ticket?", '지갑 안에요. 뭐가 들었어요? (지갑을 여는 시늉을 하며) 카드? 사진? 표?', true];
     if (contents.includes('money')) return ["There's a little cash in all of them. Anything else inside? Something only you would know?", '전부 현금이 조금씩 들어 있어요. 다른 건요? 당신만 알 만한 거요.', true];
@@ -1197,6 +1211,9 @@ function fail() {
   }
   if (S.level === 1 && S.guardStage === 1 && !items.some(m => m.words.includes('color'))) {
     items.push({ cat: '무관', act: '경비원의 질문에 답하지 못함', explain: '"What does it look like? What color is it?"는 "어떻게 생겼어요? 무슨 색이에요?"예요. 같은 색 물건을 가리키기만 해도 통했어요.', at: '6:00 PM', words: ['color', 'look like'] });
+  }
+  if (S.level === 1 && S.guardStage === 3 && !items.some(m => m.words.includes('sign'))) {
+    items.push({ cat: '무관', act: '서명하지 못함', explain: '"Please sign here"는 "여기에 서명해 주세요"예요. sure라고 하거나 서명하는 시늉만 해도 지갑을 받을 수 있었어요.', at: clockStr(S.t), words: ['sign'] });
   }
   if (S.level === 1 && S.guardStage === 2 && !items.some(m => m.words.includes('inside'))) {
     items.push({ cat: '무관', act: '안에 든 것을 말하지 못함', explain: `"What's inside it?"는 "안에 뭐가 들었어요?"예요. ${CONTENTS[S.content].ko}은 ${CONTENTS[S.content].en}이고, 시늉으로도 보여줄 수 있었어요.`, at: '6:00 PM', words: ['inside'] });
