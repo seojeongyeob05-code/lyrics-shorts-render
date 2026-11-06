@@ -752,6 +752,7 @@ e: $p = C_1e^x$ 에 $p(0) = y'(0) = 2$ 를 먼저 넣으면 $C_1 = 2$. $y = 2e^x
 c: $y'' + p(x)y' + q(x)y = 0$ 의 해 $y_1$ 하나를 알면 두 번째 해는
 c: $y_2 = y_1\displaystyle\int \frac{e^{-\int p\,dx}}{y_1^2}\,dx$
 c: 공식을 쓰기 전에 반드시 $y''$ 계수를 1로 맞춰요.
+c: $y_1$ 이 $\cos$ 꼴이면 공식 안의 적분이 $\int \sec^2 u\,du = \tan u$ 로 나와요. $y_1$ 과 곱하면 $\cos u \tan u = \sin u$ 로 깔끔해져요. 상수배는 버려도 같은 해예요.
 Q mc
 q: 공식을 쓰기 전에 꼭 해야 하는 것은?
 a: $y''$ 의 계수를 1로 만든다 (표준형)
@@ -788,6 +789,20 @@ w: $x\ln x$
 w: $x^2$
 w: $\ln x$
 e: 표준형 $p = \dfrac1x$, $e^{-\int p\,dx} = \dfrac1x$, $\displaystyle\int \frac{1/x}{x^2}dx = -\frac{1}{2x^2}$ 에 $y_1 = x$를 곱하면 $-\dfrac{1}{2x}$
+Q mc
+q: $y'' + y = 0$, $y_1 = \cos x$ 일 때 공식으로 구한 $y_2$는?
+a: $\sin x$
+w: $x\cos x$
+w: $\tan x$
+w: $\cos x\ln|\cos x|$
+e: $p = 0$ 이라 $e^{-\int p\,dx} = 1$. $\displaystyle\int \frac{dx}{\cos^2 x} = \tan x$, $y_2 = \cos x\tan x = \sin x$
+Q mc
+q: $x^2y'' + xy' + y = 0$, $y_1 = \cos(\ln x)$ 일 때 $y_2$는?
+a: $\sin(\ln x)$
+w: $\ln x\cos(\ln x)$
+w: $x\cos(\ln x)$
+w: $\sin x$
+e: 표준형 $p = \dfrac1x$, $e^{-\int p\,dx} = \dfrac1x$. $u = \ln x$ 로 치환하면 $\displaystyle\int \frac{dx}{x\cos^2(\ln x)} = \tan(\ln x)$, 곱하면 $\sin(\ln x)$. 오일러-코시 보조방정식 $m^2 + 1 = 0$ 의 답과도 같아요.
 ## 11 | 2계 ODE | 상수계수 제차
 c: $y'' + ay' + by = 0$ 에 $y = e^{\lambda x}$ 를 넣으면 특성방정식 $\lambda^2 + a\lambda + b = 0$
 c: 서로 다른 실근: $C_1e^{\lambda_1x} + C_2e^{\lambda_2x}$ / 중근: $(C_1 + C_2x)e^{\lambda x}$
@@ -1547,7 +1562,7 @@ e: $\sin t * \sin t$ 를 계산하면 나와요. 세 번째 $\sin t * \cos t$ �
   const GIDX = {}; GLOSS.forEach((g, i) => { GIDX[g.t] = i; });
   const TERM_RE = new RegExp("(" + GLOSS.map(g => g.t).sort((a, b) => b.length - a.length).map(t => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|") + ")", "g");
   let seenTerms = new Set();
-  // Order-question chips are tap targets, so they get no term links.
+  // Answer options and order chips are tap targets, so they get no term links.
   const mdPlain = s => esc(s).replace(/\*\*(.+?)\*\*/g, '<strong class="hl">$1</strong>');
   function linkTerms(text) {
     return text.replace(TERM_RE, t => {
@@ -1704,7 +1719,7 @@ e: $\sin t * \sin t$ 를 계산하면 나와요. 세 번째 $\sin t * \cos t$ �
     let getAnswer = null;
     if (q.type === "mc") {
       const opts = shuffle(q.a.map(t => ({ t, ok: true })).concat(q.w.map(t => ({ t, ok: false }))));
-      html += '<div class="opts" id="opts" role="radiogroup">' + opts.map((o, i) => '<button type="button" class="opt" role="radio" aria-checked="false" data-i="' + i + '"><span class="k">' + (i + 1) + '</span><span class="t">' + md(o.t) + '</span></button>').join("") + '</div>';
+      html += '<div class="opts" id="opts" role="radiogroup">' + opts.map((o, i) => '<button type="button" class="opt" role="radio" aria-checked="false" data-i="' + i + '"><span class="k">' + (i + 1) + '</span><span class="t">' + mdPlain(o.t) + '</span></button>').join("") + '</div>';
       stage.innerHTML = html;
       let sel = -1;
       stage.querySelectorAll(".opt").forEach(b => b.addEventListener("click", () => {
