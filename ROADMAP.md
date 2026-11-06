@@ -13,7 +13,7 @@
 - [x] 5. CLI: `python -m shorts render song.lrc --audio a.mp3 --bg bg.jpg --start 0:45 --duration 30`
 - [x] 6. 구간 자르기 (하이라이트 30~60초만 렌더)
 - [x] 7. 효과: 페이드 인/아웃, 현재 줄 강조, 진행 바
-- [ ] 8. 노래방식 단어별 하이라이트 (Enhanced LRC `<mm:ss.xx>` 지원)
+- [x] 8. 노래방식 단어별 하이라이트 (Enhanced LRC `<mm:ss.xx>` 지원)
 - [ ] 9. 스타일 프리셋 (JSON/TOML 테마)
 - [ ] 10. 배경: 이미지 블러/켄 번스 줌, 단색/그라데이션
 - [ ] 11. 성능: 동일 프레임 캐싱, 렌더 속도 측정

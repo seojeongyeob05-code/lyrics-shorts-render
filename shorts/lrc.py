@@ -5,6 +5,8 @@
     [00:12.34]가사          (분:초.소수)
     [00:12.34][01:02.00]후렴 (한 줄에 여러 타임스탬프)
     [offset:+200]           (밀리초, 양수면 가사가 앞당겨짐)
+    [00:12.00]<00:12.00>단어 <00:12.60>단위 <00:13.10>타이밍 <00:14.00>
+                            (Enhanced LRC: 노래방식 하이라이트용 글자 진행 시각)
 """
 
 from __future__ import annotations
@@ -15,6 +17,7 @@ from dataclasses import dataclass, field
 
 _TIME_TAG = re.compile(r"\[(\d+):(\d{1,2})(?:[.:](\d{1,3}))?\]")
 _META_TAG = re.compile(r"^\[([a-zA-Z]+):(.*)\]$")
+_WORD_TAG = re.compile(r"<(\d+):(\d{1,2})(?:[.:](\d{1,3}))?>")
 
 
 @dataclass(frozen=True)
@@ -22,6 +25,22 @@ class LyricLine:
     start: float  # 초
     end: float  # 초 (다음 줄 시작 또는 곡 끝)
     text: str
+    # 노래방식 진행 지점: (시각, 그 시각까지 불린 글자 수). 비어 있으면 줄 단위 가사.
+    marks: tuple[tuple[float, int], ...] = ()
+
+    def sung_chars(self, t: float) -> float:
+        """시각 t까지 불린 글자 수(소수 = 글자 안에서의 진행). marks가 없으면 줄 전체."""
+        if not self.marks:
+            return float(len(self.text))
+        pts = list(self.marks)
+        if pts[-1][1] < len(self.text):
+            pts.append((self.end, len(self.text)))
+        if t <= pts[0][0]:
+            return float(pts[0][1]) if t == pts[0][0] else 0.0
+        for (t0, c0), (t1, c1) in zip(pts, pts[1:]):
+            if t < t1:
+                return c0 + (c1 - c0) * (t - t0) / (t1 - t0) if t1 > t0 else float(c1)
+        return float(pts[-1][1])
 
 
 @dataclass
@@ -46,8 +65,25 @@ class Lyrics:
         for ln in self.lines:
             s, e = max(ln.start, start), min(ln.end, end)
             if s < e:
-                out.append(LyricLine(s - start, e - start, ln.text))
+                marks = tuple((mt - start, c) for mt, c in ln.marks)
+                out.append(LyricLine(s - start, e - start, ln.text, marks))
         return Lyrics(out, dict(self.meta))
+
+
+def _split_words(body: str) -> tuple[str, list[tuple[float, int]]]:
+    """'<t>가 <t>나' → ('가 나', [(t, 0), (t, 2)]). 공백은 한 칸으로 줄인다."""
+    text = ""
+    marks = []
+    pos = 0
+    for m in _WORD_TAG.finditer(body):
+        text += body[pos:m.start()]
+        pos = m.end()
+        norm = " ".join(text.split())
+        # 태그 앞이 공백이면 다음 단어는 공백 뒤에서 시작한다
+        offset = len(norm) + (1 if norm and text[-1:].isspace() else 0)
+        marks.append((_parse_time(m), offset))
+    text = " ".join((text + body[pos:]).split())
+    return text, [(t, min(c, len(text))) for t, c in marks]
 
 
 def _parse_time(m: re.Match) -> float:
@@ -91,8 +127,10 @@ def parse(text: str, duration: float | None = None, max_line: float = 8.0) -> Ly
             nxt = duration if duration is not None else start + max_line
         end = min(nxt, start + max_line)
         # 빈 가사 줄은 "여기서 앞 줄이 끝난다"는 표시로만 쓴다.
-        if body and end > start:
-            lines.append(LyricLine(start, end, body))
+        text, marks = _split_words(body)
+        if text and end > start:
+            marks = tuple((max(0.0, mt - offset), c) for mt, c in marks)
+            lines.append(LyricLine(start, end, text, marks))
     return Lyrics(lines, meta)
 
 

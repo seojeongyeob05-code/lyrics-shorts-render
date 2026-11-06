@@ -64,5 +64,36 @@ class QueryTest(unittest.TestCase):
         )
 
 
+class WordTimingTest(unittest.TestCase):
+    KARAOKE = "[00:01.00]<00:01.00>Hello  <00:01.50>big <00:02.00>world<00:03.00>\n[00:04.00]plain"
+
+    def test_tags_are_stripped_and_marks_point_at_word_starts(self):
+        ly = lrc.parse(self.KARAOKE, duration=6)
+        line = ly.lines[0]
+        self.assertEqual(line.text, "Hello big world")
+        self.assertEqual(line.marks, ((1.0, 0), (1.5, 6), (2.0, 10), (3.0, 15)))
+        self.assertEqual(ly.lines[1].marks, ())
+
+    def test_sung_chars_interpolates_within_words(self):
+        line = lrc.parse(self.KARAOKE, duration=6).lines[0]
+        self.assertEqual(line.sung_chars(0.5), 0)
+        self.assertEqual(line.sung_chars(1.25), 3)
+        self.assertEqual(line.sung_chars(2.5), 12.5)
+        self.assertEqual(line.sung_chars(3.5), 15)
+
+    def test_plain_line_counts_as_fully_sung(self):
+        line = lrc.parse(self.KARAOKE, duration=6).lines[1]
+        self.assertEqual(line.sung_chars(4.0), len("plain"))
+
+    def test_without_closing_tag_last_word_runs_to_line_end(self):
+        line = lrc.parse("[00:00.00]<00:00.00>ab <00:01.00>cd", duration=3).lines[0]
+        self.assertEqual(line.sung_chars(2.0), 4)  # 1초에 3글자째, 3초(줄 끝)에 5글자
+
+    def test_offset_and_clip_shift_marks(self):
+        ly = lrc.parse("[offset:+500]\n[00:02.00]<00:02.00>a <00:03.00>b", duration=6)
+        self.assertEqual(ly.lines[0].marks, ((1.5, 0), (2.5, 2)))
+        self.assertEqual(ly.clip(1.0, 4.0).lines[0].marks, ((0.5, 0), (1.5, 2)))
+
+
 if __name__ == "__main__":
     unittest.main()

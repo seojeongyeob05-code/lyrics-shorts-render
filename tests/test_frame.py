@@ -136,5 +136,47 @@ class EffectsTest(unittest.TestCase):
         self.assertEqual(r.layers_drawn, 4)  # 시작 전, first, second, third
 
 
+class KaraokeTest(unittest.TestCase):
+    def setUp(self):
+        self.style = Style(width=400, height=300, font_size=32, next_font_size=18, fade=0,
+                           bg_color=(0, 0, 0), text_color=(255, 255, 255),
+                           unsung_color=(0, 0, 255), next_color=(255, 200, 0))
+        self.r = FrameRenderer(self.style)
+        self.ly = lrc.parse("[00:01.00]<00:01.00>AAAA <00:02.00>BBBB<00:03.00>", duration=5)
+
+    def _cols(self, img, color):
+        """color에 가까운 픽셀이 있는 x 집합."""
+        px = img.load()
+        return {x for x in range(img.width) for y in range(img.height)
+                if all(abs(a - b) <= 40 for a, b in zip(px[x, y], color))}
+
+    def test_fills_left_to_right(self):
+        start = self.r.render(self.ly, 1.0)
+        half = self.r.render(self.ly, 2.0)
+        end = self.r.render(self.ly, 3.5)
+        self.assertFalse(self._cols(start, (255, 255, 255)))
+        sung, unsung = self._cols(half, (255, 255, 255)), self._cols(half, (0, 0, 255))
+        self.assertTrue(sung and unsung)
+        self.assertLess(max(sung), min(unsung))  # 왼쪽은 부른 색, 오른쪽은 안 부른 색
+        self.assertFalse(self._cols(end, (0, 0, 255)))
+
+    def test_wrapped_rows_fill_in_order(self):
+        style = Style(**{**self.style.__dict__, "width": 160})
+        r = FrameRenderer(style)
+        img = r.render(self.ly, 1.9)  # 첫 단어(첫 글줄)는 거의 다, 둘째 글줄은 아직
+        px = img.load()
+        rows_sung = {y for y in range(img.height) for x in range(img.width) if px[x, y] == (255, 255, 255)}
+        rows_unsung = {y for y in range(img.height) for x in range(img.width) if px[x, y] == (0, 0, 255)}
+        self.assertTrue(rows_sung and rows_unsung)
+        self.assertLess(min(rows_sung), max(rows_unsung))
+        self.assertGreater(max(rows_unsung), max(rows_sung))
+
+    def test_plain_lines_unchanged(self):
+        plain = lrc.parse("[00:01.00]AAAA BBBB", duration=5)
+        img = self.r.render(plain, 1.5)
+        self.assertTrue(self._cols(img, (255, 255, 255)))
+        self.assertFalse(self._cols(img, (0, 0, 255)))
+
+
 if __name__ == "__main__":
     unittest.main()

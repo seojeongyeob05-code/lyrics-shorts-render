@@ -2,6 +2,7 @@
 
 배경 위에 현재 줄(밝게)과 다음 줄(흐리게)을 세로 가운데 근처에 놓는다.
 줄이 바뀔 때는 짧게 페이드 아웃→인 하고, 원하면 하단에 진행 바를 그린다.
+단어별 타이밍이 있는 줄은 부른 글자만큼 왼쪽부터 밝게 채운다(노래방식).
 """
 
 from __future__ import annotations
@@ -24,6 +25,7 @@ class Style:
     bg_color: Color = (16, 16, 24)
     text_color: Color = (255, 255, 255)
     next_color: Color = (150, 150, 165)
+    unsung_color: Color = (105, 105, 120)  # 노래방식 줄에서 아직 안 부른 글자
     font_path: str | None = None  # None이면 한글 폰트 자동 탐색(text.find_korean_font)
     font_size: int = 72
     next_font_size: int = 52
@@ -63,7 +65,7 @@ class FrameRenderer:
             self._bg = cover_fit(background.convert("RGB"), size)
         self._font = load_font(s.font_path, s.font_size)
         self._next_font = load_font(s.font_path, s.next_font_size)
-        self._cache: dict[tuple[int | None, int | None], Image.Image] = {}
+        self._cache: dict[tuple, Image.Image] = {}
         self._cache_owner: Lyrics | None = None
         self._bounds: list[float] = []
         self.layers_drawn = 0  # 실제로 새로 그린 가사 화면 수(성능 확인용)
@@ -71,19 +73,19 @@ class FrameRenderer:
     def render(self, lyrics: Lyrics, t: float, progress: float | None = None) -> Image.Image:
         """시각 t의 화면. progress(0~1)를 주면 진행 바도 그린다."""
         s = self.style
-        cur = self._layer(lyrics, self.state_key(lyrics, t))
+        cur = self._screen(lyrics, self.state_key(lyrics, t), t)
         tc = self._last_change(lyrics, t)
         if s.fade > 0 and tc is not None and t - tc < s.fade:
             # 같은 자리에 글자가 겹쳐 보이지 않도록 앞 절반은 이전 화면이 배경으로
             # 사라지고, 뒤 절반은 배경에서 새 화면이 나타난다.
             a = (t - tc) / s.fade
             if a < 0.5:
-                prev = self._layer(lyrics, self.state_key(lyrics, tc - 1e-6))
+                prev = self._screen(lyrics, self.state_key(lyrics, tc - 1e-6), tc - 1e-6)
                 img = Image.blend(prev, self._bg, a * 2)
             else:
                 img = Image.blend(self._bg, cur, a * 2 - 1)
         else:
-            img = cur.copy()
+            img = cur.copy()  # 캐시된 화면 위에 진행 바를 그리지 않도록
         if progress is not None and s.progress_bar:
             self._draw_progress(img, progress)
         return img
@@ -100,15 +102,63 @@ class FrameRenderer:
             self._cache_owner = lyrics
             self._bounds = sorted({x for ln in lyrics.lines for x in (ln.start, ln.end)})
 
-    def _layer(self, lyrics: Lyrics, key: tuple[int | None, int | None]) -> Image.Image:
-        """페이드·진행 바 없이 가사만 그린 화면. 같은 키는 다시 그리지 않는다."""
+    def _screen(self, lyrics: Lyrics, key: tuple[int | None, int | None], t: float) -> Image.Image:
+        """페이드·진행 바를 빼고 시각 t에 보일 가사 화면. 돌려받은 이미지를 고치지 말 것."""
+        i = key[0]
+        if i is None or not lyrics.lines[i].marks:
+            return self._layer(lyrics, key, color=self.style.text_color)
+        # 노래방식: 안 부른 색 화면과 부른 색 화면을 진행 정도만큼 섞는다
+        unsung = self._layer(lyrics, key, color=self.style.unsung_color)
+        sung = self._layer(lyrics, key, color=self.style.text_color)
+        line = lyrics.lines[i]
+        done = line.sung_chars(t)
+        if done >= len(line.text):
+            return sung
+        rows = self._current_rows(line.text)
+        h = self.style.font_size * 0.75
+        # 글자가 있는 띠만 합성한다(전체 화면을 섞으면 느리다)
+        band = (0, max(0, int(rows[0][3] - h)), unsung.width,
+                min(unsung.height, int(rows[-1][3] + h) + 1))
+        mask = Image.new("L", (band[2], band[3] - band[1]), 0)
+        draw = ImageDraw.Draw(mask)
+        for row, offset, x0, y in rows:
+            n = min(max(done - offset, 0.0), len(row))
+            if n <= 0:
+                break
+            whole = int(n)
+            px = self._font.getlength(row[:whole])
+            if whole < len(row):
+                px += (n - whole) * self._font.getlength(row[whole])
+            draw.rectangle((0, y - h - band[1], x0 + px, y + h - band[1]), fill=255)
+        img = unsung.copy()
+        img.paste(sung.crop(band), band[:2], mask)
+        return img
+
+    def _layer(self, lyrics: Lyrics, key: tuple[int | None, int | None],
+               color: Color) -> Image.Image:
+        """현재 줄을 color로 그린 가사 화면. 같은 키는 다시 그리지 않는다."""
         self._use(lyrics)
-        if key not in self._cache:
+        ck = (key, color)
+        if ck not in self._cache:
             if len(self._cache) >= 8:
                 self._cache.pop(next(iter(self._cache)))
-            self._cache[key] = self._draw_lyrics(lyrics, *key)
+            self._cache[ck] = self._draw_lyrics(lyrics, *key, color)
             self.layers_drawn += 1
-        return self._cache[key]
+        return self._cache[ck]
+
+    def _current_rows(self, text: str) -> list[tuple[str, int, float, float]]:
+        """현재 줄을 줄바꿈한 결과: (글줄, text 안 시작 위치, 왼쪽 x, 가운데 y)."""
+        s = self.style
+        rows = wrap(text, self._font, s.width * s.max_text_width)
+        step = s.font_size * s.line_spacing
+        top = s.height * s.center_y - step * (len(rows) - 1) / 2
+        out = []
+        offset = 0
+        for k, row in enumerate(rows):
+            offset = text.index(row, offset)
+            out.append((row, offset, (s.width - self._font.getlength(row)) / 2, top + step * k))
+            offset += len(row)
+        return out
 
     def _last_change(self, lyrics: Lyrics, t: float) -> float | None:
         """t 이전에 화면 내용이 마지막으로 바뀐 시각(줄 시작/끝)."""
@@ -116,26 +166,26 @@ class FrameRenderer:
         k = bisect_right(self._bounds, t) - 1
         return self._bounds[k] if k >= 0 else None
 
-    def _draw_lyrics(self, lyrics: Lyrics, i: int | None, nxt: int | None) -> Image.Image:
+    def _draw_lyrics(self, lyrics: Lyrics, i: int | None, nxt: int | None,
+                     color: Color) -> Image.Image:
         s = self.style
         img = self._bg.copy()
         draw = ImageDraw.Draw(img)
-        cy = s.height * s.center_y
-        max_w = s.width * s.max_text_width
 
-        # 현재 줄 블록은 cy에 가운데 맞춤, 다음 줄 블록은 그 아래에 붙인다.
-        bottom = cy + s.font_size / 2
+        # 현재 줄 블록은 center_y에 가운데 맞춤, 다음 줄 블록은 그 아래에 붙인다.
+        bottom = s.height * s.center_y + s.font_size / 2
         if i is not None:
-            rows = wrap(lyrics.lines[i].text, self._font, max_w)
-            step = s.font_size * s.line_spacing
-            top = cy - step * (len(rows) - 1) / 2
-            self._draw_rows(draw, rows, top, step, self._font, s.text_color)
-            bottom = top + step * (len(rows) - 1) + s.font_size / 2
+            rows = self._current_rows(lyrics.lines[i].text)
+            for row, _, _, y in rows:
+                draw.text((s.width / 2, y), row, font=self._font, fill=color, anchor="mm")
+            bottom = rows[-1][3] + s.font_size / 2
         if nxt is not None:
-            rows = wrap(lyrics.lines[nxt].text, self._next_font, max_w)
+            rows = wrap(lyrics.lines[nxt].text, self._next_font, s.width * s.max_text_width)
             step = s.next_font_size * s.line_spacing
             top = bottom + s.line_gap + s.next_font_size / 2
-            self._draw_rows(draw, rows, top, step, self._next_font, s.next_color)
+            for k, row in enumerate(rows):
+                draw.text((s.width / 2, top + step * k), row, font=self._next_font,
+                          fill=s.next_color, anchor="mm")
         return img
 
     def _draw_progress(self, img: Image.Image, progress: float) -> None:
@@ -149,11 +199,6 @@ class FrameRenderer:
         filled = round(w * min(1.0, max(0.0, progress)))
         if filled:
             draw.rectangle((x0, y0, x0 + filled - 1, y1 - 1), fill=s.progress_color)
-
-    def _draw_rows(self, draw, rows, top, step, font, color):
-        cx = self.style.width / 2
-        for k, row in enumerate(rows):
-            draw.text((cx, top + step * k), row, font=font, fill=color, anchor="mm")
 
     @staticmethod
     def _next_index(lyrics: Lyrics, t: float, current: int | None) -> int | None:
