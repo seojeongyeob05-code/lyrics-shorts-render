@@ -506,6 +506,7 @@ e: $M_y = N_x = \cos x$ 로 완전. $F = y\sin x + x^2 + h(y)$, $F_y = \sin x + 
 c: 완전이 아닐 때 적분인자 $\mu$를 곱해서 완전으로 만들어요.
 c: $\dfrac{M_y - N_x}{N}$ 이 $x$만의 함수이면 $\mu(x) = e^{\int \frac{M_y - N_x}{N}dx}$
 c: $\dfrac{N_x - M_y}{M}$ 이 $y$만의 함수이면 $\mu(y) = e^{\int \frac{N_x - M_y}{M}dy}$
+c: $x$에 대한 적분인자가 안 나오면 $y$에 대해서도 시도해요. 그리고 식이 변수분리도 되는지 먼저 보세요. 해설의 '또 다른 풀이'처럼 그쪽이 훨씬 빠를 때가 많아요.
 Q mc
 q: 적분인자를 곱하는 목적은?
 a: 방정식을 완전방정식으로 만들기 위해
@@ -541,7 +542,20 @@ w: $y^2$
 w: $x + y$
 w: $e^{x}$
 e: $\dfrac{y\,dx - x\,dy}{y^2} = d\!\left(\dfrac{x}{y}\right)$ 이에요. $\dfrac{1}{x^2}$, $\dfrac{1}{xy}$ 도 적분인자예요.
-
+Q mc
+q: $y\,dx + (2x - ye^{y})\,dy = 0$ 의 적분인자는?
+a: $\mu(y) = y$
+w: $\mu(y) = \dfrac{1}{y}$
+w: $\mu(x) = x$
+w: $\mu(y) = e^{y}$
+e: $M_y = 1$, $N_x = 2$. $\dfrac{M_y - N_x}{N}$ 은 $y$가 섞여서 안 되지만 $\dfrac{N_x - M_y}{M} = \dfrac{1}{y}$ 는 $y$만의 함수라 $\mu = e^{\int dy/y} = y$
+Q mc
+q: $2y\,dx + x\,dy = 0$ 의 해는?
+a: $x^2y = C$
+w: $xy^2 = C$
+w: $x^2 + y = C$
+w: $y = Cx^2$
+e: 적분인자 $\mu = x$ 를 곱하면 $2xy\,dx + x^2\,dy = d(x^2y) = 0$. 변수분리 $\dfrac{dy}{y} = -\dfrac{2\,dx}{x}$ 로 풀어도 $y = \dfrac{C}{x^2}$, 같은 답이에요.
 ## 05 | 1계 ODE | 선형 상미분방정식
 c: 표준형 $y' + p(x)\,y = q(x)$ 로 정리해요.
 c: 적분인자 $\mu = e^{\int p\,dx}$ 를 곱하면 $(\mu y)' = \mu q$ 이고, $y = \dfrac{1}{\mu}\left[\int \mu q\,dx + C\right]$ 예요.
