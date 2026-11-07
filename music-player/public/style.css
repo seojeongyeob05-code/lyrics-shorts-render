@@ -116,6 +116,23 @@ input:focus { border-color: var(--accent); }
 .t-dur { text-align: right; font-variant-numeric: tabular-nums; }
 .track-row .icon-btn { opacity: 0; }
 .track-row:hover .icon-btn, .track-row .icon-btn:focus { opacity: 1; }
+.group-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px; }
+.group-card { min-width: 0; padding: 12px; border-radius: 12px; background: var(--panel); cursor: pointer; }
+.group-card:hover { background: var(--panel-2); }
+.group-card:focus-visible { outline: 2px solid var(--accent); }
+.group-art { position: relative; margin-bottom: 10px; }
+.cover.xl { width: 100%; height: auto; aspect-ratio: 1; border-radius: 8px; font-size: 40px; }
+.group-grid.artists .cover.xl { border-radius: 50%; }
+.icon-btn.group-play {
+  position: absolute; right: 8px; bottom: 8px; width: 42px; height: 42px;
+  background: var(--accent); color: #fff; box-shadow: 0 6px 16px rgba(0,0,0,.45);
+  opacity: 0; transform: translateY(4px); transition: opacity .15s, transform .15s;
+}
+.group-card:hover .group-play, .group-play:focus-visible { opacity: 1; transform: none; }
+.icon-btn.group-play:hover { background: var(--accent-2); color: #fff; }
+.group-name, .group-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.group-name { font-weight: 600; }
+.group-sub { font-size: 12px; color: var(--muted); }
 .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
 .empty .btn { margin-top: 14px; }
 
@@ -232,6 +249,7 @@ input[type=range]::-moz-range-thumb { width: 12px; height: 12px; border: 0; bord
   .sidebar { flex-direction: row; align-items: center; gap: 4px; padding: 8px; border-right: 0; border-bottom: 1px solid var(--line); overflow-x: auto; }
   .logo, .side-head span, .side-foot .muted { display: none; }
   .side-head { padding: 0; }
+  .sidebar nav { display: flex; gap: 4px; flex: none; }
   .nav-item, .playlist-nav button { width: auto; }
   .playlist-nav { display: flex; overflow: visible; flex: none; }
   .side-foot { border: 0; padding: 0 8px; margin-left: auto; }
@@ -243,4 +261,6 @@ input[type=range]::-moz-range-thumb { width: 12px; height: 12px; border: 0; bord
   .track-row { grid-template-columns: minmax(0, 1fr) 48px 36px; }
   .track-row .t-num, .track-row .t-album { display: none; }
   .track-row .icon-btn { opacity: 1; }
+  .group-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+  .icon-btn.group-play { opacity: 1; transform: none; }
 }

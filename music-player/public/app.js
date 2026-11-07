@@ -1,6 +1,7 @@
 import { matchesQuery } from './search.js';
 import { setupMediaSession } from './media-session.js';
 import { parseLyrics, currentLineIndex } from './lyrics.js';
+import { groupTracks } from './groups.js';
 
 // ───────────── 유틸 ─────────────
 const $ = (sel) => document.querySelector(sel);
@@ -104,13 +105,23 @@ async function loadPlaylists() {
   renderSidebar();
 }
 
+const GRID_VIEWS = { artists: 'artist', albums: 'album' }; // 묶음 목록 보기 → 그 안의 곡 목록 보기
+
 async function openView(view) {
-  const sameView = view?.type === state.view.type && view?.id === state.view.id;
+  const sameView = view?.type === state.view.type
+    && (view.type === 'playlist' ? view.id === state.view.id : view.name === state.view.name);
   if (!sameView) setQuery('');
   if (view?.type === 'playlist') {
     const data = await api('GET', `/api/playlists/${view.id}`);
     state.view = { type: 'playlist', id: data.id, name: data.name };
     state.rows = data.tracks;
+  } else if (GRID_VIEWS[view?.type]) {
+    state.view = { type: view.type };
+    state.rows = state.tracks;
+  } else if (view?.type === 'artist' || view?.type === 'album') {
+    const group = groupTracks(state.tracks, view.type).find((g) => g.name === view.name);
+    state.view = { type: view.type, name: view.name };
+    state.rows = group?.tracks ?? [];
   } else {
     state.view = { type: 'library' };
     state.rows = state.tracks;
@@ -125,7 +136,7 @@ const refreshView = () => openView(state.view);
 // ───────────── 화면: 사이드바 ─────────────
 function renderSidebar() {
   document.querySelectorAll('.nav-item').forEach((el) => {
-    el.classList.toggle('active', state.view.type === el.dataset.view);
+    el.classList.toggle('active', [state.view.type, `${state.view.type}s`].includes(el.dataset.view));
   });
   $('#playlist-nav').replaceChildren(...state.playlists.map((p) => {
     const btn = h('button', {
@@ -163,15 +174,18 @@ function setQuery(value) {
   $('#search').value = value;
 }
 
+const VIEW_KIND = { library: '라이브러리', playlist: '플레이리스트', artist: '아티스트', album: '앨범' };
+
 function renderMain() {
+  if (GRID_VIEWS[state.view.type]) return renderGroups();
   const { view, rows, query } = state;
   const isPlaylist = view.type === 'playlist';
   const shown = query ? rows.filter((t) => matchesQuery(t, query)) : rows;
   state.shown = shown;
   const total = shown.reduce((sum, t) => sum + (t.duration || 0), 0);
 
-  $('#view-kind').textContent = isPlaylist ? '플레이리스트' : '라이브러리';
-  $('#view-title').textContent = isPlaylist ? view.name : '모든 곡';
+  $('#view-kind').textContent = VIEW_KIND[view.type];
+  $('#view-title').textContent = view.type === 'library' ? '모든 곡' : view.name;
   $('#view-meta').textContent = query
     ? `검색 결과 ${shown.length}곡 / 전체 ${rows.length}곡`
     : `${rows.length}곡 · ${fmtTotal(total)}`;
@@ -187,6 +201,9 @@ function renderMain() {
       h('button', { class: 'btn', onclick: safe(renamePlaylist) }, '이름 변경'),
       h('button', { class: 'btn danger', onclick: safe(deletePlaylist) }, '삭제'),
     );
+  } else if (view.type === 'artist' || view.type === 'album') {
+    actions.push(h('button', { class: 'btn', onclick: safe(() => openView({ type: `${view.type}s` })) },
+      view.type === 'artist' ? '← 모든 아티스트' : '← 모든 앨범'));
   } else {
     actions.push(h('button', { class: 'btn', onclick: () => $('#file-input').click() }, '＋ 업로드'));
   }
@@ -194,6 +211,10 @@ function renderMain() {
 
   const list = $('#track-list');
   if (!rows.length) {
+    if (view.type === 'artist' || view.type === 'album') {
+      list.replaceChildren(h('div', { class: 'empty' }, `이 ${VIEW_KIND[view.type]}에 해당하는 곡이 없습니다.`));
+      return;
+    }
     list.replaceChildren(isPlaylist
       ? h('div', { class: 'empty' }, '아직 곡이 없습니다. 라이브러리에서 곡의 ⋯ 메뉴로 추가하거나 곡을 이 플레이리스트 이름 위로 끌어다 놓으세요.')
       : h('div', { class: 'empty' },
@@ -229,6 +250,53 @@ function renderMain() {
     onclick: (e) => { e.stopPropagation(); openTrackMenu(e.currentTarget, i); },
   }))));
   highlightPlaying();
+}
+
+// 아티스트·앨범 목록: 커버 카드 격자. 카드를 누르면 그 곡 목록, 재생 버튼을 누르면 바로 재생.
+function renderGroups() {
+  const { view, query } = state;
+  const kind = GRID_VIEWS[view.type];
+  const all = groupTracks(state.tracks, kind);
+  const groups = query
+    ? all.filter((g) => matchesQuery({ title: g.name, artist: g.tracks.map((t) => t.artist).join(' ') }, query))
+    : all;
+  state.shown = groups.flatMap((g) => g.tracks);
+  const unit = kind === 'artist' ? '명' : '개';
+
+  $('#view-kind').textContent = '라이브러리';
+  $('#view-title').textContent = kind === 'artist' ? '아티스트' : '앨범';
+  $('#view-meta').textContent = query ? `검색 결과 ${groups.length}${unit} / 전체 ${all.length}${unit}` : `${all.length}${unit}`;
+  $('#search').hidden = !all.length;
+  const ids = state.shown.map((t) => t.id);
+  $('#view-actions').replaceChildren(
+    h('button', { class: 'btn primary', disabled: !ids.length, onclick: () => playList(ids, 0) }, '▶ 재생'),
+    h('button', { class: 'btn', disabled: !ids.length, onclick: () => playList(ids, 0, true) }, '셔플 재생'),
+  );
+
+  const list = $('#track-list');
+  if (!groups.length) {
+    list.replaceChildren(h('div', { class: 'empty' }, query
+      ? `'${query}'와(과) 일치하는 ${kind === 'artist' ? '아티스트' : '앨범'}가 없습니다.`
+      : kind === 'artist' ? '라이브러리가 비어 있습니다.' : '앨범 정보가 있는 곡이 없습니다. 곡 정보 수정에서 앨범을 넣을 수 있습니다.'));
+    return;
+  }
+  const open = (g) => safe(() => openView({ type: kind, name: g.name }));
+  list.replaceChildren(h('div', { class: `group-grid ${view.type}` }, groups.map((g) => h('div', {
+    class: 'group-card',
+    role: 'button',
+    tabindex: '0',
+    title: g.name,
+    onclick: open(g),
+    onkeydown: (e) => { if (e.key === 'Enter') open(g)(); },
+  },
+  h('div', { class: 'group-art' },
+    coverEl(g.cover, 'cover xl'),
+    h('button', {
+      class: 'icon-btn group-play', title: '재생', html: ICON.play,
+      onclick: (e) => { e.stopPropagation(); playList(g.tracks.map((t) => t.id), 0); },
+    })),
+  h('div', { class: 'group-name' }, g.name),
+  h('div', { class: 'group-sub' }, g.subtitle)))));
 }
 
 function highlightPlaying() {
@@ -383,7 +451,7 @@ function uploadFiles(fileList) {
     }
     if (xhr.status >= 300) return toast(data?.error || `업로드 실패 (${xhr.status})`);
     await loadLibrary();
-    if (state.view.type === 'library') await refreshView();
+    if (state.view.type !== 'playlist') await refreshView();
     toast(uploadSummary(data), 5000);
     loadLyrics(true); // 지금 재생 중인 곡에 가사가 붙었을 수 있음
   });
@@ -986,7 +1054,9 @@ audio.addEventListener('error', () => {
 });
 addEventListener('pagehide', savePlayer);
 
-document.querySelector('.nav-item[data-view="library"]').addEventListener('click', safe(() => openView({ type: 'library' })));
+document.querySelectorAll('.nav-item').forEach((el) => {
+  el.addEventListener('click', safe(() => openView({ type: el.dataset.view })));
+});
 $('#new-playlist').addEventListener('click', safe(async () => {
   const playlist = await createPlaylist();
   if (playlist) await openView({ type: 'playlist', id: playlist.id });
