@@ -1,0 +1,10 @@
+{
+  "description": "흰 배경 검은 글자, 다음 줄·진행 바 없이 깔끔하게",
+  "extends": "default",
+  "bg_color": "#FAFAF7",
+  "text_color": "#111111",
+  "unsung_color": "#BDBDBD",
+  "show_next": false,
+  "progress_bar": false,
+  "fade": 0.3
+}

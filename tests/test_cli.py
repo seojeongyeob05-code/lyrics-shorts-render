@@ -53,6 +53,16 @@ class CliTest(unittest.TestCase):
         self.assertEqual(img.size, (1080, 1920))
         self.assertEqual(img.getpixel((5, 5)), (10, 120, 200))
 
+    def test_style_option_and_list(self):
+        out = self.run_cli("frame", self.lrc, "--at", "0:00.5", "--style", "minimal", "-o",
+                           os.path.join(self.dir, "m.png"))
+        img = Image.open(out.strip())
+        self.assertEqual(img.getpixel((5, 5)), (250, 250, 247))
+        self.assertIn("neon", self.run_cli("styles"))
+        with self.assertRaises(SystemExit) as cm:
+            self.run_cli("frame", self.lrc, "--style", "nope")
+        self.assertIn("스타일을 찾을 수 없습니다", str(cm.exception))
+
     def test_start_after_song_end_is_an_error(self):
         with self.assertRaises(SystemExit) as cm:
             self.run_cli("render", self.lrc, "--start", "1:00")

@@ -25,6 +25,7 @@ class Style:
     bg_color: Color = (16, 16, 24)
     text_color: Color = (255, 255, 255)
     next_color: Color = (150, 150, 165)
+    show_next: bool = True  # 현재 줄 아래에 다음 줄을 미리 보여줄지
     unsung_color: Color = (105, 105, 120)  # 노래방식 줄에서 아직 안 부른 글자
     font_path: str | None = None  # None이면 한글 폰트 자동 탐색(text.find_korean_font)
     font_size: int = 72
@@ -93,7 +94,7 @@ class FrameRenderer:
     def state_key(self, lyrics: Lyrics, t: float) -> tuple[int | None, int | None]:
         """화면의 가사 내용을 결정하는 값: (현재 줄, 다음 줄) 인덱스."""
         i = lyrics.index_at(t)
-        return i, self._next_index(lyrics, t, i)
+        return i, (self._next_index(lyrics, t, i) if self.style.show_next else None)
 
     def _use(self, lyrics: Lyrics) -> None:
         """다른 가사가 들어오면 캐시를 비운다."""

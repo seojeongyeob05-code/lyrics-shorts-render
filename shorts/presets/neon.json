@@ -1,0 +1,10 @@
+{
+  "description": "검은 배경에 형광 분홍·하늘색, 노래방 하이라이트가 잘 보임",
+  "bg_color": "#07060D",
+  "text_color": "#FF4FD8",
+  "unsung_color": "#5A6B8C",
+  "next_color": "#7FE7FF",
+  "progress_color": "#FF4FD8",
+  "progress_track": "#2A2540",
+  "font_size": 80
+}

@@ -19,6 +19,34 @@ python3 -m shorts frame song.lrc --bg bg.jpg --at 0:50
 - `--duration`을 빼면 곡 끝까지(음원이 없으면 마지막 가사 줄까지)
 - 폰트는 한글 폰트를 자동으로 찾음. 직접 지정: `--font 경로` 또는 환경변수 `SHORTS_FONT`
 
+### 스타일
+
+```
+python3 -m shorts styles                       # 내장 프리셋 목록 (default, neon, warm, minimal)
+python3 -m shorts render song.lrc --style neon
+python3 -m shorts render song.lrc --style my-theme.json
+```
+
+내 테마는 바꾸고 싶은 값만 JSON으로 적으면 됩니다. 항목 이름은 `shorts/frame.py`의 `Style` 참고.
+
+```json
+{
+  "extends": "neon",
+  "text_color": "#FFE066",
+  "font_size": 84,
+  "center_y": 0.62,
+  "font_path": "fonts/NanumSquareRoundEB.ttf"
+}
+```
+
+### 노래방식 하이라이트
+
+Enhanced LRC처럼 단어 앞에 `<분:초.소수>`를 붙이면 부르는 만큼 글자가 채워집니다.
+
+```
+[00:12.00]<00:12.00>바람이 <00:12.80>불어오는 <00:13.90>곳<00:14.60>
+```
+
 ## 테스트
 
 ```

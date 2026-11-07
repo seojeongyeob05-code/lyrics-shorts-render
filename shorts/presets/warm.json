@@ -1,0 +1,11 @@
+{
+  "description": "따뜻한 갈색 배경, 크림색 글자를 화면 아래쪽에 — 배경 사진 위에 얹기 좋음",
+  "bg_color": "#2B1D14",
+  "text_color": "#FFF1D6",
+  "unsung_color": "#9C8670",
+  "next_color": "#D9B48F",
+  "progress_color": "#FFC978",
+  "progress_track": "#5A4434",
+  "center_y": 0.68,
+  "progress_bottom": 120
+}

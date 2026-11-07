@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import subprocess
@@ -16,7 +17,8 @@ import time
 from PIL import Image
 
 from . import lrc
-from .frame import FrameRenderer, Style
+from .frame import FrameRenderer
+from .styles import PRESET_DIR, list_presets, load_style
 from .video import VideoOptions, render_video
 
 _TIME = re.compile(r"^(?:(\d+):)?(\d+(?:\.\d+)?)$")
@@ -44,8 +46,14 @@ def probe_duration(path: str) -> float:
 
 
 def _renderer(args) -> FrameRenderer:
+    try:
+        style = load_style(args.style)
+    except ValueError as e:
+        raise SystemExit(str(e)) from None
+    if args.font:
+        style.font_path = args.font
     bg = Image.open(args.bg) if args.bg else None
-    return FrameRenderer(Style(font_path=args.font), background=bg)
+    return FrameRenderer(style, background=bg)
 
 
 def cmd_render(args) -> None:
@@ -75,6 +83,13 @@ def cmd_frame(args) -> None:
     print(out)
 
 
+def cmd_styles(args) -> None:
+    for name in list_presets():
+        with open(os.path.join(PRESET_DIR, f"{name}.json"), encoding="utf-8") as f:
+            desc = json.load(f).get("description", "")
+        print(f"{name:10} {desc}")
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="python -m shorts", description="가사 쇼츠 렌더러")
     sub = p.add_subparsers(dest="command", required=True)
@@ -83,7 +98,9 @@ def build_parser() -> argparse.ArgumentParser:
     common.add_argument("lrc", help="LRC 가사 파일")
     common.add_argument("-o", "--out", help="출력 파일 (기본: 가사 파일 이름)")
     common.add_argument("--bg", help="배경 이미지")
-    common.add_argument("--font", help="폰트 파일 (기본: 한글 폰트 자동 탐색)")
+    common.add_argument("--font", help="폰트 파일 (기본: 스타일 설정 또는 한글 폰트 자동 탐색)")
+    common.add_argument("--style", default="default",
+                        help="스타일 프리셋 이름 또는 JSON 파일 (목록: python -m shorts styles)")
 
     r = sub.add_parser("render", parents=[common], help="mp4 영상 만들기")
     r.add_argument("--audio", help="음원 파일")
@@ -95,6 +112,8 @@ def build_parser() -> argparse.ArgumentParser:
     f = sub.add_parser("frame", parents=[common], help="한 장면 PNG 미리보기")
     f.add_argument("--at", type=parse_time, default=0.0, help="미리볼 시각 (예: 0:50)")
     f.set_defaults(func=cmd_frame)
+
+    sub.add_parser("styles", help="내장 스타일 프리셋 목록").set_defaults(func=cmd_styles)
     return p
 
 
