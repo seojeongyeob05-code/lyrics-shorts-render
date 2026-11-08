@@ -38,6 +38,11 @@ class StylesTest(unittest.TestCase):
         self.assertEqual(s.font_path, os.path.join(self.dir, "fonts", "a.ttf"))
         self.assertEqual(s.bg_color, Style().bg_color)  # 안 적은 값은 기본값
 
+    def test_gradient_value(self):
+        self.assertEqual(styles.load_style(self.write("g.json", {"bg_gradient": "#102030"})).bg_gradient,
+                         (16, 32, 48))
+        self.assertIsNone(styles.load_style(self.write("n.json", {"bg_gradient": None})).bg_gradient)
+
     def test_extends(self):
         path = self.write("child.json", {"extends": "neon", "font_size": 90})
         s = styles.load_style(path)

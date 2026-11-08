@@ -1,0 +1,9 @@
+{
+  "description": "배경 사진용: 흐리고 어둡게 깔고 글자에 테두리 — --bg 와 함께 쓰기",
+  "bg_blur": 22,
+  "bg_dim": 0.5,
+  "stroke_width": 3,
+  "stroke_color": "#000000",
+  "next_color": "#D8D8E0",
+  "unsung_color": "#9A9AAA"
+}

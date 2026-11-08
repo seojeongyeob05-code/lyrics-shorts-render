@@ -50,7 +50,9 @@ def _color(key: str, value) -> tuple[int, int, int]:
 
 def _convert(key: str, value, base_dir: str):
     hint = _HINTS[key]
-    if key.endswith("_color") or key == "progress_track":
+    if key == "bg_gradient" and value is None:
+        return None
+    if key.endswith("_color") or key in ("progress_track", "bg_gradient"):
         return _color(key, value)
     if key == "font_path":
         if value is None:

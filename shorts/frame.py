@@ -10,7 +10,7 @@ from __future__ import annotations
 from bisect import bisect_right
 from dataclasses import dataclass
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 
 from .lrc import Lyrics
 from .text import load_font, wrap
@@ -22,11 +22,16 @@ Color = tuple[int, int, int]
 class Style:
     width: int = 1080
     height: int = 1920
-    bg_color: Color = (16, 16, 24)
+    bg_color: Color = (16, 16, 24)  # 배경 이미지가 없을 때 배경색(그라데이션이면 위쪽 색)
+    bg_gradient: Color | None = None  # 아래쪽 색. 주면 bg_color → bg_gradient 세로 그라데이션
+    bg_blur: float = 0  # 배경 이미지 흐림 반경(px). 가사가 잘 읽히게
+    bg_dim: float = 0  # 배경을 검게 덮는 정도(0~1)
     text_color: Color = (255, 255, 255)
     next_color: Color = (150, 150, 165)
     show_next: bool = True  # 현재 줄 아래에 다음 줄을 미리 보여줄지
     unsung_color: Color = (105, 105, 120)  # 노래방식 줄에서 아직 안 부른 글자
+    stroke_width: int = 0  # 글자 테두리 두께(px). 사진 배경 위에서 읽기 좋게
+    stroke_color: Color = (0, 0, 0)
     font_path: str | None = None  # None이면 한글 폰트 자동 탐색(text.find_korean_font)
     font_size: int = 72
     next_font_size: int = 52
@@ -56,14 +61,33 @@ def cover_fit(img: Image.Image, size: tuple[int, int]) -> Image.Image:
     return resized.crop((left, top, left + w, top + h))
 
 
+def make_background(s: Style, image: Image.Image | None = None) -> Image.Image:
+    """Style에 맞춘 배경 한 장: 이미지(꽉 채움) 또는 단색/그라데이션, 그 위에 흐림·어둡게."""
+    size = (s.width, s.height)
+    if image is not None:
+        bg = cover_fit(image.convert("RGB"), size)
+    elif s.bg_gradient is not None:
+        # 1px 폭 세로 띠를 만든 뒤 늘린다
+        strip = Image.new("RGB", (1, s.height))
+        top, bottom = s.bg_color, s.bg_gradient
+        for y in range(s.height):
+            a = y / max(1, s.height - 1)
+            strip.putpixel((0, y), tuple(round(c0 + (c1 - c0) * a) for c0, c1 in zip(top, bottom)))
+        bg = strip.resize(size, Image.NEAREST)
+    else:
+        bg = Image.new("RGB", size, s.bg_color)
+    if s.bg_blur > 0:
+        bg = bg.filter(ImageFilter.GaussianBlur(s.bg_blur))
+    if s.bg_dim > 0:
+        bg = Image.blend(bg, Image.new("RGB", size, (0, 0, 0)), min(1.0, s.bg_dim))
+    return bg
+
+
 class FrameRenderer:
     def __init__(self, style: Style | None = None, background: Image.Image | None = None):
         self.style = s = style or Style()
         size = (s.width, s.height)
-        if background is None:
-            self._bg = Image.new("RGB", size, s.bg_color)
-        else:
-            self._bg = cover_fit(background.convert("RGB"), size)
+        self._bg = make_background(s, background)
         self._font = load_font(s.font_path, s.font_size)
         self._next_font = load_font(s.font_path, s.next_font_size)
         self._cache: dict[tuple, Image.Image] = {}
@@ -173,12 +197,15 @@ class FrameRenderer:
         img = self._bg.copy()
         draw = ImageDraw.Draw(img)
 
+        stroke = {"stroke_width": s.stroke_width, "stroke_fill": s.stroke_color}
+
         # 현재 줄 블록은 center_y에 가운데 맞춤, 다음 줄 블록은 그 아래에 붙인다.
         bottom = s.height * s.center_y + s.font_size / 2
         if i is not None:
             rows = self._current_rows(lyrics.lines[i].text)
             for row, _, _, y in rows:
-                draw.text((s.width / 2, y), row, font=self._font, fill=color, anchor="mm")
+                draw.text((s.width / 2, y), row, font=self._font, fill=color, anchor="mm",
+                          **stroke)
             bottom = rows[-1][3] + s.font_size / 2
         if nxt is not None:
             rows = wrap(lyrics.lines[nxt].text, self._next_font, s.width * s.max_text_width)
@@ -186,7 +213,7 @@ class FrameRenderer:
             top = bottom + s.line_gap + s.next_font_size / 2
             for k, row in enumerate(rows):
                 draw.text((s.width / 2, top + step * k), row, font=self._next_font,
-                          fill=s.next_color, anchor="mm")
+                          fill=s.next_color, anchor="mm", **stroke)
         return img
 
     def _draw_progress(self, img: Image.Image, progress: float) -> None:

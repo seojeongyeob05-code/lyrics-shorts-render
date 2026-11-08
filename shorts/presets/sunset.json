@@ -1,0 +1,12 @@
+{
+  "description": "보라→주황 노을 그라데이션 배경",
+  "bg_color": "#2A1B4A",
+  "bg_gradient": "#E8794A",
+  "text_color": "#FFF6E8",
+  "unsung_color": "#B79FC0",
+  "next_color": "#F3D3C0",
+  "stroke_width": 2,
+  "stroke_color": "#2A1B4A",
+  "progress_color": "#FFF6E8",
+  "progress_track": "#7A4A6A"
+}

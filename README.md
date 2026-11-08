@@ -22,7 +22,8 @@ python3 -m shorts frame song.lrc --bg bg.jpg --at 0:50
 ### 스타일
 
 ```
-python3 -m shorts styles                       # 내장 프리셋 목록 (default, neon, warm, minimal)
+python3 -m shorts styles                       # 내장 프리셋 목록
+python3 -m shorts render song.lrc --bg photo.jpg --style photo   # 사진 배경: 흐리게·어둡게 + 글자 테두리
 python3 -m shorts render song.lrc --style neon
 python3 -m shorts render song.lrc --style my-theme.json
 ```

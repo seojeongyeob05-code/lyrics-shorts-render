@@ -3,7 +3,7 @@ import unittest
 from PIL import Image
 
 from shorts import lrc
-from shorts.frame import FrameRenderer, Style, cover_fit
+from shorts.frame import FrameRenderer, Style, cover_fit, make_background
 
 LYRICS = lrc.parse("[00:01.00]first line\n[00:03.00]second line\n[00:06.00]third", duration=8)
 
@@ -176,6 +176,39 @@ class KaraokeTest(unittest.TestCase):
         img = self.r.render(plain, 1.5)
         self.assertTrue(self._cols(img, (255, 255, 255)))
         self.assertFalse(self._cols(img, (0, 0, 255)))
+
+
+class BackgroundTest(unittest.TestCase):
+    SMALL = dict(width=60, height=100)
+
+    def test_gradient_runs_top_to_bottom(self):
+        bg = make_background(Style(**self.SMALL, bg_color=(0, 0, 0), bg_gradient=(200, 100, 0)))
+        self.assertEqual(bg.getpixel((30, 0)), (0, 0, 0))
+        self.assertEqual(bg.getpixel((30, 99)), (200, 100, 0))
+        mid = bg.getpixel((30, 50))
+        self.assertTrue(90 < mid[0] < 110 and 45 < mid[1] < 55)
+        self.assertEqual(bg.getpixel((0, 50)), bg.getpixel((59, 50)))  # 가로로는 같은 색
+
+    def test_dim_darkens(self):
+        bg = make_background(Style(**self.SMALL, bg_color=(200, 200, 200), bg_dim=0.5))
+        self.assertEqual(bg.getpixel((0, 0)), (100, 100, 100))
+
+    def test_blur_softens_image_edges(self):
+        img = Image.new("RGB", (60, 100), (0, 0, 0))
+        img.paste((255, 255, 255), (30, 0, 60, 100))
+        sharp = make_background(Style(**self.SMALL), img)
+        soft = make_background(Style(**self.SMALL, bg_blur=6), img)
+        self.assertEqual(sharp.getpixel((28, 50)), (0, 0, 0))
+        self.assertTrue(0 < soft.getpixel((28, 50))[0] < 255)
+
+    def test_stroke_draws_outline_color(self):
+        ly = lrc.parse("[00:00.00]HELLO", duration=2)
+        base = dict(width=200, height=120, font_size=40, fade=0, bg_color=(0, 0, 255),
+                    text_color=(255, 255, 255), stroke_color=(255, 0, 0))
+        plain = FrameRenderer(Style(**base)).render(ly, 1)
+        outlined = FrameRenderer(Style(**base, stroke_width=3)).render(ly, 1)
+        self.assertNotIn((255, 0, 0), _colors(plain))
+        self.assertIn((255, 0, 0), _colors(outlined))
 
 
 if __name__ == "__main__":
