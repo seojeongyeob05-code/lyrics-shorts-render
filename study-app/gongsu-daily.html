@@ -388,16 +388,10 @@ c: 핵심 3단계: ① $y'$을 $\dfrac{dy}{dx}$로 바꾸기 ② $y$는 $y$끼�
 c: 적분하면 적분상수가 반드시 생겨요. $\ln|y| = x + C$ 에서 $y = \pm e^{C}e^{x}$ 처럼 나온 상수 덩어리는 다시 $C$로 **덮어씌워서** $y = Ce^{x}$ 로 정리해요. 이렇게 덮어씌운 $C$는 음수여도 괜찮아요.
 c: **지수법칙**이 핵심 도구예요: $e^{A + C} = e^{C}e^{A}$, $\;\ln a + \ln b = \ln ab$
 c: **속미분 부호** 주의: $\displaystyle\int \frac{dy}{1 - y} = -\ln|1 - y| + C$. 안쪽을 미분하면 $-1$이 나와요.
-c: 자주 나오는 적분: $\displaystyle\int\frac{dy}{y} = \ln|y|$, $\;\int\frac{dy}{1 + y^2} = \arctan y$, $\;\int\frac{dy}{\sqrt{1 - y^2}} = \arcsin y$
+c: 자주 나오는 적분: $\displaystyle\int\frac{dy}{y} = \ln|y|$, $\;\int\frac{dy}{1 + y^2} = \arctan y$, $\;\int\frac{dy}{\sqrt{1 - y^2}} = \arcsin y$, $\;\int\cosh x\,dx = \sinh x$
 c: 답이 $y = \cdots$ 로 정리되면 **양함수**, $F(x, y) = C$ 로 남으면 **음함수**예요. 정리가 어려우면 음함수 그대로 답해도 돼요.
+c: 해설 Level 3의 고급 적분: $\displaystyle\int\sec y\,dy = \ln|\sec y + \tan y|$ (38번), $\dfrac{1}{1 + \cos x}$ 같은 꼴은 $t = \tan\dfrac{x}{2}$ 치환 (39번, 바이어슈트라스 치환). 다항식 × 지수함수는 부분적분 (4번).
 c: 꼭 외워둘 결과: $y' = ky \;\Rightarrow\; y = Ce^{kx}$
-Q mc
-q: $\displaystyle\int \frac{1}{y}\,dy$ 의 결과로 옳은 것은?
-a: $\ln|y| + C$
-w: $\ln y^2 + C$
-w: $-\dfrac{1}{y^2} + C$
-w: $e^{y} + C$
-e: 절댓값을 빼먹지 않도록 주의해요. 이 절댓값은 나중에 $\pm e^{C}$를 $C$로 덮어씌우면서 사라져요.
 Q ord
 q: $y' = xy^2$ 를 푸는 순서대로 쌓아보세요.
 s: $\dfrac{dy}{dx} = xy^2$ 로 쓴다
@@ -413,12 +407,12 @@ w: $y = Ce^{x/k}$
 w: $y = e^{kx} + C$
 e: $\dfrac{dy}{y} = k\,dx \Rightarrow \ln|y| = kx + C \Rightarrow y = Ce^{kx}$. 강의에서 꼭 외우라고 한 결과예요. $e^{kx} + C$ 는 상수를 곱이 아니라 덧셈으로 붙인 흔한 실수예요.
 Q mc
-q: $y' = 2xy$ 의 일반해는?
-a: $y = Ce^{x^2}$
-w: $y = Ce^{2x}$
-w: $y = x^2 + C$
-w: $y = Ce^{x^2/2}$
-e: $\dfrac{dy}{y} = 2x\,dx \Rightarrow \ln|y| = x^2 + C \Rightarrow y = Ce^{x^2}$. $2x$ 를 적분하지 않고 그대로 지수에 올리면 $Ce^{2x}$ 라는 오답이 나와요.
+q: 상수를 덮어씌워 $y = Ce^{2x}$ 를 얻었는데, 초기조건을 넣었더니 $C = -3$ 이 나왔어요. $C$는 원래 $e^{C}$ 였으니 음수가 될 수 없는 것 아닐까요?
+a: 괜찮다. 덮어씌운 $C$는 $\pm e^{C}$ 를 대신하므로 음수도 될 수 있다
+w: 틀렸다. $e^{C} > 0$ 이므로 계산을 다시 해야 한다
+w: 절댓값을 씌워 $C = 3$ 으로 바꿔야 한다
+w: 해가 존재하지 않는다
+e: $\ln|y| = 2x + C$ 에서 절댓값을 풀면 $y = \pm e^{C}e^{2x}$ 예요. 부호까지 포함한 덩어리를 $C$로 덮어씌운 것이라 음수도 됩니다. 강의 Q&A에서 나온 질문이에요.
 Q mc
 q: $y' = y\,e^{x}$ 의 일반해는?
 a: $y = Ce^{e^{x}}$
@@ -433,17 +427,10 @@ w: $y = 1 + Ce^{x}$
 w: $y = Ce^{x} - 1$
 w: $y = Ce^{-x} - 1$
 e: $\displaystyle\int\frac{dy}{1 - y} = -\ln|1 - y|$ 라서 $\ln|1 - y| = -x + C$, $1 - y = Ce^{-x}$. 속미분 $-1$을 빼먹으면 $e^{x}$ 쪽 오답이 나와요. $1 - Ce^{-x}$ 라고 써도 $C$를 덮어씌우면 같은 답이에요.
-Q mc
-q: 상수를 덮어씌워 $y = Ce^{2x}$ 를 얻었는데, 초기조건을 넣었더니 $C = -3$ 이 나왔어요. $C$는 원래 $e^{C}$ 였으니 음수가 될 수 없는 것 아닐까요?
-a: 괜찮다. 덮어씌운 $C$는 $\pm e^{C}$ 를 대신하므로 음수도 될 수 있다
-w: 틀렸다. $e^{C} > 0$ 이므로 계산을 다시 해야 한다
-w: 절댓값을 씌워 $C = 3$ 으로 바꿔야 한다
-w: 해가 존재하지 않는다
-e: $\ln|y| = 2x + C$ 에서 절댓값을 풀면 $y = \pm e^{C}e^{2x}$ 예요. 부호까지 포함한 덩어리를 $C$로 덮어씌운 것이라 음수도 됩니다. 강의 Q&A에서 나온 질문이에요.
 Q in
-q: $y' = 3y,\; y(0) = 2$ 의 해를 $y = 2e^{kx}$ 로 쓸 때 $k$는?
+q: $y' = y\cosh x,\; y(0) = 3$ 의 해를 $y = Ce^{\sinh x}$ 로 쓸 때 $C$는?
 a: 3
-e: $y = Ce^{3x}$ 이고 $y(0) = C = 2$ 이므로 $y = 2e^{3x}$, 즉 $k = 3$이에요.
+e: $\dfrac{dy}{y} = \cosh x\,dx \Rightarrow \ln|y| = \sinh x + C$. $\sinh 0 = 0$ 이므로 $y(0) = C = 3$. $\cosh$ 를 적분하면 $\sinh$, 부호 없이 그대로예요 (해설 30번 유형).
 Q mc
 q: $y' = 1 + y^2$ 의 일반해는?
 a: $y = \tan(x + C)$
@@ -459,12 +446,26 @@ w: $y = \arcsin x + C$
 w: $y = \cos x + C$
 e: $\dfrac{dy}{\sqrt{1 - y^2}} = dx \Rightarrow \arcsin y = x + C \Rightarrow y = \sin(x + C)$. 해설 31, 41번 유형이에요. 여기서도 상수는 괄호 안에 들어가요.
 Q mc
+q: $y' = \cos y$ 의 일반해(음함수)는?
+a: $\ln|\sec y + \tan y| = x + C$
+w: $\ln|\cos y| = x + C$
+w: $\tan y = x + C$
+w: $\sin y = x + C$
+e: $\dfrac{dy}{\cos y} = \sec y\,dy$ 를 적분하면 $\ln|\sec y + \tan y|$ (해설 38번). $\tan y = x + C$ 는 $y' = \cos^2 y$, $\sin y = x + C$ 는 $y' = \sec y$ 의 해예요.
+Q mc
 q: $y' = \dfrac{x}{y}$ 의 일반해는?
 a: $y^2 - x^2 = C$
 w: $y^2 + x^2 = C$
 w: $y = x + C$
 w: $y = Cx$
 e: $y\,dy = x\,dx \Rightarrow \dfrac{y^2}{2} = \dfrac{x^2}{2} + C$. $y = \pm\sqrt{x^2 + C}$ 로 쓰기보다 음함수 $y^2 - x^2 = C$ 로 두는 편이 깔끔해요. $y^2 + x^2 = C$ 는 $y' = -\dfrac{x}{y}$ 의 해예요.
+Q mc
+q: $y' = x\,e^{x - y}$ 의 일반해는?
+a: $y = \ln\left[(x - 1)e^{x} + C\right]$
+w: $y = \ln\left[xe^{x} + C\right]$
+w: $y = \ln\left[(x + 1)e^{x} + C\right]$
+w: $y = (x - 1)e^{x} + C$
+e: 지수법칙으로 $e^{x - y} = e^{x}e^{-y}$ 를 나누면 $e^{y}dy = xe^{x}dx$. 오른쪽은 부분적분 $\int xe^x dx = (x - 1)e^x$ (해설 4번 유형). 부분적분 부호를 틀리면 $(x + 1)e^x$, 부분적분을 빼먹으면 $xe^x$ 가 나와요.
 Q mc
 q: $y' = y(1 - y)$ 의 일반해는?
 a: $y = \dfrac{Ce^{x}}{1 + Ce^{x}}$
@@ -1532,7 +1533,6 @@ e: $\sin t * \sin t$ 를 계산하면 나와요. 세 번째 $\sin t * \cos t$ �
       }
       if (line.startsWith("Q ")) {
         Q = { type: line.slice(2).trim(), q: "", a: [], w: [], s: [], e: "" };
-        Q.id = L.id + "-" + (L.qs.length + 1);
         L.qs.push(Q); continue;
       }
       const m = line.match(/^([cqawse]):\s?(.*)$/);
@@ -1544,6 +1544,9 @@ e: $\sin t * \sin t$ 를 계산하면 나와요. 세 번째 $\sin t * \cos t$ �
       else if (k === "a") Q.type === "in" ? Q.a.push(...v.split(" ; ").map(s => s.trim())) : Q.a.push(v);
       else Q[k].push(v);
     }
+    // Ids come from the question text, so reordering or inserting questions keeps saved review progress attached.
+    const hash = t => { let h = 5381; for (let i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) >>> 0; return h.toString(36); };
+    lessons.forEach(l => l.qs.forEach(q => { q.id = l.id + "-" + hash(q.type + "|" + q.q); }));
     return lessons;
   }
   const LESSONS = parseCourse(document.getElementById("course").textContent);
