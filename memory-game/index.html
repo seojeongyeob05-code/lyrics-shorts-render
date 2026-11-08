@@ -280,6 +280,8 @@ const LEVELS = {
 const ONES = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
 const TENS = { twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60 };
 const LOCKERS = [13, 14, 15, 16, 30, 40, 50, 60];
+// Apartment numbers are said floor + "oh" + unit, e.g. 1204 is "twelve oh four".
+const aptWords = a => `${ONES[Math.floor(a / 100)]} oh ${ONES[a % 100]}`;
 const numWord = n => n < 20 ? ONES[n] : Object.keys(TENS).find(k => TENS[k] === n);
 // Reads "13", "thirteen", "thirty one" or "four seven two nine" as a digit string.
 function numberIn(text) {
@@ -333,7 +335,7 @@ const VOCAB = [
   ['found', '찾았다, 발견했다'], ['lost and found', '분실물 보관소'], ['left', '왼쪽'], ['right', '오른쪽'], ['straight ahead', '곧장 앞으로'],
   ['color', '색깔'], ['black', '검은색'], ['brown', '갈색'], ['red', '빨간색'], ['blue', '파란색'], ['look like', '~처럼 생기다'],
   ['inside', '안에'], ['card', '카드'], ['photo', '사진'], ['ticket', '표'], ['restroom', '화장실'], ['mail', '우편'],
-  ['gym', '헬스장'], ['management office', '관리사무소'], ['staff', '직원'], ['only', '~만, 오직'], ['package', '택배, 소포'], ['help', '돕다'], ['closed', '문을 닫은'], ['sign', '서명하다'], ['locker', '보관함'], ['code', '비밀번호'], ['parcel', '소포, 택배'],
+  ['gym', '헬스장'], ['management office', '관리사무소'], ['staff', '직원'], ['only', '~만, 오직'], ['package', '택배, 소포'], ['help', '돕다'], ['closed', '문을 닫은'], ['sign', '서명하다'], ['locker', '보관함'], ['too big', '너무 큰'], ['apartment', '아파트, 집 호수'], ['code', '비밀번호'], ['parcel', '소포, 택배'],
   ['thirteen', '13'], ['thirty', '30'], ['fourteen', '14'], ['forty', '40'], ['fifteen', '15'], ['fifty', '50'], ['sixteen', '16'], ['sixty', '60'], ['signature', '서명'],
   ['small', '작은'], ['medium', '중간'], ['large', '큰'], ['size', '크기'], ['milk', '우유'], ['oat', '귀리'], ['almond', '아몬드'],
   ['to go', '가지고 갈게요 (포장)'], ['for here', '여기서 먹을게요'], ['favor', '부탁'],
@@ -442,6 +444,7 @@ function newLoop() {
     level: LEVEL, end: LEVEL === 2 ? GRANDMA_LEAVES : END,
     order: { drink: pick(Object.keys(DRINKS)), size: pick(Object.keys(SIZES)), milk: pick(Object.keys(MILKS)) },
     bOrder: { drink: null, size: null, milk: null, here: null }, bAsk: null, bSaid: [], carrying: null, heardRequest: false,
+    bigParcel: LEVEL === 3 && Math.random() < 0.5, apt: (2 + Math.floor(Math.random() * 14)) * 100 + 1 + Math.floor(Math.random() * 8), aptStage: 0,
     locker: pick(LOCKERS), code: Array.from({ length: 4 }, () => Math.floor(Math.random() * 10)).join(''), lockerStage: 0, lockerTried: null,
     facing: 1, mistakes: [], read: new Set(), visited: new Set(), greeted: new Set(), phrases: [], done: false, lastNpc: null,
   };
@@ -458,7 +461,7 @@ function newLoop() {
     $('walletDesc').innerHTML = `당신의 지갑: <b>${COLORS[S.color]}</b> · 안에 <b>${CONTENTS[S.content].ko}</b>`;
     $('goalMeta').textContent = '경비실은 오후 6시에 문을 닫습니다. 걷기·말하기·몸짓·번역기 모두 시간이 흘러요.';
   } else if (S.level === 3) {
-    $('walletDesc').innerHTML = '보관함 번호와 비밀번호는 <b>쪽지에 영어로</b> 적혀 있어요. 대화창 맨 위로 올리면 다시 읽을 수 있어요.';
+    $('walletDesc').innerHTML = `당신의 집: <b>${S.apt}호</b> · 택배가 어디 있는지는 <b>쪽지에 영어로</b> 적혀 있어요. 대화창 맨 위로 올리면 다시 읽을 수 있어요.`;
     $('goalMeta').textContent = '우편물실은 오후 6시에 잠깁니다.';
   } else {
     $('walletDesc').innerHTML = '할머니가 무엇을 원하는지는 <b>직접 알아들어야</b> 해요.';
@@ -466,7 +469,10 @@ function newLoop() {
   }
   sys(S.loop === 1 ? (S.level === 1 ? '오후 5시 20분. 방금 전까지 있던 건물 로비로 돌아왔다.' : '오후 5시 20분. 벤치에 앉은 옆집 할머니가 이쪽을 보며 손짓한다.') : '…눈을 떠보니 다시 오후 5시 20분, 건물 입구였다. 그런데 어딘가 배치가 달라 보인다.');
   place('MAPLE COURT — Welcome, residents and guests.', '메이플 코트 — 입주민과 방문객 여러분, 환영합니다.');
-  if (S.level === 3) {
+  if (S.level === 3 && S.bigParcel) {
+    place("Hi! Sorry I missed you. Your package was too big for the parcel lockers, so I left it with the guard at the SECURITY OFFICE. Have a good one! — Dan, Speedy Delivery",
+      '안녕하세요! 못 뵙고 가서 죄송해요. 택배가 택배 보관함에 들어가기엔 너무 커서 경비실 경비원에게 맡겨뒀어요. 좋은 하루 되세요! — 스피디 택배, 댄', '문에 붙은 쪽지');
+  } else if (S.level === 3) {
     const codeEn = [...S.code].map(d => ONES[+d]).join(', ');
     place(`Hi! Sorry I missed you. I left your package in the parcel locker in the MAIL ROOM. Locker number ${numWord(S.locker)}. The code is ${codeEn}. Have a good one! — Dan, Speedy Delivery`,
       `안녕하세요! 못 뵙고 가서 죄송해요. 택배는 우편물실 택배 보관함에 넣어뒀어요. 보관함 번호는 ${S.locker}번. 비밀번호는 ${S.code}예요. 좋은 하루 되세요! — 스피디 택배, 댄`, '문에 붙은 쪽지');
@@ -816,7 +822,7 @@ function enterRoom(slot) {
   const key = S.roomAt[slot], room = ROOMS[key];
   if (key === 'security' && S.guardOnPatrol) officeSign();
   else place(room.place[0], room.place[1]);
-  const target = LEVELS[S.level].target, T = ROOMS[target];
+  const target = S.level === 3 && S.bigParcel ? 'security' : LEVELS[S.level].target, T = ROOMS[target];
   if (key === target || S.visited.has(key)) { S.visited.add(key); return; }
   S.visited.add(key);
   const sec = S.slotOf[target], who = S.level === 1 ? '청소부' : '청소부나 할머니';
@@ -923,6 +929,19 @@ const R = {
       if (I.has('confused')) return say('(He taps his watch, then points toward his office.) Office. Five... forty-five. Back soon!', '(시계를 톡톡 치고 사무실 쪽을 가리키며) 사무실. 5시… 45분. 곧 돌아가요!');
       if (I.has('wallet') || I.has('lost')) return say("A lost wallet? It's locked in my office. Come back at a quarter to six, okay?", '잃어버린 지갑이요? 제 사무실에 잠겨 있어요. 6시 15분 전(5시 45분)에 다시 오세요, 알겠죠?');
       return say("I'm on my rounds right now. See you at the office at a quarter to six.", '지금 순찰 중이에요. 6시 15분 전(5시 45분)에 사무실에서 봬요.');
+    }
+    if (S.level === 3 && S.bigParcel) {
+      if (S.guardStage === 3) return R.guardSign(I, raw);
+      const n = numberIn(raw);
+      if (S.aptStage === 1 && n) {
+        if (+n === S.apt) { S.guardStage = 3; S.phrases.push([raw, aptWords(S.apt)]); return say(`Apartment ${aptWords(S.apt)}... yes, a big box for you. Please sign here. (He holds out a clipboard.)`, `${S.apt}호… 네, 큰 상자가 하나 있네요. 여기에 서명해 주세요. (클립보드를 내민다)`); }
+        miss('거의 맞음', `"${raw}"`, `당신 집은 ${S.apt}호예요. 영어로는 "${aptWords(S.apt)}"처럼 층 번호 + oh(0) + 호수로 말해요. 숫자로 ${S.apt}라고 써도 돼요.`, ['apartment']);
+        return say(`Hmm, I have nothing for ${n}. What's your apartment number again?`, `음, ${n}호 앞으로 온 건 없는데요. 집 호수가 어떻게 되세요?`, false);
+      }
+      if (I.has('confused') && S.aptStage === 1) return say('(He taps a list of door numbers.) Your apartment. Your door. Number? Like... three oh five?', '(호수 목록을 톡톡 치며) 당신 집. 당신 집 문. 번호요? 예를 들면… 305호?');
+      if (I.has('mail') || I.has('greet') || I.has('help') || I.has('confused') || I.has('yes')) { S.aptStage = 1; return say("A package? We do have some big boxes here. What's your apartment number?", '택배요? 큰 상자가 몇 개 있어요. 집 호수가 어떻게 되세요?'); }
+      if (S.aptStage === 1) { miss('무관', `"${raw}"`, `"What's your apartment number?"는 "집 호수가 어떻게 되세요?"예요. ${S.apt}호를 숫자나 "${aptWords(S.apt)}"로 말하면 됐어요.`, ['apartment']); return say("Sorry, I need your apartment number.", '죄송한데 집 호수가 필요해요.', false); }
+      return say('Hi there. Can I help you?', '안녕하세요. 도와드릴까요?');
     }
     if (S.level === 3) {
       const m = SLOTS[S.slotOf.mail];
@@ -1068,6 +1087,10 @@ const R = {
     const n = numberIn(raw);
     if (I.has('confused')) return ['PARCEL LOCKER. Step 1: type the locker number. Step 2: type the 4-digit code.', '택배 보관함. 1단계: 보관함 번호 입력. 2단계: 4자리 비밀번호 입력.', true];
     if (!n) return [S.lockerStage === 0 ? 'Please enter your locker number.' : 'Please enter the 4-digit code.', S.lockerStage === 0 ? '보관함 번호를 입력하세요.' : '4자리 비밀번호를 입력하세요.', false];
+    if (S.bigParcel) {
+      if (!S.mistakes.some(m => m.words.includes('too big'))) miss('놓친 정보', `보관함 ${n}번을 열어봄`, '쪽지에는 "too big for the parcel lockers"라고 적혀 있었어요. 보관함에 들어가기엔 너무 커서 경비실(SECURITY OFFICE) 경비원에게 맡겼다는 뜻이에요.', ['too big', 'security office']);
+      return [`Locker ${n} is empty. (All the lockers look too small for a big box.)`, `${n}번 보관함은 비어 있어요. (보관함이 전부 큰 상자가 들어가기엔 작아 보인다)`, false];
+    }
     if (S.lockerStage === 0) {
       const k = +n;
       if (k < 1 || k > 60) return [`There is no locker ${n}. Lockers are numbered 1 to 60.`, `${n}번 보관함은 없어요. 1~60번까지 있어요.`, false];
@@ -1292,7 +1315,10 @@ function fail() {
   const items = S.mistakes.slice();
   if (S.level === 3) {
     const codeEn = [...S.code].map(d => ONES[+d]).join(', ');
-    if (!items.some(m => m.words.includes('locker'))) items.push({ cat: '놓친 정보', act: '택배 기사의 쪽지', explain: `쪽지에는 "Locker number ${numWord(S.locker)}. The code is ${codeEn}."라고 적혀 있었어요. ${S.locker}번 보관함, 비밀번호 ${S.code}이라는 뜻이에요. 보관함은 우편물실(MAIL ROOM)에 있어요.`, at: clockStr(S.t), words: ['locker', 'code', 'mail', numWord(S.locker)] });
+    if (S.bigParcel) {
+      if (!items.some(m => m.words.includes('too big'))) items.push({ cat: '놓친 정보', act: '택배 기사의 쪽지', explain: '쪽지에는 "too big for the parcel lockers, so I left it with the guard at the SECURITY OFFICE"라고 적혀 있었어요. 보관함엔 너무 커서 경비실에 맡겼다는 뜻이에요.', at: clockStr(S.t), words: ['too big', 'security office'] });
+      if (S.aptStage === 1 && S.guardStage < 3 && !items.some(m => m.words.includes('apartment'))) items.push({ cat: '놓친 정보', act: '경비원의 질문', explain: `"What's your apartment number?"는 "집 호수가 어떻게 되세요?"예요. ${S.apt}호는 영어로 "${aptWords(S.apt)}"예요.`, at: clockStr(S.t), words: ['apartment'] });
+    } else if (!items.some(m => m.words.includes('locker'))) items.push({ cat: '놓친 정보', act: '택배 기사의 쪽지', explain: `쪽지에는 "Locker number ${numWord(S.locker)}. The code is ${codeEn}."라고 적혀 있었어요. ${S.locker}번 보관함, 비밀번호 ${S.code}이라는 뜻이에요. 보관함은 우편물실(MAIL ROOM)에 있어요.`, at: clockStr(S.t), words: ['locker', 'code', 'mail', numWord(S.locker)] });
   }
   if (S.level === 2) {
     const o = S.order;
@@ -1331,7 +1357,9 @@ function win() {
   if (S.done) return; S.done = true;
   if (!cleared.includes(S.level)) { cleared.push(S.level); store.set('ag520.cleared', cleared); }
   const used = Math.round((S.t - START) / 60);
-  const phr = S.level === 3
+  const phr = S.level === 3 && S.bigParcel
+    ? `<li><em>too big</em> for the lockers → SECURITY OFFICE · apartment <em>${aptWords(S.apt)}</em> = ${S.apt}호</li>`
+    : S.level === 3
     ? `<li>locker <em>${numWord(S.locker)}</em> = ${S.locker}번 · code <em>${[...S.code].map(d => ONES[+d]).join(' ')}</em> = ${S.code}</li>`
     : S.phrases.map(([said, model]) => `<li>"${esc(said)}" <span class="arrow">→ 더 자연스럽게</span> <em>${esc(model)}</em></li>`).join('');
   show(`
