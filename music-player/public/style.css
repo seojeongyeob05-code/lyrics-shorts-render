@@ -133,6 +133,11 @@ input:focus { border-color: var(--accent); }
 .group-name, .group-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .group-name { font-weight: 600; }
 .group-sub { font-size: 12px; color: var(--muted); }
+.text-link {
+  max-width: 100%; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom;
+}
+.text-link:hover, .text-link:focus-visible { color: var(--text); text-decoration: underline; outline: none; }
 .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
 .empty .btn { margin-top: 14px; }
 

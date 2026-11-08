@@ -1,7 +1,7 @@
 import { matchesQuery } from './search.js';
 import { setupMediaSession } from './media-session.js';
 import { parseLyrics, currentLineIndex } from './lyrics.js';
-import { groupTracks } from './groups.js';
+import { groupTracks, UNKNOWN_ARTIST } from './groups.js';
 
 // ───────────── 유틸 ─────────────
 const $ = (sel) => document.querySelector(sel);
@@ -162,6 +162,21 @@ function renderSidebar() {
 }
 
 // ───────────── 화면: 곡 목록 ─────────────
+// 아티스트·앨범 이름을 누르면 그 화면으로 이동한다. 곡 행·대기열 항목의 클릭(재생)으로 번지지 않게 막는다.
+function groupLink(kind, name, label = name) {
+  return h('button', {
+    type: 'button',
+    class: 'text-link',
+    title: `${kind === 'artist' ? '아티스트' : '앨범'} 보기`,
+    onclick: (e) => {
+      e.stopPropagation();
+      safe(() => openView({ type: kind, name }))();
+    },
+  }, label);
+}
+const artistLink = (t) => groupLink('artist', t.artist || UNKNOWN_ARTIST);
+const albumLink = (t) => (t.album ? groupLink('album', t.album) : '');
+
 function coverEl(track, cls = 'cover') {
   const el = h('div', { class: cls });
   if (track?.hasCover) el.append(h('img', { src: `/api/tracks/${track.id}/cover`, loading: 'lazy', alt: '' }));
@@ -242,8 +257,8 @@ function renderMain() {
   h('div', { class: 't-main' }, coverEl(t),
     h('div', { class: 't-text' },
       h('div', { class: 't-title' }, t.title),
-      h('div', { class: 't-artist' }, t.artist || '알 수 없는 아티스트'))),
-  h('div', { class: 't-album' }, t.album || ''),
+      h('div', { class: 't-artist' }, artistLink(t)))),
+  h('div', { class: 't-album' }, albumLink(t)),
   h('div', { class: 't-dur' }, fmt(t.duration)),
   h('button', {
     class: 'icon-btn', title: '더 보기', html: ICON.more,
@@ -680,7 +695,7 @@ function renderPlayer() {
   const t = currentTrack();
   $('#now-cover').replaceWith(Object.assign(coverEl(t), { id: 'now-cover' }));
   $('#now-title').textContent = t ? t.title : '재생 중인 곡 없음';
-  $('#now-artist').textContent = t ? (t.artist || '알 수 없는 아티스트') : '';
+  $('#now-artist').replaceChildren(t ? artistLink(t) : '');
   document.title = t ? `${t.title}${t.artist ? ` - ${t.artist}` : ''}` : 'My Music';
 
   $('#btn-play').innerHTML = audio.paused ? ICON.play : ICON.pause;
@@ -712,7 +727,7 @@ function renderQueue() {
     coverEl(t),
     h('div', { class: 't-text', onclick: () => { player.index = i; load(true); } },
       h('div', { class: 'q-title' }, t.title),
-      h('div', { class: 'q-artist' }, t.artist || '알 수 없는 아티스트')),
+      h('div', { class: 'q-artist' }, artistLink(t))),
     h('button', { class: 'icon-btn', title: '대기열에서 빼기', html: ICON.close, onclick: () => removeFromQueue(i) }));
   };
   const upcoming = player.queue.slice(player.index + 1);
