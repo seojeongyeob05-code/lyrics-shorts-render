@@ -211,6 +211,18 @@ test('업로드: .lrc만 올리면 제목이 같은 기존 곡에 붙이고, EUC
   assert.deepEqual(fs.readdirSync(path.join(dataDir, 'music')).filter((f) => f.endsWith('.lrc')), []);
 });
 
+test('업로드 한도: 상태 API가 파일 크기 한도를 알려 주고, 파일 수 초과는 한국어로 안내한다', async () => {
+  const status = await (await call('GET', '/api/auth/status')).json();
+  assert.equal(status.maxUploadMb, 200);
+
+  const form = new FormData();
+  for (let i = 0; i <= 100; i++) form.append('files', new Blob(['x'], { type: 'text/plain' }), `${i}.lrc`);
+  const res = await call('POST', '/api/tracks', { form });
+  assert.equal(res.status, 400);
+  assert.equal((await res.json()).error, '한 번에 올릴 수 있는 파일 수(100개)를 넘었습니다');
+  assert.deepEqual(fs.readdirSync(path.join(dataDir, 'music')).filter((f) => f.endsWith('.lrc')), []);
+});
+
 test('스트리밍은 Range 요청을 지원한다', async () => {
   const full = await call('GET', `/api/tracks/${trackId}/stream`);
   assert.equal(full.status, 200);

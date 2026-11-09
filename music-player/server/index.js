@@ -17,6 +17,7 @@ export function loadConfig(env = process.env) {
     musicDir: path.join(dataDir, 'music'),
     coverDir: path.join(dataDir, 'covers'),
     maxUploadMb: Number(env.MAX_UPLOAD_MB) || 200,
+    maxUploadFiles: 100, // 요청 하나에 담을 수 있는 파일 수. 브라우저는 더 작게 나눠 보낸다.
     secureCookie: env.COOKIE_SECURE === 'true',
     trustProxy: env.TRUST_PROXY === 'true',
     sessionDays: 30,
@@ -46,9 +47,11 @@ export function createApp(config) {
 
   app.use((err, _req, res, _next) => {
     if (err instanceof multer.MulterError) {
-      const message = err.code === 'LIMIT_FILE_SIZE'
-        ? `파일 하나는 ${config.maxUploadMb}MB를 넘을 수 없습니다`
-        : `업로드 오류: ${err.message}`;
+      const messages = {
+        LIMIT_FILE_SIZE: `파일 하나는 ${config.maxUploadMb}MB를 넘을 수 없습니다`,
+        LIMIT_FILE_COUNT: `한 번에 올릴 수 있는 파일 수(${config.maxUploadFiles}개)를 넘었습니다`,
+      };
+      const message = messages[err.code] ?? `업로드 오류: ${err.message}`;
       return res.status(err.code === 'LIMIT_FILE_SIZE' ? 413 : 400).json({ error: message });
     }
     console.error(err);

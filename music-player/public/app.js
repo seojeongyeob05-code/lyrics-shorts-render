@@ -2,6 +2,7 @@ import { matchesQuery } from './search.js';
 import { setupMediaSession } from './media-session.js';
 import { parseLyrics, currentLineIndex } from './lyrics.js';
 import { groupTracks, UNKNOWN_ARTIST } from './groups.js';
+import { planUploads, mergeResults } from './upload-plan.js';
 
 // ───────────── 유틸 ─────────────
 const $ = (sel) => document.querySelector(sel);
@@ -431,7 +432,7 @@ async function reorderPlaylist(from, to) {
 }
 
 // ───────────── 업로드 ─────────────
-function uploadSummary({ added, duplicates = [], rejected = [], lyrics = { attached: [], unmatched: [] } }) {
+function uploadSummary({ added, duplicates = [], rejected = [], tooLarge = [], lyrics = { attached: [], unmatched: [] } }) {
   const parts = [];
   if (added.length) parts.push(`${added.length}곡을 추가했습니다`);
   if (lyrics.attached.length) parts.push(`가사 ${lyrics.attached.length}개를 연결했습니다`);
@@ -440,37 +441,84 @@ function uploadSummary({ added, duplicates = [], rejected = [], lyrics = { attac
   if (duplicates.length) skipped.push(`이미 있는 곡 ${duplicates.length}개`);
   if (lyrics.unmatched.length) skipped.push(`짝을 못 찾은 가사 ${lyrics.unmatched.length}개`);
   if (rejected.length) skipped.push(`지원하지 않는 파일 ${rejected.length}개`);
+  if (tooLarge.length) skipped.push(`${Math.round(maxUploadBytes / 1024 / 1024)}MB가 넘는 파일 ${tooLarge.length}개`);
   if (skipped.length) msg += ` (${skipped.join(', ')} 건너뜀)`;
   return msg;
 }
 
-function uploadFiles(fileList) {
-  const files = [...fileList];
-  if (!files.length) return;
+let maxUploadBytes = Infinity; // 서버가 알려 준 파일 하나의 최대 크기
+let uploading = false;
+
+// 묶음 하나를 보낸다. 응답 코드와 본문을 돌려주고, 네트워크 오류면 reject.
+function postBatch(files, onProgress, onSent) {
   const form = new FormData();
   files.forEach((f) => form.append('files', f, f.name));
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/tracks');
+    xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress(e.loaded / e.total); };
+    xhr.upload.onload = onSent;
+    xhr.onerror = () => reject(new Error('네트워크 오류'));
+    xhr.onload = () => {
+      let data = null;
+      try { data = JSON.parse(xhr.responseText); } catch { /* 본문 없음 */ }
+      resolve({ status: xhr.status, data });
+    };
+    xhr.send(form);
+  });
+}
 
-  const xhr = new XMLHttpRequest();
-  xhr.open('POST', '/api/tracks');
-  xhr.upload.onprogress = (e) => {
-    if (e.lengthComputable) toast(`업로드 중… ${Math.round((e.loaded / e.total) * 100)}%`, 0);
-  };
-  xhr.upload.onload = () => toast('곡 정보를 읽는 중…', 0);
-  xhr.onerror = () => toast('업로드 중 네트워크 오류가 발생했습니다');
-  xhr.onload = safe(async () => {
-    let data = null;
-    try { data = JSON.parse(xhr.responseText); } catch { /* 본문 없음 */ }
-    if (xhr.status === 401) {
-      $('#toast').hidden = true;
-      return showAuth(false);
+// 파일이 많거나 크면 여러 번에 나눠 보낸다. 한 묶음이 실패해도 나머지는 계속 올린다.
+async function uploadFiles(fileList) {
+  const files = [...fileList];
+  if (!files.length) return;
+  if (uploading) return toast('이미 업로드 중입니다. 끝난 뒤 다시 시도하세요');
+  const { batches, tooLarge } = planUploads(files, { maxFileBytes: maxUploadBytes });
+  const sizeOf = (batch) => batch.reduce((sum, f) => sum + f.size, 0);
+  const totalBytes = batches.reduce((sum, b) => sum + sizeOf(b), 0) || 1;
+  const results = [];
+  let failedFiles = 0;
+  let failReason = '';
+  let doneBytes = 0;
+
+  uploading = true;
+  try {
+    for (const [i, batch] of batches.entries()) {
+      const step = batches.length > 1 ? ` (${i + 1}/${batches.length})` : '';
+      const bytes = sizeOf(batch);
+      let res;
+      try {
+        res = await postBatch(
+          batch,
+          (ratio) => toast(`업로드 중… ${Math.min(100, Math.round(((doneBytes + ratio * bytes) / totalBytes) * 100))}%${step}`, 0),
+          () => toast(`곡 정보를 읽는 중…${step}`, 0),
+        );
+      } catch (err) {
+        res = { status: 0, data: { error: err.message } };
+      }
+      if (res.status === 401) {
+        $('#toast').hidden = true;
+        return showAuth(false);
+      }
+      if (res.status >= 200 && res.status < 300) results.push(res.data);
+      else {
+        failedFiles += batch.length;
+        failReason = res.data?.error || `업로드 실패 (${res.status})`;
+      }
+      doneBytes += bytes;
     }
-    if (xhr.status >= 300) return toast(data?.error || `업로드 실패 (${xhr.status})`);
+  } finally {
+    uploading = false;
+  }
+
+  if (results.length) {
     await loadLibrary();
     if (state.view.type !== 'playlist') await refreshView();
-    toast(uploadSummary(data), 5000);
     loadLyrics(true); // 지금 재생 중인 곡에 가사가 붙었을 수 있음
-  });
-  xhr.send(form);
+  }
+  let msg = uploadSummary({ ...mergeResults(results), tooLarge });
+  if (failedFiles) msg += ` · 파일 ${failedFiles}개 업로드 실패: ${failReason}`;
+  toast(msg, failedFiles ? 8000 : 5000);
 }
 
 // ───────────── 플레이어 ─────────────
@@ -1087,7 +1135,7 @@ $('#search').addEventListener('input', (e) => {
 });
 
 $('#file-input').addEventListener('change', (e) => {
-  uploadFiles(e.target.files);
+  uploadFiles(e.target.files).catch((err) => toast(err.message));
   e.target.value = '';
 });
 
@@ -1109,7 +1157,7 @@ addEventListener('drop', (e) => {
   e.preventDefault();
   dragDepth = 0;
   $('#dropzone').hidden = true;
-  if (!$('#app').hidden) uploadFiles(e.dataTransfer.files);
+  if (!$('#app').hidden) uploadFiles(e.dataTransfer.files).catch((err) => toast(err.message));
 });
 
 document.addEventListener('click', (e) => { if (!e.target.closest('#menu')) hideMenu(); }, true);
@@ -1134,5 +1182,8 @@ addEventListener('keydown', (e) => {
 renderPlayer();
 renderQueue();
 api('GET', '/api/auth/status')
-  .then((s) => (s.user ? startApp(s.user) : showAuth(s.setupRequired)))
+  .then((s) => {
+    if (s.maxUploadMb) maxUploadBytes = s.maxUploadMb * 1024 * 1024;
+    return s.user ? startApp(s.user) : showAuth(s.setupRequired);
+  })
   .catch((err) => toast(err.message, 0));

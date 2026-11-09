@@ -97,7 +97,8 @@ export function createAuth(db, config) {
   const userCount = () => db.prepare('SELECT COUNT(*) AS n FROM users').get().n;
 
   router.get('/status', (req, res) => {
-    res.json({ setupRequired: userCount() === 0, user: req.user ?? null });
+    // maxUploadMb: 브라우저가 너무 큰 파일을 미리 걸러 다른 파일까지 실패하지 않게 한다.
+    res.json({ setupRequired: userCount() === 0, user: req.user ?? null, maxUploadMb: config.maxUploadMb });
   });
 
   // 최초 1회만: 첫 계정을 만들고 이후 가입은 막는다.

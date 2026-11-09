@@ -112,7 +112,7 @@ export function createTracksRouter(db, config) {
       destination: musicDir,
       filename: (_req, file, cb) => cb(null, crypto.randomUUID() + path.extname(file.originalname).toLowerCase()),
     }),
-    limits: { fileSize: config.maxUploadMb * 1024 * 1024, files: 100 },
+    limits: { fileSize: config.maxUploadMb * 1024 * 1024, files: config.maxUploadFiles },
     fileFilter: (req, file, cb) => {
       file.originalname = decodeName(file.originalname);
       const ext = path.extname(file.originalname).toLowerCase();
