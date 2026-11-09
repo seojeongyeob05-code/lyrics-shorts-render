@@ -157,6 +157,12 @@ main.play { display: grid; gap: 22px; grid-template-columns: minmax(0, 1.1fr) mi
 .lvl b { font-size: 18px; color: var(--amber); }
 .lvl small { color: var(--muted); font-size: 12px; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.sheet .ghost { justify-self: start; }
+.quizword { font-family: var(--f-pixel-b); font-size: 36px; color: var(--ink); text-align: center; padding: 8px 0; text-shadow: 3px 3px 0 var(--frame-dark); overflow-wrap: anywhere; }
+.lvl.right { border-color: var(--ok); }
+.lvl.right b { color: var(--ok); }
+.lvl.wrong { border-color: var(--danger); }
+.lvl.wrong b { color: var(--danger); }
 .how { display: grid; gap: 6px; margin: 0; padding-left: 18px; font-size: 14px; }
 </style>
 
@@ -402,9 +408,24 @@ let journal = store.get('ag520.journal', {});
 let totalLoops = store.get('ag520.loops', 0);
 let cleared = store.get('ag520.cleared', []);
 let LEVEL = 1;
+// Spaced review: a word whose meaning you learned comes back as a quiz after 1, 2, 4, 7, then 14 days.
+const DAY = 86400000, REVIEW_DAYS = [1, 2, 4, 7, 14];
 function mark(word, field) {
   const j = journal[word] || (journal[word] = {});
-  if (!j[field]) { j[field] = true; store.set('ag520.journal', journal); }
+  if (!j[field]) {
+    j[field] = true;
+    if (field === 'known' && j.box == null) { j.box = 0; j.due = Date.now() + DAY * REVIEW_DAYS[0] - 3600000; }
+    store.set('ag520.journal', journal);
+  }
+}
+// Words learned before reviews existed are due right away.
+for (const w in journal) if ((journal[w].known || journal[w].used) && journal[w].box == null) { journal[w].box = 0; journal[w].due = Date.now(); }
+const dueWords = () => VOCAB.filter(([w]) => journal[w] && journal[w].due && journal[w].due <= Date.now()).slice(0, 3);
+function grade(w, ok) {
+  const j = journal[w];
+  j.box = ok ? Math.min(j.box + 1, REVIEW_DAYS.length - 1) : 0;
+  j.due = Date.now() + DAY * REVIEW_DAYS[j.box] - 3600000;
+  store.set('ag520.journal', journal);
 }
 function scanSeen(text) {
   const t = text.toLowerCase();
@@ -1286,8 +1307,37 @@ function hide() { $('overlay').hidden = true; }
 function levelButtons() {
   return `<div class="levels">${Object.entries(LEVELS).map(([n, L]) => `<button class="lvl" type="button" data-level="${n}"><span>상황 ${n}${cleared.includes(+n) ? ' · 해결함' : ''}</span><b>${L.name}</b><small>${L.story}</small></button>`).join('')}</div>`;
 }
+function startLevel(n) { LEVEL = n; S = null; hide(); newLoop(); $('sayInput').focus(); }
 function bindLevels() {
-  document.querySelectorAll('.lvl').forEach(b => b.addEventListener('click', () => { LEVEL = +b.dataset.level; S = null; hide(); newLoop(); $('sayInput').focus(); }));
+  document.querySelectorAll('.lvl').forEach(b => b.addEventListener('click', () => {
+    const due = dueWords();
+    due.length ? review(due, 0, 0, () => startLevel(+b.dataset.level)) : startLevel(+b.dataset.level);
+  }));
+}
+// Before a new afternoon starts, words from earlier recaps come back: pick the meaning from four.
+function review(words, i, right, done) {
+  if (i >= words.length) {
+    return show(`<h2>복습 끝</h2><p>${words.length}개 중 <b>${right}개</b>를 기억했어요. 맞힌 단어는 더 오래 뒤에, 틀린 단어는 내일 다시 나와요.</p>
+      <button class="primary" id="go" type="button">오후 5시 20분으로</button>`, () => $('go').addEventListener('click', done));
+  }
+  const [w, ko] = words[i];
+  const options = shuffle([ko, ...shuffle(VOCAB.filter(v => v[1] !== ko).map(v => v[1])).slice(0, 3)]);
+  show(`<h2>지난 주마등 복습 ${i + 1}/${words.length}</h2>
+    <p class="lead">예전 회차에서 뜻을 알게 된 단어예요. 잊어버릴 즈음 다시 꺼내야 오래 기억돼요.</p>
+    <p class="quizword">${esc(w)}</p>
+    <div class="levels" id="opts">${options.map(o => `<button class="lvl" type="button" data-o="${esc(o)}"><b>${esc(o)}</b></button>`).join('')}</div>
+    <p class="lead" id="fb" aria-live="polite"></p>
+    <button class="ghost" id="skip" type="button">복습 건너뛰기</button>`, () => {
+    $('skip').addEventListener('click', done);
+    $('opts').addEventListener('click', e => {
+      const b = e.target.closest('[data-o]'); if (!b || $('opts').dataset.done) return;
+      $('opts').dataset.done = '1';
+      const ok = b.dataset.o === ko; grade(w, ok);
+      b.classList.add(ok ? 'right' : 'wrong');
+      $('fb').textContent = ok ? '맞았어요!' : `정답은 "${ko}"예요.`;
+      setTimeout(() => review(words, i + 1, right + (ok ? 1 : 0), done), ok ? 700 : 1600);
+    });
+  });
 }
 function chooseLevel() {
   show(`<h2>상황 선택</h2><p class="lead">같은 건물, 같은 오후. 다른 일이 벌어져요.</p>${levelButtons()}<button class="ghost" id="close" type="button">닫기</button>`, () => { bindLevels(); $('close').addEventListener('click', hide); });
@@ -1372,7 +1422,7 @@ function win() {
 }
 
 function showJournal() {
-  const st = w => { const j = journal[w] || {}; return j.used ? '✋' : j.known ? '💡' : j.seen ? '👀' : ''; };
+  const st = w => { const j = journal[w] || {}; return (j.used ? '✋' : j.known ? '💡' : j.seen ? '👀' : '') + (j.box ? ' ' + '★'.repeat(j.box) : ''); };
   const cells = VOCAB.filter(([w]) => journal[w] && journal[w].seen).map(([w, ko]) => {
     const j = journal[w];
     return `<div><span class="st">${st(w)}</span><b>${esc(w)}</b><span class="mean">${j.known || j.used ? esc(ko) : '뜻: ???'}</span></div>`;
@@ -1381,7 +1431,8 @@ function showJournal() {
   show(`
     <h2>단어 도감</h2>
     <p class="lead">지금까지 ${n}개의 단어를 만났어요 · 누적 ${totalLoops}회차</p>
-    <p class="legend">👀 본 적 있음 · 💡 뜻을 알게 됨 (번역기, 할머니, 주마등) · ✋ 직접 써서 통함</p>
+    <p class="legend">👀 본 적 있음 · 💡 뜻을 알게 됨 (번역기, 할머니, 주마등) · ✋ 직접 써서 통함 · ★ 복습 퀴즈를 맞힌 단계</p>
+    <p class="legend">지금 복습할 단어: ${dueWords().length ? dueWords().map(([w]) => esc(w)).join(', ') + ' (상황을 고르면 시작해요)' : '없음'}</p>
     <div class="vocab">${cells || '<p>아직 만난 단어가 없어요. 건물 안을 돌아다녀 보세요.</p>'}</div>
     <button class="primary" id="close" type="button">닫기</button>`, () => $('close').addEventListener('click', hide));
 }
