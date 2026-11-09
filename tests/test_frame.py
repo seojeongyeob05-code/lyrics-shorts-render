@@ -211,5 +211,39 @@ class BackgroundTest(unittest.TestCase):
         self.assertIn((255, 0, 0), _colors(outlined))
 
 
+class RenderBytesTest(unittest.TestCase):
+    """render_bytes()는 render().tobytes()와 바이트 단위로 같아야 한다."""
+
+    LRC = ("[00:00.50]plain line\n"
+           "[00:02.00]<00:02.00>sing <00:02.60>along<00:03.20>\n"
+           "[00:04.00]last")
+
+    def check(self, style, times, progress=True):
+        ly = lrc.parse(self.LRC, duration=6)
+        fast, slow = FrameRenderer(style), FrameRenderer(style)
+        for t in times:
+            p = t / 6 if progress else None
+            with self.subTest(t=t):
+                self.assertEqual(fast.render_bytes(ly, t, p), slow.render(ly, t, p).tobytes())
+
+    def test_matches_render_everywhere(self):
+        style = Style(width=90, height=160, font_size=14, next_font_size=10, fade=0.2,
+                      progress_height=4, progress_bottom=10)
+        times = [k / 20 for k in range(0, 120)]  # 페이드·노래방·정지 구간을 모두 지난다
+        self.check(style, times)
+        self.check(style, times, progress=False)
+
+    def test_without_progress_bar_or_fade(self):
+        style = Style(width=90, height=160, font_size=14, next_font_size=10, fade=0,
+                      progress_bar=False)
+        self.check(style, [0.1, 1.0, 2.3, 3.5, 4.5])
+
+    def test_static_screen_bytes_are_reused(self):
+        ly = lrc.parse(self.LRC, duration=6)
+        r = FrameRenderer(Style(width=90, height=160, font_size=14, next_font_size=10))
+        a = r.render_bytes(ly, 1.0)
+        self.assertIs(r.render_bytes(ly, 1.5), a)  # 진행 바 없으면 같은 객체 그대로
+
+
 if __name__ == "__main__":
     unittest.main()

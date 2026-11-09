@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import queue
 import subprocess
+import threading
 from dataclasses import dataclass
 
 from .frame import FrameRenderer
@@ -48,15 +50,36 @@ def render_video(lyrics: Lyrics, out_path: str, duration: float,
     n_frames = round(duration * opts.fps)
     drawn_before = renderer.layers_drawn
     with subprocess.Popen(cmd, stdin=subprocess.PIPE, stderr=subprocess.PIPE) as proc:
+        # 파이프 쓰기는 별도 스레드에서 한다. 쓰기는 ffmpeg가 인코딩하는 동안 막히는데,
+        # 그동안 메인 스레드는 다음 프레임을 그릴 수 있다.
+        frames: queue.Queue[bytes | None] = queue.Queue(maxsize=8)
+        broken = threading.Event()
+
+        def writer() -> None:
+            while (data := frames.get()) is not None:
+                if broken.is_set():
+                    continue  # ffmpeg가 죽었으면 남은 프레임은 버린다
+                try:
+                    proc.stdin.write(data)
+                except BrokenPipeError:
+                    broken.set()
+            try:
+                proc.stdin.close()
+            except BrokenPipeError:
+                pass
+
+        th = threading.Thread(target=writer, daemon=True)
+        th.start()
         try:
             for k in range(n_frames):
+                if broken.is_set():
+                    break
                 t = k / opts.fps
                 # 가사 화면은 renderer가 캐시하므로 줄이 바뀔 때만 새로 그린다.
-                img = renderer.render(lyrics, t, progress=t / duration)
-                proc.stdin.write(img.tobytes())
-            proc.stdin.close()
-        except BrokenPipeError:
-            pass  # ffmpeg가 먼저 죽었다. 아래에서 에러 메시지를 보여준다.
+                frames.put(renderer.render_bytes(lyrics, t, progress=t / duration))
+        finally:
+            frames.put(None)
+            th.join()
         err = proc.stderr.read().decode(errors="replace")
         if proc.wait() != 0:
             raise RuntimeError(f"ffmpeg 실패 (code {proc.returncode}):\n{err.strip()}")

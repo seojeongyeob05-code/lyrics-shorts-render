@@ -93,6 +93,8 @@ class FrameRenderer:
         self._cache: dict[tuple, Image.Image] = {}
         self._cache_owner: Lyrics | None = None
         self._bounds: list[float] = []
+        self._bytes_of: Image.Image | None = None  # render_bytes가 바이트로 바꿔 둔 화면
+        self._bytes = b""
         self.layers_drawn = 0  # 실제로 새로 그린 가사 화면 수(성능 확인용)
 
     def render(self, lyrics: Lyrics, t: float, progress: float | None = None) -> Image.Image:
@@ -109,11 +111,43 @@ class FrameRenderer:
                 img = Image.blend(prev, self._bg, a * 2)
             else:
                 img = Image.blend(self._bg, cur, a * 2 - 1)
-        else:
+        elif self._is_cached(cur):
             img = cur.copy()  # 캐시된 화면 위에 진행 바를 그리지 않도록
+        else:
+            img = cur  # 노래방 합성처럼 이번에 새로 만든 화면은 그대로 써도 된다
         if progress is not None and s.progress_bar:
             self._draw_progress(img, progress)
         return img
+
+    def render_bytes(self, lyrics: Lyrics, t: float, progress: float | None = None) -> bytes:
+        """render(...).tobytes()와 같은 결과. 영상 인코딩용 빠른 경로.
+
+        가사 화면이 그대로인 구간(페이드·노래방 진행 없음)은 화면 바이트를 한 번만 만들어
+        두고 진행 바 줄만 덮어쓴다. 1080x1920 한 장을 바이트로 바꾸는 데 4~5ms가 들어서
+        대부분의 프레임에서 이 비용을 없앤다.
+        """
+        s = self.style
+        key = self.state_key(lyrics, t)
+        tc = self._last_change(lyrics, t)
+        fading = s.fade > 0 and tc is not None and t - tc < s.fade
+        i = key[0]
+        karaoke = i is not None and lyrics.lines[i].marks and \
+            lyrics.lines[i].sung_chars(t) < len(lyrics.lines[i].text)
+        if fading or karaoke:
+            return self.render(lyrics, t, progress).tobytes()
+        layer = self._screen(lyrics, key, t)
+        if self._bytes_of is not layer:
+            self._bytes_of, self._bytes = layer, layer.tobytes()
+        if progress is None or not s.progress_bar:
+            return self._bytes
+        buf = bytearray(self._bytes)
+        x0, y0, w, h, filled = self._progress_geometry(progress)
+        track, bar = bytes(s.progress_track) * w, bytes(s.progress_color) * filled
+        for y in range(y0, y0 + h):
+            off = (y * s.width + x0) * 3
+            buf[off:off + 3 * w] = track
+            buf[off:off + 3 * filled] = bar
+        return bytes(buf)
 
     def state_key(self, lyrics: Lyrics, t: float) -> tuple[int | None, int | None]:
         """화면의 가사 내용을 결정하는 값: (현재 줄, 다음 줄) 인덱스."""
@@ -158,6 +192,9 @@ class FrameRenderer:
         img = unsung.copy()
         img.paste(sung.crop(band), band[:2], mask)
         return img
+
+    def _is_cached(self, img: Image.Image) -> bool:
+        return any(img is v for v in self._cache.values())
 
     def _layer(self, lyrics: Lyrics, key: tuple[int | None, int | None],
                color: Color) -> Image.Image:
@@ -216,17 +253,21 @@ class FrameRenderer:
                           fill=s.next_color, anchor="mm", **stroke)
         return img
 
-    def _draw_progress(self, img: Image.Image, progress: float) -> None:
+    def _progress_geometry(self, progress: float) -> tuple[int, int, int, int, int]:
+        """진행 바의 (왼쪽 x, 위 y, 폭, 높이, 채운 폭)."""
         s = self.style
         w = round(s.width * s.progress_width)
-        x0 = (s.width - w) // 2
-        y1 = s.height - s.progress_bottom
-        y0 = y1 - s.progress_height
-        draw = ImageDraw.Draw(img)
-        draw.rectangle((x0, y0, x0 + w - 1, y1 - 1), fill=s.progress_track)
         filled = round(w * min(1.0, max(0.0, progress)))
+        return (s.width - w) // 2, s.height - s.progress_bottom - s.progress_height, \
+            w, s.progress_height, filled
+
+    def _draw_progress(self, img: Image.Image, progress: float) -> None:
+        s = self.style
+        x0, y0, w, h, filled = self._progress_geometry(progress)
+        draw = ImageDraw.Draw(img)
+        draw.rectangle((x0, y0, x0 + w - 1, y0 + h - 1), fill=s.progress_track)
         if filled:
-            draw.rectangle((x0, y0, x0 + filled - 1, y1 - 1), fill=s.progress_color)
+            draw.rectangle((x0, y0, x0 + filled - 1, y0 + h - 1), fill=s.progress_color)
 
     @staticmethod
     def _next_index(lyrics: Lyrics, t: float, current: int | None) -> int | None:
