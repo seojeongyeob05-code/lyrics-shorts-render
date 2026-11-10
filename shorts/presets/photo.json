@@ -1,9 +1,12 @@
 {
-  "description": "배경 사진용: 흐리고 어둡게 깔고 글자에 테두리 — --bg 와 함께 쓰기",
+  "description": "배경 사진용: 흐리고 어둡게 깔고 천천히 확대(켄 번스), 글자에 테두리 — --bg 와 함께 쓰기",
   "bg_blur": 22,
   "bg_dim": 0.5,
   "stroke_width": 3,
   "stroke_color": "#000000",
   "next_color": "#D8D8E0",
-  "unsung_color": "#9A9AAA"
+  "unsung_color": "#9A9AAA",
+  "bg_zoom": 0.08,
+  "bg_zoom_period": 24,
+  "bg_pan": 0.4
 }

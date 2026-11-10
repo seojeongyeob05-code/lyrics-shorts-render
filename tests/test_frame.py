@@ -211,6 +211,45 @@ class BackgroundTest(unittest.TestCase):
         self.assertIn((255, 0, 0), _colors(outlined))
 
 
+class ZoomTest(unittest.TestCase):
+    def setUp(self):
+        # 왼쪽 3칸만 빨강, 나머지 파랑인 배경
+        self.img = Image.new("RGB", (100, 200), (0, 0, 255))
+        self.img.paste((255, 0, 0), (0, 0, 3, 200))
+        self.base = dict(width=100, height=200, bg_zoom=0.2, bg_zoom_period=10, fade=0)
+
+    def test_no_zoom_keeps_one_background(self):
+        r = FrameRenderer(Style(width=100, height=200), self.img)
+        self.assertIs(r.background_at(0), r.background_at(5))
+        self.assertEqual(r.background_at(0).size, (100, 200))
+
+    def test_zooms_in_and_back(self):
+        r = FrameRenderer(Style(**self.base), self.img)
+        self.assertEqual(r._bg.size, (120, 240))  # 확대해도 선명하게 크게 만들어 둠
+        start, peak, back = r.background_at(0), r.background_at(5), r.background_at(10)
+        self.assertEqual(start.size, (100, 200))
+        self.assertGreater(start.getpixel((0, 100))[0], 200)  # 처음엔 그림 전체(빨간 띠 보임)
+        self.assertLess(peak.getpixel((0, 100))[0], 30)  # 최대 확대에선 가장자리가 잘림
+        self.assertEqual(start.tobytes(), back.tobytes())  # 한 주기 뒤 제자리
+
+    def test_pan_moves_toward_side(self):
+        r = FrameRenderer(Style(**self.base, bg_pan=-1), self.img)
+        self.assertGreater(r.background_at(5).getpixel((0, 100))[0], 200)  # 왼쪽으로 흘러 띠가 보임
+
+    def test_updates_are_throttled(self):
+        r = FrameRenderer(Style(**self.base), self.img)
+        self.assertIs(r.background_at(1.0), r.background_at(1.0 + 1 / 60))
+        self.assertIsNot(r.background_at(1.0), r.background_at(1.2))
+
+    def test_lyrics_drawn_over_moving_background(self):
+        ly = lrc.parse("[00:00.00]HELLO", duration=10)
+        style = Style(**self.base, font_size=20, text_color=(0, 255, 0))
+        r = FrameRenderer(style, self.img)
+        a, b = r.render(ly, 0), r.render(ly, 5)
+        self.assertIn((0, 255, 0), _colors(a))
+        self.assertNotEqual(a.tobytes(), b.tobytes())
+
+
 class RenderBytesTest(unittest.TestCase):
     """render_bytes()는 render().tobytes()와 바이트 단위로 같아야 한다."""
 
@@ -232,6 +271,11 @@ class RenderBytesTest(unittest.TestCase):
         times = [k / 20 for k in range(0, 120)]  # 페이드·노래방·정지 구간을 모두 지난다
         self.check(style, times)
         self.check(style, times, progress=False)
+
+    def test_matches_render_with_zoom(self):
+        style = Style(width=90, height=160, font_size=14, next_font_size=10, bg_zoom=0.1,
+                      bg_zoom_period=3, progress_height=4, progress_bottom=10)
+        self.check(style, [k / 10 for k in range(0, 60)])
 
     def test_without_progress_bar_or_fade(self):
         style = Style(width=90, height=160, font_size=14, next_font_size=10, fade=0,

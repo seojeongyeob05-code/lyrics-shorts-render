@@ -3,10 +3,14 @@
 배경 위에 현재 줄(밝게)과 다음 줄(흐리게)을 세로 가운데 근처에 놓는다.
 줄이 바뀔 때는 짧게 페이드 아웃→인 하고, 원하면 하단에 진행 바를 그린다.
 단어별 타이밍이 있는 줄은 부른 글자만큼 왼쪽부터 밝게 채운다(노래방식).
+
+구조: 가사는 투명 배경(RGBA) 레이어에 그려 캐시하고, 매 프레임 배경 위에 얹는다.
+배경이 고정이고 화면이 그대로면 합성 결과도 캐시해서 다시 쓴다.
 """
 
 from __future__ import annotations
 
+import math
 from bisect import bisect_right
 from dataclasses import dataclass
 
@@ -17,6 +21,11 @@ from .text import load_font, wrap
 
 Color = tuple[int, int, int]
 
+# 줌 배경을 새로 계산하는 초당 횟수. 1080x1920 배경 확대 한 번에 ~20ms가 들어
+# 매 프레임 하면 느리다. 기본 줌(24초 주기 8%)에서 가장자리가 초당 6px 정도 움직이므로
+# 15번이면 한 번에 0.4px — 눈으로 구분되지 않는다.
+ZOOM_UPDATES_PER_SEC = 15
+
 
 @dataclass
 class Style:
@@ -26,6 +35,9 @@ class Style:
     bg_gradient: Color | None = None  # 아래쪽 색. 주면 bg_color → bg_gradient 세로 그라데이션
     bg_blur: float = 0  # 배경 이미지 흐림 반경(px). 가사가 잘 읽히게
     bg_dim: float = 0  # 배경을 검게 덮는 정도(0~1)
+    bg_zoom: float = 0  # 배경을 천천히 확대했다 돌아오는 정도(0.08 = 최대 8%). 0이면 고정
+    bg_zoom_period: float = 20  # 확대 → 원래 크기로 돌아오는 한 주기(초)
+    bg_pan: float = 0  # 확대될 때 가로로 흘러가는 정도(-1 왼쪽 ~ 1 오른쪽)
     text_color: Color = (255, 255, 255)
     next_color: Color = (150, 150, 165)
     show_next: bool = True  # 현재 줄 아래에 다음 줄을 미리 보여줄지
@@ -62,22 +74,26 @@ def cover_fit(img: Image.Image, size: tuple[int, int]) -> Image.Image:
 
 
 def make_background(s: Style, image: Image.Image | None = None) -> Image.Image:
-    """Style에 맞춘 배경 한 장: 이미지(꽉 채움) 또는 단색/그라데이션, 그 위에 흐림·어둡게."""
-    size = (s.width, s.height)
+    """Style에 맞춘 배경 한 장: 이미지(꽉 채움) 또는 단색/그라데이션, 그 위에 흐림·어둡게.
+
+    bg_zoom이 있으면 확대해도 흐려지지 않게 (1 + bg_zoom)배 크기로 만든다.
+    """
+    k = 1 + max(0.0, s.bg_zoom)
+    size = (round(s.width * k), round(s.height * k))
     if image is not None:
         bg = cover_fit(image.convert("RGB"), size)
     elif s.bg_gradient is not None:
         # 1px 폭 세로 띠를 만든 뒤 늘린다
-        strip = Image.new("RGB", (1, s.height))
+        strip = Image.new("RGB", (1, size[1]))
         top, bottom = s.bg_color, s.bg_gradient
-        for y in range(s.height):
-            a = y / max(1, s.height - 1)
+        for y in range(size[1]):
+            a = y / max(1, size[1] - 1)
             strip.putpixel((0, y), tuple(round(c0 + (c1 - c0) * a) for c0, c1 in zip(top, bottom)))
         bg = strip.resize(size, Image.NEAREST)
     else:
         bg = Image.new("RGB", size, s.bg_color)
     if s.bg_blur > 0:
-        bg = bg.filter(ImageFilter.GaussianBlur(s.bg_blur))
+        bg = bg.filter(ImageFilter.GaussianBlur(s.bg_blur * k))
     if s.bg_dim > 0:
         bg = Image.blend(bg, Image.new("RGB", size, (0, 0, 0)), min(1.0, s.bg_dim))
     return bg
@@ -86,59 +102,44 @@ def make_background(s: Style, image: Image.Image | None = None) -> Image.Image:
 class FrameRenderer:
     def __init__(self, style: Style | None = None, background: Image.Image | None = None):
         self.style = s = style or Style()
-        size = (s.width, s.height)
         self._bg = make_background(s, background)
         self._font = load_font(s.font_path, s.font_size)
         self._next_font = load_font(s.font_path, s.next_font_size)
-        self._cache: dict[tuple, Image.Image] = {}
+        self._cache: dict[tuple, Image.Image] = {}  # 가사 레이어(RGBA)
         self._cache_owner: Lyrics | None = None
         self._bounds: list[float] = []
+        self._static: tuple[Image.Image, Image.Image] | None = None  # (레이어, 배경과 합성)
+        self._zoomed: tuple[float, Image.Image] | None = None  # 마지막으로 계산한 줌 배경
         self._bytes_of: Image.Image | None = None  # render_bytes가 바이트로 바꿔 둔 화면
         self._bytes = b""
-        self.layers_drawn = 0  # 실제로 새로 그린 가사 화면 수(성능 확인용)
+        self.layers_drawn = 0  # 실제로 새로 그린 가사 레이어 수(성능 확인용)
 
     def render(self, lyrics: Lyrics, t: float, progress: float | None = None) -> Image.Image:
         """시각 t의 화면. progress(0~1)를 주면 진행 바도 그린다."""
-        s = self.style
-        cur = self._screen(lyrics, self.state_key(lyrics, t), t)
-        tc = self._last_change(lyrics, t)
-        if s.fade > 0 and tc is not None and t - tc < s.fade:
-            # 같은 자리에 글자가 겹쳐 보이지 않도록 앞 절반은 이전 화면이 배경으로
-            # 사라지고, 뒤 절반은 배경에서 새 화면이 나타난다.
-            a = (t - tc) / s.fade
-            if a < 0.5:
-                prev = self._screen(lyrics, self.state_key(lyrics, tc - 1e-6), tc - 1e-6)
-                img = Image.blend(prev, self._bg, a * 2)
-            else:
-                img = Image.blend(self._bg, cur, a * 2 - 1)
-        elif self._is_cached(cur):
-            img = cur.copy()  # 캐시된 화면 위에 진행 바를 그리지 않도록
-        else:
-            img = cur  # 노래방 합성처럼 이번에 새로 만든 화면은 그대로 써도 된다
-        if progress is not None and s.progress_bar:
+        img, shared = self._frame(lyrics, t)
+        if shared:
+            img = img.copy()  # 캐시된 화면 위에 진행 바를 그리지 않도록
+        if progress is not None and self.style.progress_bar:
             self._draw_progress(img, progress)
         return img
 
     def render_bytes(self, lyrics: Lyrics, t: float, progress: float | None = None) -> bytes:
         """render(...).tobytes()와 같은 결과. 영상 인코딩용 빠른 경로.
 
-        가사 화면이 그대로인 구간(페이드·노래방 진행 없음)은 화면 바이트를 한 번만 만들어
-        두고 진행 바 줄만 덮어쓴다. 1080x1920 한 장을 바이트로 바꾸는 데 4~5ms가 들어서
-        대부분의 프레임에서 이 비용을 없앤다.
+        화면이 그대로인 구간(페이드·노래방 진행·배경 줌 없음)은 화면 바이트를 한 번만
+        만들어 두고 진행 바 줄만 덮어쓴다. 1080x1920 한 장을 바이트로 바꾸는 데 4~5ms가
+        들어서 대부분의 프레임에서 이 비용을 없앤다.
         """
         s = self.style
-        key = self.state_key(lyrics, t)
-        tc = self._last_change(lyrics, t)
-        fading = s.fade > 0 and tc is not None and t - tc < s.fade
-        i = key[0]
-        karaoke = i is not None and lyrics.lines[i].marks and \
-            lyrics.lines[i].sung_chars(t) < len(lyrics.lines[i].text)
-        if fading or karaoke:
-            return self.render(lyrics, t, progress).tobytes()
-        layer = self._screen(lyrics, key, t)
-        if self._bytes_of is not layer:
-            self._bytes_of, self._bytes = layer, layer.tobytes()
-        if progress is None or not s.progress_bar:
+        img, shared = self._frame(lyrics, t)
+        draw_bar = progress is not None and s.progress_bar
+        if not shared:
+            if draw_bar:
+                self._draw_progress(img, progress)
+            return img.tobytes()
+        if self._bytes_of is not img:
+            self._bytes_of, self._bytes = img, img.tobytes()
+        if not draw_bar:
             return self._bytes
         buf = bytearray(self._bytes)
         x0, y0, w, h, filled = self._progress_geometry(progress)
@@ -149,24 +150,80 @@ class FrameRenderer:
             buf[off:off + 3 * filled] = bar
         return bytes(buf)
 
+    def background_at(self, t: float) -> Image.Image:
+        """시각 t의 배경(돌려받은 이미지를 고치지 말 것)."""
+        s = self.style
+        if s.bg_zoom <= 0:
+            return self._bg
+        t = round(t * ZOOM_UPDATES_PER_SEC) / ZOOM_UPDATES_PER_SEC
+        if self._zoomed is not None and self._zoomed[0] == t:
+            return self._zoomed[1]
+        # 0 → 1 → 0으로 부드럽게 오가는 위상: 확대했다가 원래 크기로 돌아온다
+        phase = 0.5 - 0.5 * math.cos(2 * math.pi * t / s.bg_zoom_period)
+        scale = 1 + s.bg_zoom * phase
+        bw, bh = self._bg.size
+        w, h = bw / scale, bh / scale
+        cx = bw / 2 + max(-1.0, min(1.0, s.bg_pan)) * (bw - w) / 2
+        cy = bh / 2
+        bg = self._bg.resize((s.width, s.height), Image.BILINEAR,
+                             box=(cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2))
+        self._zoomed = (t, bg)
+        return bg
+
     def state_key(self, lyrics: Lyrics, t: float) -> tuple[int | None, int | None]:
         """화면의 가사 내용을 결정하는 값: (현재 줄, 다음 줄) 인덱스."""
         i = lyrics.index_at(t)
         return i, (self._next_index(lyrics, t, i) if self.style.show_next else None)
 
+    def _frame(self, lyrics: Lyrics, t: float) -> tuple[Image.Image, bool]:
+        """진행 바를 뺀 시각 t의 화면과, 그 이미지가 캐시와 공유되는지(고치면 안 되는지)."""
+        s = self.style
+        layer = self._text_layer(lyrics, self.state_key(lyrics, t), t)
+        alpha = 1.0
+        tc = self._last_change(lyrics, t)
+        if s.fade > 0 and tc is not None and t - tc < s.fade:
+            # 같은 자리에 글자가 겹쳐 보이지 않도록 앞 절반은 이전 가사가 사라지고,
+            # 뒤 절반은 새 가사가 나타난다.
+            a = (t - tc) / s.fade
+            if a < 0.5:
+                layer = self._text_layer(lyrics, self.state_key(lyrics, tc - 1e-6), tc - 1e-6)
+                alpha = 1 - a * 2
+            else:
+                alpha = a * 2 - 1
+        if alpha == 1.0 and s.bg_zoom <= 0 and self._is_cached(layer):
+            if self._static is None or self._static[0] is not layer:
+                self._static = (layer, self._composite(self._bg, layer, 1.0))
+            return self._static[1], True
+        return self._composite(self.background_at(t), layer, alpha), False
+
+    @staticmethod
+    def _composite(bg: Image.Image, layer: Image.Image, alpha: float) -> Image.Image:
+        """배경 위에 가사 레이어를 alpha(0~1) 불투명도로 얹은 새 이미지."""
+        out = bg.copy()
+        bbox = layer.getbbox()  # 글자가 있는 영역만 합성
+        if bbox and alpha > 0:
+            part = layer.crop(bbox)
+            mask = part.getchannel("A")
+            if alpha < 1:
+                mask = mask.point(lambda v: round(v * alpha))
+            out.paste(part, bbox[:2], mask)
+        return out
+
     def _use(self, lyrics: Lyrics) -> None:
         """다른 가사가 들어오면 캐시를 비운다."""
         if self._cache_owner is not lyrics:
             self._cache.clear()
+            self._static = None
             self._cache_owner = lyrics
             self._bounds = sorted({x for ln in lyrics.lines for x in (ln.start, ln.end)})
 
-    def _screen(self, lyrics: Lyrics, key: tuple[int | None, int | None], t: float) -> Image.Image:
-        """페이드·진행 바를 빼고 시각 t에 보일 가사 화면. 돌려받은 이미지를 고치지 말 것."""
+    def _text_layer(self, lyrics: Lyrics, key: tuple[int | None, int | None],
+                    t: float) -> Image.Image:
+        """시각 t에 보일 가사 레이어(RGBA, 투명 배경). 돌려받은 이미지를 고치지 말 것."""
         i = key[0]
         if i is None or not lyrics.lines[i].marks:
             return self._layer(lyrics, key, color=self.style.text_color)
-        # 노래방식: 안 부른 색 화면과 부른 색 화면을 진행 정도만큼 섞는다
+        # 노래방식: 안 부른 색 레이어와 부른 색 레이어를 진행 정도만큼 섞는다
         unsung = self._layer(lyrics, key, color=self.style.unsung_color)
         sung = self._layer(lyrics, key, color=self.style.text_color)
         line = lyrics.lines[i]
@@ -198,7 +255,7 @@ class FrameRenderer:
 
     def _layer(self, lyrics: Lyrics, key: tuple[int | None, int | None],
                color: Color) -> Image.Image:
-        """현재 줄을 color로 그린 가사 화면. 같은 키는 다시 그리지 않는다."""
+        """현재 줄을 color로 그린 가사 레이어. 같은 키는 다시 그리지 않는다."""
         self._use(lyrics)
         ck = (key, color)
         if ck not in self._cache:
@@ -231,7 +288,7 @@ class FrameRenderer:
     def _draw_lyrics(self, lyrics: Lyrics, i: int | None, nxt: int | None,
                      color: Color) -> Image.Image:
         s = self.style
-        img = self._bg.copy()
+        img = Image.new("RGBA", (s.width, s.height), (0, 0, 0, 0))
         draw = ImageDraw.Draw(img)
 
         stroke = {"stroke_width": s.stroke_width, "stroke_fill": s.stroke_color}
