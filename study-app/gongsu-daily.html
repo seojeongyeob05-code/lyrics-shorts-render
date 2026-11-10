@@ -478,16 +478,10 @@ c: 변수분리가 바로 안 되면 **치환**으로 변수분리 꼴을 만들
 c: **유형 1** $y' = f(ax + by + c)$: $u = ax + by + c$ 로 치환하면 $u' = a + by' = a + b\,f(u)$ 가 되어 변수분리가 돼요.
 c: **유형 2 (동차형)** $y' = f\!\left(\dfrac{y}{x}\right)$: $y = ux$ 로 두면 곱의 미분으로 $y' = u + xu'$ 이에요. 분자와 분모의 차수가 모두 같으면 $x^n$ 으로 나눠서 $\dfrac{y}{x}$ 만 남는지 확인해요.
 c: **유형 3 (준동차형)** $y' = \dfrac{a_1x + b_1y + c_1}{a_2x + b_2y + c_2}$: 두 직선의 교점 $(h, k)$ 를 구해 $x = X + h,\; y = Y + k$ 로 평행이동하면 상수항이 사라져 동차형이 돼요.
+c: 준동차형인데 두 직선이 평행해서(계수가 비례해서) 교점이 없으면, 공통인 $ax + by$ 를 $u$ 로 두고 유형 1처럼 풀어요.
 c: **기타 전략**: $x$에 대해 풀기 어려우면 $\dfrac{dx}{dy}$ 로 뒤집어서 $x$를 $y$의 함수로 봐요.
 c: 상수 덮어씌우기는 상수끼리만 돼요: $2C$, $C + 3$, $e^{C}$, $\ln C$ → 새로운 $C$. 하지만 $C + x$ 처럼 변수가 섞이면 안 돼요.
 c: 내 답과 답지 모양이 달라도 같은 해일 수 있어요. 로그·지수 성질로 바꿔보거나 그래프를 겹쳐 확인해요.
-Q mc
-q: $y' = (2x + y - 1)^2$ 에 알맞은 치환은?
-a: $u = 2x + y - 1$
-w: $u = \dfrac{y}{x}$
-w: $u = y^2$
-w: $u = x - 1$
-e: 괄호 안이 1차식 $ax + by + c$ 꼴이라 유형 1이에요. 그러면 $u' = 2 + y' = 2 + u^2$ 로 변수분리가 돼요.
 Q mc
 q: $y' = (x + y)^2$ 에서 $u = x + y$ 로 치환하면 어떤 식이 될까요?
 a: $u' = 1 + u^2$
@@ -510,13 +504,6 @@ w: $e^{C}$
 w: $\ln C + 3$
 e: 상수끼리의 곱, 합, $e^{C}$, $\ln C$ 는 결국 아무 상수라서 새 $C$로 바꿔도 돼요. $C + x$ 는 변수 $x$가 섞여 있어 상수가 아니에요. 강의 Q&A 3번 내용이에요.
 Q mc
-q: $y' = \dfrac{y}{x} + 1$ 의 일반해는?
-a: $y = x\ln|x| + Cx$
-w: $y = \ln|x| + C$
-w: $y = x + Cx^2$
-w: $y = Cxe^{x}$
-e: $y = ux$ 이면 $u + xu' = u + 1 \Rightarrow u' = \dfrac1x \Rightarrow u = \ln|x| + C$. 마지막에 $x$를 곱하는 걸 잊으면 $\ln|x| + C$ 라는 오답이 나와요.
-Q mc
 q: $y' = \dfrac{y}{x} + \dfrac{x}{y}$ 의 일반해는?
 a: $y^2 = 2x^2\ln|x| + Cx^2$
 w: $y^2 = x^2 + C$
@@ -530,6 +517,13 @@ w: $x + y = \arctan(x + C)$
 w: $y = \sin x + C$
 w: $y = \tan(x + C) - x$
 e: $u = x + y$ 이면 $u' = 1 + \cos u = 2\cos^2\dfrac{u}{2}$. $\displaystyle\int\frac{du}{2\cos^2(u/2)} = \tan\frac{u}{2}$ 라서 $\tan\dfrac{x + y}{2} = x + C$ (해설 45번). 반각 때문에 생기는 $2$를 빼먹기 쉬워요. 마지막 오답은 $y' = (x + y)^2$ 의 해예요.
+Q mc
+q: $y' = \sqrt{x + y}$ 의 일반해는? ($u = x + y$ 로 쓸 때)
+a: $2\sqrt{u} - 2\ln(1 + \sqrt{u}) = x + C$
+w: $2\sqrt{u} = x + C$
+w: $2\sqrt{u} + 2\ln(1 + \sqrt{u}) = x + C$
+w: $\sqrt{u} - \ln(1 + \sqrt{u}) = x + C$
+e: $u = x + y$ 이면 $u' = 1 + \sqrt u$, 즉 $\dfrac{du}{1 + \sqrt u} = dx$. 한 번 더 $t = \sqrt u$ ($du = 2t\,dt$) 로 치환하면 $\displaystyle\int\frac{2t}{1 + t}dt = 2t - 2\ln(1 + t)$. 치환을 두 번 하는 Level 2 유형이에요. $du = 2t\,dt$ 의 $2$를 빼먹으면 마지막 오답이 나와요.
 Q mc
 q: $y' = \dfrac{1}{x + y}$ 를 $\dfrac{dx}{dy} = x + y$ 로 뒤집어 풀면?
 a: $x + y + 1 = Ce^{y}$
@@ -562,6 +556,13 @@ w: $X = x + 2,\; Y = y + 1$
 w: $X = x,\; Y = y$
 w: $X = y - 1,\; Y = x - 2$
 e: $x = X + 2$ 였으니 $X = x - 2$ 예요. 부호를 반대로 넣거나, 되돌리기를 빼먹는 실수가 가장 많아요. 최종 답은 $\arctan\dfrac{y - 1}{x - 2} = \ln\sqrt{(x - 2)^2 + (y - 1)^2} + C$
+Q mc
+q: $y' = \dfrac{x + y + 1}{x + y - 1}$ 은 두 직선이 평행해서 교점이 없어요. 일반해는?
+a: $y - x - \ln|x + y| = C$
+w: $y - x + \ln|x + y| = C$
+w: $y + x - \ln|x + y| = C$
+w: $\ln|x + y| = 2x + C$
+e: 교점이 없으면 평행이동을 못 해요. 대신 분자·분모에 공통인 $x + y$ 를 $u$ 로 두면 유형 1이 돼요: $u' = 1 + \dfrac{u + 1}{u - 1} = \dfrac{2u}{u - 1}$, $\displaystyle\int\frac{u - 1}{2u}du = \frac{u}{2} - \frac12\ln|u| = x + C$. $u = x + y$ 를 넣고 정리해요.
 ## 03 | 1계 ODE | 완전 상미분방정식
 c: $M(x,y)\,dx + N(x,y)\,dy = 0$ 에서 $\dfrac{\partial M}{\partial y} = \dfrac{\partial N}{\partial x}$ 이면 **완전**이에요.
 c: 그러면 $F_x = M,\; F_y = N$ 인 $F$가 있고, 해는 $F(x,y) = C$ 예요.
