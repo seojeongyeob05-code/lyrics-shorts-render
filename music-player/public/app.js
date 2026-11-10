@@ -3,6 +3,7 @@ import { setupMediaSession } from './media-session.js';
 import { parseLyrics, currentLineIndex } from './lyrics.js';
 import { groupTracks, UNKNOWN_ARTIST } from './groups.js';
 import { planUploads, mergeResults } from './upload-plan.js';
+import { clickSelection, pruneSelection } from './selection.js';
 
 // ───────────── 유틸 ─────────────
 const $ = (sel) => document.querySelector(sel);
@@ -91,6 +92,8 @@ const state = {
   view: { type: 'library' },
   rows: [], // 현재 보기의 곡 (플레이리스트면 entryId 포함)
   shown: [], // rows 중 검색어와 일치해 실제로 그려진 곡
+  selected: new Set(), // 선택한 행의 키 (rowKey)
+  anchor: null, // Shift 범위 선택의 기준 행
   query: '',
 };
 let dragTrackId = null;
@@ -111,7 +114,10 @@ const GRID_VIEWS = { artists: 'artist', albums: 'album' }; // 묶음 목록 보�
 async function openView(view) {
   const sameView = view?.type === state.view.type
     && (view.type === 'playlist' ? view.id === state.view.id : view.name === state.view.name);
-  if (!sameView) setQuery('');
+  if (!sameView) {
+    setQuery('');
+    clearSelection(false);
+  }
   if (view?.type === 'playlist') {
     const data = await api('GET', `/api/playlists/${view.id}`);
     state.view = { type: 'playlist', id: data.id, name: data.name };
@@ -193,11 +199,15 @@ function setQuery(value) {
 const VIEW_KIND = { library: '라이브러리', playlist: '플레이리스트', artist: '아티스트', album: '앨범' };
 
 function renderMain() {
+  // 선택 막대는 곡 목록을 다 그린 뒤 renderSelection이 다시 보여 준다.
+  $('#selection-bar').hidden = true;
+  $('#track-list').classList.remove('selecting');
   if (GRID_VIEWS[state.view.type]) return renderGroups();
   const { view, rows, query } = state;
   const isPlaylist = view.type === 'playlist';
   const shown = query ? rows.filter((t) => matchesQuery(t, query)) : rows;
   state.shown = shown;
+  state.selected = pruneSelection(state.selected, shown.map(rowKey));
   const total = shown.reduce((sum, t) => sum + (t.duration || 0), 0);
 
   $('#view-kind').textContent = VIEW_KIND[view.type];
@@ -244,17 +254,25 @@ function renderMain() {
   }
 
   const head = h('div', { class: 'track-row head' },
-    h('div', { class: 't-num' }, '#'), h('div', {}, '제목'), h('div', { class: 't-album' }, '앨범'),
+    h('div', { class: 't-num' },
+      h('span', { class: 'num' }, '#'),
+      h('input', { type: 'checkbox', class: 't-check', id: 'select-all', 'aria-label': '모두 선택', onclick: (e) => { e.stopPropagation(); toggleSelectAll(); } })),
+    h('div', {}, '제목'), h('div', { class: 't-album' }, '앨범'),
     h('div', { class: 't-dur' }, '길이'), h('div'));
   list.replaceChildren(head, ...shown.map((t, i) => h('div', {
     class: 'track-row',
     role: 'listitem',
     draggable: 'true',
     dataset: { idx: i },
-    title: '클릭하면 재생',
-    onclick: () => playList(ids, i),
+    title: '클릭하면 재생 · Ctrl/⌘+클릭으로 선택',
+    onclick: (e) => {
+      if (e.ctrlKey || e.metaKey || (e.shiftKey && state.selected.size)) return selectRow(i, e.shiftKey);
+      playList(ids, i);
+    },
   },
-  h('div', { class: 't-num' }, String(i + 1)),
+  h('div', { class: 't-num' },
+    h('span', { class: 'num' }, String(i + 1)),
+    h('input', { type: 'checkbox', class: 't-check', 'aria-label': `${t.title} 선택`, onclick: (e) => { e.stopPropagation(); selectRow(i, e.shiftKey); } })),
   h('div', { class: 't-main' }, coverEl(t),
     h('div', { class: 't-text' },
       h('div', { class: 't-title' }, t.title),
@@ -266,6 +284,7 @@ function renderMain() {
     onclick: (e) => { e.stopPropagation(); openTrackMenu(e.currentTarget, i); },
   }))));
   highlightPlaying();
+  renderSelection();
 }
 
 // 아티스트·앨범 목록: 커버 카드 격자. 카드를 누르면 그 곡 목록, 재생 버튼을 누르면 바로 재생.
@@ -329,6 +348,7 @@ function openTrackMenu(anchor, i) {
     ['대기열에 추가', () => { addToQueue([t.id]); toast('대기열에 추가했습니다'); }],
     ['플레이리스트에 추가…', safe(() => addToPlaylistFlow([t.id]))],
     ['곡 정보 수정…', safe(() => editTrack(t))],
+    [state.selected.has(rowKey(t)) ? '선택 해제' : '선택', () => selectRow(i, false)],
     [t.hasLyrics ? '가사 편집…' : '가사 추가…', safe(() => editLyrics(t))],
     null,
     state.view.type === 'playlist'
@@ -410,6 +430,77 @@ async function addToPlaylistFlow(trackIds) {
     id = playlist.id;
   }
   await addTracksToPlaylist(id, trackIds);
+}
+
+// ───────────── 여러 곡 선택 ─────────────
+const rowKey = (t) => t.entryId ?? t.id;
+const selectedRows = () => state.shown.filter((t) => state.selected.has(rowKey(t)));
+
+function selectRow(i, range) {
+  ({ selected: state.selected, anchor: state.anchor } = clickSelection(
+    state.selected, state.shown.map(rowKey), i, { range, anchor: state.anchor }));
+  renderSelection();
+}
+
+function toggleSelectAll() {
+  const all = state.shown.length && state.shown.every((t) => state.selected.has(rowKey(t)));
+  state.selected = all ? new Set() : new Set(state.shown.map(rowKey));
+  renderSelection();
+}
+
+function clearSelection(render = true) {
+  state.selected = new Set();
+  state.anchor = null;
+  if (render) renderSelection();
+}
+
+// 목록을 다시 그리지 않고 체크 상태와 선택 막대만 맞춘다.
+function renderSelection() {
+  const rows = document.querySelectorAll('#track-list .track-row[data-idx]');
+  rows.forEach((row) => {
+    const on = state.selected.has(rowKey(state.shown[row.dataset.idx]));
+    row.classList.toggle('selected', on);
+    row.querySelector('.t-check').checked = on;
+  });
+  const count = selectedRows().length;
+  const all = $('#select-all');
+  if (all) {
+    all.checked = count > 0 && count === state.shown.length;
+    all.indeterminate = count > 0 && count < state.shown.length;
+  }
+  $('#track-list').classList.toggle('selecting', count > 0);
+
+  const bar = $('#selection-bar');
+  bar.hidden = !count;
+  if (!count) return bar.replaceChildren();
+  const ids = () => selectedRows().map((t) => t.id);
+  const done = (fn) => safe(async () => { await fn(); clearSelection(); });
+  bar.replaceChildren(
+    h('strong', {}, `${count}곡 선택`),
+    h('button', { class: 'btn primary', onclick: done(() => playList(ids(), 0)) }, '▶ 재생'),
+    h('button', { class: 'btn', onclick: done(() => { playNext(ids()); toast(`${count}곡을 다음에 재생합니다`); }) }, '다음에 재생'),
+    h('button', { class: 'btn', onclick: done(() => { addToQueue(ids()); toast(`${count}곡을 대기열에 추가했습니다`); }) }, '대기열에 추가'),
+    h('button', { class: 'btn', onclick: done(() => addToPlaylistFlow(ids())) }, '플레이리스트에 추가…'),
+    state.view.type === 'playlist'
+      ? h('button', { class: 'btn danger', onclick: done(() => removeEntries(selectedRows())) }, '플레이리스트에서 제거')
+      : h('button', { class: 'btn danger', onclick: done(() => deleteTracks(selectedRows())) }, '삭제'),
+    h('button', { class: 'link', onclick: () => clearSelection() }, '선택 해제'),
+  );
+}
+
+async function deleteTracks(tracks) {
+  if (!tracks.length || !confirm(`선택한 ${tracks.length}곡을 라이브러리에서 삭제할까요?\n파일도 서버에서 지워지고 모든 플레이리스트에서 빠집니다.`)) return;
+  for (const t of tracks) await api('DELETE', `/api/tracks/${t.id}`).catch((err) => { if (!/찾을 수 없/.test(err.message)) throw err; });
+  await Promise.all([loadLibrary(), loadPlaylists()]);
+  await refreshView();
+  toast(`${tracks.length}곡을 삭제했습니다`);
+}
+
+async function removeEntries(rows) {
+  for (const t of rows) await api('DELETE', `/api/playlists/${state.view.id}/tracks/${t.entryId}`);
+  await loadPlaylists();
+  await refreshView();
+  toast(`플레이리스트에서 ${rows.length}곡을 뺐습니다`);
 }
 
 async function removeFromPlaylist(entryId) {
@@ -1165,7 +1256,14 @@ $('#main').addEventListener('scroll', hideMenu);
 addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     hideMenu();
-    if (e.target.id === 'search') { setQuery(''); renderMain(); e.target.blur(); }
+    if (e.target.id === 'search') { setQuery(''); renderMain(); e.target.blur(); } else if (state.selected.size && !e.target.closest('dialog')) clearSelection();
+  }
+  // Ctrl/⌘+A: 보이는 곡 모두 선택 (입력 중이 아닐 때, 곡 목록 화면에서)
+  if (e.key.toLowerCase() === 'a' && (e.ctrlKey || e.metaKey) && !e.target.closest('input, textarea, dialog')
+      && !$('#app').hidden && document.querySelector('#track-list .track-row[data-idx]')) {
+    e.preventDefault();
+    state.selected = new Set(state.shown.map(rowKey));
+    renderSelection();
   }
   if (e.key === '/' && !e.target.closest('input, textarea, dialog') && !$('#app').hidden) {
     e.preventDefault();

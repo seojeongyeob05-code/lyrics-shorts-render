@@ -138,6 +138,19 @@ input:focus { border-color: var(--accent); }
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom;
 }
 .text-link:hover, .text-link:focus-visible { color: var(--text); text-decoration: underline; outline: none; }
+.t-check { display: none; margin: 0; width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+.track-row:hover .t-check, .track-list.selecting .t-check { display: inline-block; }
+.track-row:hover .num, .track-list.selecting .num { display: none; }
+.track-row.selected { background: color-mix(in srgb, var(--accent) 18%, transparent); }
+.track-row.selected:hover { background: color-mix(in srgb, var(--accent) 26%, transparent); }
+.selection-bar {
+  position: sticky; top: -24px; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  margin: 0 0 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--panel-2); box-shadow: 0 8px 20px rgba(0,0,0,.35);
+}
+.selection-bar strong { margin-right: 6px; }
+.selection-bar .btn { padding: 6px 12px; font-size: 13px; }
+.selection-bar .link { margin-left: auto; }
 .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
 .empty .btn { margin-top: 14px; }
 
@@ -264,7 +277,12 @@ input[type=range]::-moz-range-thumb { width: 12px; height: 12px; border: 0; bord
   .controls { grid-column: 1 / -1; grid-row: 2; }
   .extras input { display: none; }
   .track-row { grid-template-columns: minmax(0, 1fr) 48px 36px; }
-  .track-row .t-num, .track-row .t-album { display: none; }
+  .track-row .t-album { display: none; }
+  .track-row .t-num { display: none; }
+  .track-list.selecting .track-row { grid-template-columns: 24px minmax(0, 1fr) 48px 36px; }
+  .selection-bar { top: -16px; }
+  .side-foot .link { white-space: nowrap; }
+  .track-list.selecting .track-row .t-num { display: block; }
   .track-row .icon-btn { opacity: 1; }
   .group-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
   .icon-btn.group-play { opacity: 1; transform: none; }
