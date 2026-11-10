@@ -126,7 +126,7 @@ main.play { display: grid; gap: 22px; grid-template-columns: minmax(0, 1.1fr) mi
 
 /* --- overlays --- */
 .overlay { position: fixed; inset: 0; background: rgba(6, 8, 24, 0.78); display: grid; place-items: center; padding: 16px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); z-index: 20; }
-.sheet { background: var(--panel); color: var(--ink); width: min(640px, 100%); max-height: 88vh; overflow-y: auto; padding: 22px; display: grid; gap: 14px; border: 2px solid var(--frame); box-shadow: 0 0 0 2px var(--frame-dark), inset 0 0 0 2px var(--frame-dark), 0 10px 0 2px rgba(0,0,0,.4); }
+.sheet { background: var(--panel); color: var(--ink); width: min(640px, 100%); max-height: 88vh; overflow-y: auto; padding: 22px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; border: 2px solid var(--frame); box-shadow: 0 0 0 2px var(--frame-dark), inset 0 0 0 2px var(--frame-dark), 0 10px 0 2px rgba(0,0,0,.4); }
 .sheet h2 { font-family: var(--f-pixel-b); font-weight: normal; font-size: 24px; margin: 0; line-height: 1.25; color: var(--amber); text-shadow: 2px 2px 0 var(--frame-dark); text-wrap: balance; }
 .sheet p { margin: 0; }
 .sheet .lead { color: var(--muted); font-size: 12px; }
@@ -163,6 +163,8 @@ main.play { display: grid; gap: 22px; grid-template-columns: minmax(0, 1.1fr) mi
 .lvl.right b { color: var(--ok); }
 .lvl.wrong { border-color: var(--danger); }
 .lvl.wrong b { color: var(--danger); }
+.say input.right { border-color: var(--ok); }
+.say input.wrong { border-color: var(--danger); }
 .how { display: grid; gap: 6px; margin: 0; padding-left: 18px; font-size: 14px; }
 </style>
 
@@ -1294,7 +1296,7 @@ document.querySelectorAll('.pad button').forEach(b => b.addEventListener('click'
   const [dx, dy] = b.dataset.dir.split(',').map(Number); move(dx, dy);
 }));
 document.addEventListener('keydown', e => {
-  if (e.target === $('sayInput')) return;
+  if (e.target.closest('input, textarea, select')) return;
   const k = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0], w: [0, -1], s: [0, 1], a: [-1, 0], d: [1, 0] }[e.key];
   if (k) { e.preventDefault(); move(k[0], k[1]); }
 });
@@ -1315,19 +1317,58 @@ function bindLevels() {
   }));
 }
 // Before a new afternoon starts, words from earlier recaps come back: pick the meaning from four.
+// One-letter slips count as remembered; the answer is shown either way.
+function editDistance(a, b) {
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++)
+    d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return d[a.length][b.length];
+}
+const meanings = ko => ko.split(/,\s*/);
+function checkTyped(typed, w, ko) {
+  const t = typed.trim().toLowerCase().replace(/\s+/g, ' ');
+  if (!t) return null;
+  if (t === w) return { ok: true, msg: '맞았어요!' };
+  if (w.length >= 5 && editDistance(t, w) === 1) return { ok: true, msg: `거의 맞았어요! 철자는 "${w}"예요.` };
+  const syn = VOCAB.find(([v, k]) => v === t && meanings(k).some(m => meanings(ko).includes(m)));
+  if (syn) return { ok: true, msg: `"${t}"도 맞아요! 이번에 찾던 단어는 "${w}"예요.` };
+  return { ok: false, msg: `정답은 "${w}"예요.` };
+}
+// Recognition first (pick the meaning), then recall (type the English) once a word has been answered right.
 function review(words, i, right, done) {
   if (i >= words.length) {
     return show(`<h2>복습 끝</h2><p>${words.length}개 중 <b>${right}개</b>를 기억했어요. 맞힌 단어는 더 오래 뒤에, 틀린 단어는 내일 다시 나와요.</p>
       <button class="primary" id="go" type="button">오후 5시 20분으로</button>`, () => $('go').addEventListener('click', done));
   }
   const [w, ko] = words[i];
+  const next = ok => setTimeout(() => review(words, i + 1, right + (ok ? 1 : 0), done), ok ? 900 : 1800);
+  const head = `<h2>지난 주마등 복습 ${i + 1}/${words.length}</h2>`;
+  const skip = `<p class="lead" id="fb" aria-live="polite"></p><button class="ghost" id="skip" type="button">복습 건너뛰기</button>`;
+  if ((journal[w].box || 0) >= 1) {
+    return show(`${head}
+      <p class="lead">이번엔 거꾸로예요. 뜻을 보고 영어로 써보세요. 직접 떠올린 말이 더 오래 남아요.</p>
+      <p class="quizword">${esc(ko)}</p>
+      <form class="say" id="typeForm" autocomplete="off"><input id="typeInput" type="text" placeholder="영어로 쓰기" aria-label="영어 단어"><button type="submit">확인</button></form>
+      ${skip}`, () => {
+      $('skip').addEventListener('click', done);
+      $('typeInput').focus();
+      $('typeForm').addEventListener('submit', e => {
+        e.preventDefault();
+        if ($('typeForm').dataset.done) return;
+        const r = checkTyped($('typeInput').value, w, ko); if (!r) return;
+        $('typeForm').dataset.done = '1'; grade(w, r.ok);
+        $('typeInput').classList.add(r.ok ? 'right' : 'wrong');
+        $('fb').textContent = r.msg; next(r.ok);
+      });
+    });
+  }
   const options = shuffle([ko, ...shuffle(VOCAB.filter(v => v[1] !== ko).map(v => v[1])).slice(0, 3)]);
-  show(`<h2>지난 주마등 복습 ${i + 1}/${words.length}</h2>
+  show(`${head}
     <p class="lead">예전 회차에서 뜻을 알게 된 단어예요. 잊어버릴 즈음 다시 꺼내야 오래 기억돼요.</p>
     <p class="quizword">${esc(w)}</p>
     <div class="levels" id="opts">${options.map(o => `<button class="lvl" type="button" data-o="${esc(o)}"><b>${esc(o)}</b></button>`).join('')}</div>
-    <p class="lead" id="fb" aria-live="polite"></p>
-    <button class="ghost" id="skip" type="button">복습 건너뛰기</button>`, () => {
+    ${skip}`, () => {
     $('skip').addEventListener('click', done);
     $('opts').addEventListener('click', e => {
       const b = e.target.closest('[data-o]'); if (!b || $('opts').dataset.done) return;
@@ -1335,7 +1376,7 @@ function review(words, i, right, done) {
       const ok = b.dataset.o === ko; grade(w, ok);
       b.classList.add(ok ? 'right' : 'wrong');
       $('fb').textContent = ok ? '맞았어요!' : `정답은 "${ko}"예요.`;
-      setTimeout(() => review(words, i + 1, right + (ok ? 1 : 0), done), ok ? 700 : 1600);
+      next(ok);
     });
   });
 }
