@@ -156,6 +156,12 @@ main.play { display: grid; gap: 22px; grid-template-columns: minmax(0, 1.1fr) mi
 .lvl span { font-size: 12px; color: var(--muted); letter-spacing: 0.06em; }
 .lvl b { font-size: 18px; color: var(--amber); }
 .lvl small { color: var(--muted); font-size: 12px; }
+.lvl .stars { font-style: normal; color: var(--amber); letter-spacing: 0.1em; }
+.lvl .skills { display: flex; flex-wrap: wrap; gap: 4px; margin: 2px 0; }
+.lvl .skills em { font-style: normal; font-size: 12px; color: var(--ink); border: 2px solid var(--line); padding: 0 6px; }
+.lvl .rec { color: var(--muted); }
+.lvl .rec.done { color: var(--ok); }
+.newbest { color: var(--amber); }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .sheet .ghost { justify-self: start; }
 .quizword { font-family: var(--f-pixel-b); font-size: 36px; color: var(--ink); text-align: center; padding: 8px 0; text-shadow: 3px 3px 0 var(--frame-dark); overflow-wrap: anywhere; }
@@ -277,11 +283,11 @@ const SIZES = { small: '작은 사이즈', medium: '중간 사이즈', large: '�
 const MILKS = { regular: '일반 우유', oat: '귀리 우유', almond: '아몬드 우유' };
 const SIZE_SHAPE = { small: 'a tiny cup shape', medium: 'a middle-sized cup shape', large: 'a big cup shape' };
 const LEVELS = {
-  1: { name: '잃어버린 지갑', goal: '목표: 경비실로 가서 지갑을 무사히 되찾기', target: 'security',
+  1: { diff: 1, skills: ['간판 읽기', '질문 알아듣기', '색·물건 말하기'], name: '잃어버린 지갑', goal: '목표: 경비실로 가서 지갑을 무사히 되찾기', target: 'security',
        story: '길을 걷던 중 문득 지갑이 없다는 걸 깨달았다. 방금 전까지 머물던 건물로 돌아왔지만, 누군가 분실물인 줄 알고 경비실에 맡겨둔 것 같다.' },
-  2: { name: '할머니의 심부름', goal: '목표: 할머니의 부탁을 알아듣고, 부탁한 음료를 사다 드리기', target: 'cafe',
+  2: { diff: 3, skills: ['부탁 알아듣기', '빠른 말 듣기', '주문하기'], name: '할머니의 심부름', goal: '목표: 할머니의 부탁을 알아듣고, 부탁한 음료를 사다 드리기', target: 'cafe',
        story: '로비에 들어서자 벤치에 앉은 옆집 할머니가 손짓한다. 무릎이 아파서 부탁할 게 있다고 한다. 할머니는 5시 50분에 TV를 보러 집에 들어간다.' },
-  3: { name: '택배 찾기', goal: '목표: 택배 기사의 쪽지를 읽고, 보관함에서 택배를 꺼내오기', target: 'mail',
+  3: { diff: 2, skills: ['쪽지 읽기', '영어 숫자', '조건 문장'], name: '택배 찾기', goal: '목표: 택배 기사의 쪽지를 읽고, 보관함에서 택배를 꺼내오기', target: 'mail',
        story: '집에 오니 문에 택배 기사의 쪽지가 붙어 있다. 아무도 없어서 택배를 건물 어딘가에 맡겨둔 모양이다. 쪽지는 영어로 쓰여 있다.' },
 };
 // Situation 3: numbers written as words. Teens and tens are easy to mix up, so lockers are drawn from those pairs.
@@ -409,6 +415,8 @@ const store = {
 let journal = store.get('ag520.journal', {});
 let totalLoops = store.get('ag520.loops', 0);
 let cleared = store.get('ag520.cleared', []);
+// Best clear per situation: fewest loops, then fewest in-game minutes.
+let best = store.get('ag520.best', {});
 let LEVEL = 1;
 // Spaced review: a word whose meaning you learned comes back as a quiz after 1, 2, 4, 7, then 14 days.
 const DAY = 86400000, REVIEW_DAYS = [1, 2, 4, 7, 14];
@@ -1307,7 +1315,12 @@ function show(html, onReady) { $('sheet').innerHTML = html; $('overlay').hidden 
 function hide() { $('overlay').hidden = true; }
 
 function levelButtons() {
-  return `<div class="levels">${Object.entries(LEVELS).map(([n, L]) => `<button class="lvl" type="button" data-level="${n}"><span>상황 ${n}${cleared.includes(+n) ? ' · 해결함' : ''}</span><b>${L.name}</b><small>${L.story}</small></button>`).join('')}</div>`;
+  return `<div class="levels">${Object.entries(LEVELS).map(([n, L]) => {
+    const r = best[n];
+    const rec = r ? `최고 기록: ${r.loops}회차 만에 · ${r.minutes}분 · 실수 ${r.mistakes}번` : cleared.includes(+n) ? '해결함' : '아직 해결하지 않음';
+    return `<button class="lvl" type="button" data-level="${n}"><span>상황 ${n} · 난이도 <i class="stars" aria-label="3점 중 ${L.diff}점">${'★'.repeat(L.diff)}${'☆'.repeat(3 - L.diff)}</i></span><b>${L.name}</b>
+      <span class="skills">${L.skills.map(k => `<em>${k}</em>`).join('')}</span><small>${L.story}</small><span class="rec${r ? ' done' : ''}">${rec}</span></button>`;
+  }).join('')}</div>`;
 }
 function startLevel(n) { LEVEL = n; S = null; hide(); newLoop(); $('sayInput').focus(); }
 function bindLevels() {
@@ -1447,6 +1460,9 @@ function fail() {
 function win() {
   if (S.done) return; S.done = true;
   if (!cleared.includes(S.level)) { cleared.push(S.level); store.set('ag520.cleared', cleared); }
+  const mins = Math.round((S.t - START) / 60), prev = best[S.level];
+  const newBest = !prev || S.loop < prev.loops || (S.loop === prev.loops && mins < prev.minutes);
+  if (newBest) { best[S.level] = { loops: S.loop, minutes: mins, mistakes: S.mistakes.length }; store.set('ag520.best', best); }
   const used = Math.round((S.t - START) / 60);
   const phr = S.level === 3 && S.bigParcel
     ? `<li><em>too big</em> for the lockers → SECURITY OFFICE · apartment <em>${aptWords(S.apt)}</em> = ${S.apt}호</li>`
@@ -1455,7 +1471,7 @@ function win() {
     : S.phrases.map(([said, model]) => `<li>"${esc(said)}" <span class="arrow">→ 더 자연스럽게</span> <em>${esc(model)}</em></li>`).join('');
   show(`
     <h2>${{ 1: '지갑을 되찾았다!', 2: '할머니가 활짝 웃었다!', 3: '택배를 찾았다!' }[S.level]}</h2>
-    <p class="lead">${S.loop}회차 · ${used}분 사용 · 실수 ${S.mistakes.length}번</p>
+    <p class="lead">${S.loop}회차 · ${used}분 사용 · 실수 ${S.mistakes.length}번${newBest ? ' · <b class="newbest">새 최고 기록!</b>' : ''}</p>
     <p>${S.level === 3 ? '쪽지의 숫자를 제대로 읽었어요.' : '당신의 말은 통했어요. 다음엔 이렇게 말해보세요.'}</p>
     <ul class="phr">${phr || '<li>몸짓만으로 해냈어요! 다음엔 한 단어라도 영어로 말해보세요.</li>'}</ul>
     <p><b>다른 상황도 해보세요.</b></p>
