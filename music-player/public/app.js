@@ -4,6 +4,7 @@ import { parseLyrics, currentLineIndex } from './lyrics.js';
 import { groupTracks, UNKNOWN_ARTIST } from './groups.js';
 import { planUploads, mergeResults } from './upload-plan.js';
 import { clickSelection, pruneSelection } from './selection.js';
+import { planPlaylistAdd } from './playlist-add.js';
 
 // ───────────── 유틸 ─────────────
 const $ = (sel) => document.querySelector(sel);
@@ -408,12 +409,30 @@ async function deletePlaylist() {
   await openView({ type: 'library' });
 }
 
+// 이미 들어 있는 곡이 있으면 새 곡만 넣을지, 모두 넣을지 묻는다.
 async function addTracksToPlaylist(playlistId, trackIds) {
-  await api('POST', `/api/playlists/${playlistId}/tracks`, { trackIds });
+  const name = state.playlists.find((p) => p.id === playlistId)?.name ?? '';
+  const current = await api('GET', `/api/playlists/${playlistId}`);
+  const plan = planPlaylistAdd(current.tracks.map((t) => t.id), trackIds);
+  let ids = plan.all;
+  if (plan.duplicates) {
+    const allDupes = !plan.fresh.length;
+    const choice = await chooseDialog('이미 들어 있는 곡이 있습니다', allDupes
+      ? [{ value: 'all', label: plan.all.length > 1 ? `그래도 ${plan.all.length}곡 모두 추가` : '그래도 추가' }]
+      : [
+        { value: 'fresh', label: `새 곡 ${plan.fresh.length}곡만 추가` },
+        { value: 'all', label: `이미 있는 곡까지 ${plan.all.length}곡 모두 추가` },
+      ], allDupes
+      ? `${plan.all.length > 1 ? '고른 곡이 모두' : '이 곡은'} '${name}'에 이미 있습니다.`
+      : `고른 ${plan.all.length}곡 중 ${plan.duplicates}곡은 '${name}'에 이미 있습니다.`);
+    if (choice !== 'fresh' && choice !== 'all') return;
+    if (choice === 'fresh') ids = plan.fresh;
+  }
+  await api('POST', `/api/playlists/${playlistId}/tracks`, { trackIds: ids });
   await loadPlaylists();
   if (state.view.type === 'playlist' && state.view.id === playlistId) await refreshView();
-  const name = state.playlists.find((p) => p.id === playlistId)?.name ?? '';
-  toast(`'${name}'에 추가했습니다`);
+  const skipped = plan.all.length - ids.length;
+  toast(`'${name}'에 ${ids.length}곡을 추가했습니다${skipped ? ` (이미 있는 곡 ${skipped}개 건너뜀)` : ''}`);
 }
 
 async function addToPlaylistFlow(trackIds) {
@@ -1070,12 +1089,12 @@ async function promptDialog(title, value = '') {
   return result === 'ok' ? input.value.trim() : null;
 }
 
-function chooseDialog(title, options) {
+function chooseDialog(title, options, message) {
   const dlg = $('#dialog');
   const list = h('div', { class: 'choice-list' }, ...options.map((o) => h('button', {
     type: 'button', onclick: () => dlg.close(o.value),
   }, o.label)));
-  return openDialog(title, [list], { ok: false });
+  return openDialog(title, [message ? h('p', { class: 'dialog-hint' }, message) : null, list].filter(Boolean), { ok: false });
 }
 
 let toastTimer;
