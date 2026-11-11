@@ -294,11 +294,20 @@ $("copy").addEventListener("click", async () => {
   catch (e) { $("out").select(); }
   setTimeout(() => { $("copy").textContent = "복사"; }, 1500);
 });
-$("download").addEventListener("click", () => {
+$("download").addEventListener("click", async () => {
+  const name = state.title || "lyrics";
+  // claude.ai 아티팩트로 열었을 때는 viewer의 저장 기능을 쓴다(.lrc는 허용 확장자가 아니라
+  // .lrc.txt로 저장 — 렌더러는 확장자와 상관없이 읽는다).
+  const downloads = window.claude?.use ? await window.claude.use("downloads") : null;
+  if (downloads) {
+    try { await downloads.save({ filename: name + ".lrc.txt", data: app.lrc() }); }
+    catch (e) { if (e?.code !== "declined") { $("out").select(); alert("저장할 수 없어요. 결과를 복사해서 쓰세요."); } }
+    return;
+  }
   const blob = new Blob([app.lrc()], { type: "text/plain;charset=utf-8" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = (state.title || "lyrics") + ".lrc";
+  a.download = name + ".lrc";
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 });
