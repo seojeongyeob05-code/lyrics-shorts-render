@@ -15,6 +15,7 @@ python3 -m shorts render song.lrc --audio song.mp3 --bg bg.jpg --start 0:45 --du
 python3 -m shorts frame song.lrc --bg bg.jpg --at 0:50
 ```
 
+- `--preview`: 절반 해상도·15fps로 5배쯤 빠르게 뽑아 보기(`노래.preview.mp4`). 확인 후 옵션을 빼고 다시 렌더
 - 시간은 `45`, `0:45`, `1:02.5` 모두 가능
 - `--duration`을 빼면 곡 끝까지(음원이 없으면 마지막 가사 줄까지)
 - 폰트는 한글 폰트를 자동으로 찾음. 직접 지정: `--font 경로` 또는 환경변수 `SHORTS_FONT`

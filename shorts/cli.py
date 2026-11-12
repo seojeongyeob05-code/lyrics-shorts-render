@@ -52,8 +52,33 @@ def _renderer(args) -> FrameRenderer:
         raise SystemExit(str(e)) from None
     if args.font:
         style.font_path = args.font
+    if getattr(args, "preview", False):
+        style = style.scaled(0.5)
     bg = Image.open(args.bg) if args.bg else None
     return FrameRenderer(style, background=bg)
+
+
+class ProgressPrinter:
+    """'렌더 중 42% · 남은 시간 약 3초'를 한 줄에 덮어쓰며 보여준다(0.3초마다)."""
+
+    def __init__(self, stream, clock=time.perf_counter):
+        self.stream, self.clock = stream, clock
+        self.start = clock()
+        self.last = -1.0
+
+    def __call__(self, done: int, total: int) -> None:
+        now = self.clock()
+        if done < total and now - self.last < 0.3:
+            return
+        self.last = now
+        elapsed = now - self.start
+        eta = elapsed / done * (total - done) if done else 0
+        self.stream.write(f"\r렌더 중 {done * 100 // total:3d}% · 남은 시간 약 {eta:.0f}초   ")
+        self.stream.flush()
+
+    def done(self) -> None:
+        self.stream.write("\r" + " " * 40 + "\r")
+        self.stream.flush()
 
 
 def cmd_render(args) -> None:
@@ -70,9 +95,18 @@ def cmd_render(args) -> None:
 
     clip = lyrics.clip(args.start, args.start + duration)
     out = args.out or os.path.splitext(args.lrc)[0] + ".mp4"
+    if args.preview:
+        opts = VideoOptions(fps=min(args.fps, 15), preset="ultrafast", crf=28)
+        if not args.out:
+            out = os.path.splitext(args.lrc)[0] + ".preview.mp4"
+    else:
+        opts = VideoOptions(fps=args.fps)
     t0 = time.perf_counter()
-    drawn = render_video(clip, out, duration, _renderer(args), VideoOptions(fps=args.fps),
-                         audio=args.audio, audio_start=args.start)
+    progress = ProgressPrinter(sys.stderr) if sys.stderr.isatty() else None
+    drawn = render_video(clip, out, duration, _renderer(args), opts,
+                         audio=args.audio, audio_start=args.start, on_progress=progress)
+    if progress:
+        progress.done()
     print(f"{out}  ({duration:.1f}s, 그린 프레임 {drawn}장, {time.perf_counter() - t0:.1f}s 소요)")
 
 
@@ -107,6 +141,8 @@ def build_parser() -> argparse.ArgumentParser:
     r.add_argument("--start", type=parse_time, default=0.0, help="시작 지점 (예: 0:45)")
     r.add_argument("--duration", type=parse_time, help="길이 (기본: 곡 끝까지)")
     r.add_argument("--fps", type=int, default=30)
+    r.add_argument("--preview", action="store_true",
+                   help="빠른 미리보기: 절반 해상도·15fps, 기본 출력 이름 *.preview.mp4")
     r.set_defaults(func=cmd_render)
 
     f = sub.add_parser("frame", parents=[common], help="한 장면 PNG 미리보기")

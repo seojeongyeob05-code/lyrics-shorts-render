@@ -5,6 +5,7 @@ from __future__ import annotations
 import queue
 import subprocess
 import threading
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from .frame import FrameRenderer
@@ -38,10 +39,12 @@ def build_ffmpeg_cmd(out_path: str, size: tuple[int, int], duration: float,
 
 def render_video(lyrics: Lyrics, out_path: str, duration: float,
                  renderer: FrameRenderer | None = None, opts: VideoOptions | None = None,
-                 audio: str | None = None, audio_start: float = 0.0) -> int:
+                 audio: str | None = None, audio_start: float = 0.0,
+                 on_progress: Callable[[int, int], None] | None = None) -> int:
     """[0, duration)초를 렌더링해 out_path에 저장한다. 실제로 그린 프레임 수를 돌려준다.
 
     audio_start: 음원의 몇 초 지점부터 영상 0초에 맞출지(구간 렌더용).
+    on_progress(끝난 프레임 수, 전체 프레임 수): 프레임마다 불린다.
     """
     renderer = renderer or FrameRenderer()
     opts = opts or VideoOptions()
@@ -77,6 +80,8 @@ def render_video(lyrics: Lyrics, out_path: str, duration: float,
                 t = k / opts.fps
                 # 가사 화면은 renderer가 캐시하므로 줄이 바뀔 때만 새로 그린다.
                 frames.put(renderer.render_bytes(lyrics, t, progress=t / duration))
+                if on_progress:
+                    on_progress(k + 1, n_frames)
         finally:
             frames.put(None)
             th.join()

@@ -250,6 +250,21 @@ class ZoomTest(unittest.TestCase):
         self.assertNotEqual(a.tobytes(), b.tobytes())
 
 
+class ScaledStyleTest(unittest.TestCase):
+    def test_halves_pixel_values_and_keeps_ratios(self):
+        s = Style(stroke_width=3, bg_blur=22).scaled(0.5)
+        self.assertEqual((s.width, s.height), (540, 960))
+        self.assertEqual((s.font_size, s.next_font_size, s.line_gap), (36, 26, 24))
+        self.assertEqual((s.stroke_width, s.progress_height, s.progress_bottom), (2, 4, 80))
+        self.assertEqual(s.bg_blur, 11)
+        self.assertEqual((s.center_y, s.max_text_width, s.fade), (0.5, 0.86, 0.24))
+
+    def test_sizes_stay_even_and_zero_stays_zero(self):
+        s = Style(width=1081, height=1919, stroke_width=0).scaled(0.5)
+        self.assertEqual((s.width % 2, s.height % 2), (0, 0))
+        self.assertEqual(s.stroke_width, 0)
+
+
 class RenderBytesTest(unittest.TestCase):
     """render_bytes()는 render().tobytes()와 바이트 단위로 같아야 한다."""
 

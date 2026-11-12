@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import math
 from bisect import bisect_right
+import dataclasses
 from dataclasses import dataclass
 
 from PIL import Image, ImageDraw, ImageFilter
@@ -58,6 +59,21 @@ class Style:
     progress_height: int = 8
     progress_width: float = 0.7  # 화면 폭 대비
     progress_bottom: int = 160  # 화면 아래 끝에서 띄울 거리(px)
+
+    def scaled(self, k: float) -> Style:
+        """픽셀 단위 값을 k배 한 Style(빠른 미리보기용 저해상도). 크기는 짝수로 맞춘다."""
+        def px(v: int) -> int:
+            return max(1, round(v * k)) if v else 0
+
+        def even(v: int) -> int:
+            return max(2, round(v * k / 2) * 2)  # H.264(yuv420p)는 가로세로가 짝수여야 한다
+
+        return dataclasses.replace(
+            self, width=even(self.width), height=even(self.height),
+            font_size=px(self.font_size), next_font_size=px(self.next_font_size),
+            line_gap=px(self.line_gap), stroke_width=px(self.stroke_width),
+            progress_height=px(self.progress_height), progress_bottom=px(self.progress_bottom),
+            bg_blur=self.bg_blur * k)
 
 
 def cover_fit(img: Image.Image, size: tuple[int, int]) -> Image.Image:

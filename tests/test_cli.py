@@ -16,6 +16,24 @@ HAVE_FFMPEG = shutil.which("ffmpeg") and shutil.which("ffprobe")
 LRC = "[00:01.00]하나\n[00:03.00]둘\n[00:05.00]셋\n[00:07.00]넷\n"
 
 
+class ProgressPrinterTest(unittest.TestCase):
+    def test_throttles_and_estimates_remaining(self):
+        now = [0.0]
+        buf = io.StringIO()
+        p = cli.ProgressPrinter(buf, clock=lambda: now[0])
+        now[0] = 1.0
+        p(25, 100)  # 1초에 25% → 남은 75%는 약 3초
+        now[0] = 1.1
+        p(30, 100)  # 0.3초 안 지나서 건너뜀
+        now[0] = 4.0
+        p(100, 100)  # 마지막은 항상
+        lines = [x for x in buf.getvalue().split("\r") if x]
+        self.assertEqual(len(lines), 2)
+        self.assertIn(" 25%", lines[0])
+        self.assertIn("약 3초", lines[0])
+        self.assertIn("100%", lines[1])
+
+
 class ParseTimeTest(unittest.TestCase):
     def test_formats(self):
         self.assertEqual(cli.parse_time("45"), 45)
@@ -82,6 +100,17 @@ class CliTest(unittest.TestCase):
              "-of", "json", out], capture_output=True, text=True, check=True).stdout)
         self.assertAlmostEqual(float(info["format"]["duration"]), 3, delta=0.1)
         self.assertEqual(len(info["streams"]), 2)
+
+    @unittest.skipUnless(HAVE_FFMPEG, "ffmpeg 없음")
+    def test_preview_is_half_size_and_15fps(self):
+        msg = self.run_cli("render", self.lrc, "--duration", "2", "--preview")
+        out = os.path.join(self.dir, "song.preview.mp4")
+        self.assertIn(out, msg)
+        info = json.loads(subprocess.run(
+            ["ffprobe", "-v", "error", "-select_streams", "v", "-show_entries",
+             "stream=width,height,r_frame_rate", "-of", "json", out],
+            capture_output=True, text=True, check=True).stdout)["streams"][0]
+        self.assertEqual((info["width"], info["height"], info["r_frame_rate"]), (540, 960, "15/1"))
 
     @unittest.skipUnless(HAVE_FFMPEG, "ffmpeg 없음")
     def test_duration_is_capped_at_song_end(self):

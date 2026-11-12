@@ -70,6 +70,12 @@ class RenderVideoTest(unittest.TestCase):
         self.assertEqual(sorted(s["codec_type"] for s in info["streams"]), ["audio", "video"])
         self.assertAlmostEqual(float(info["format"]["duration"]), 1.5, delta=0.1)
 
+    def test_progress_callback(self):
+        seen = []
+        render_video(LYRICS, os.path.join(self.dir, "p.mp4"), 1.0, self.renderer,
+                     VideoOptions(fps=10), on_progress=lambda d, n: seen.append((d, n)))
+        self.assertEqual(seen, [(k, 10) for k in range(1, 11)])
+
     def test_ffmpeg_error_is_reported(self):
         with self.assertRaises(RuntimeError) as cm:
             render_video(LYRICS, os.path.join(self.dir, "x.mp4"), 1.0, self.renderer,
