@@ -171,6 +171,9 @@ main.play { display: grid; gap: 22px; grid-template-columns: minmax(0, 1.1fr) mi
 .lvl.wrong b { color: var(--danger); }
 .say input.right { border-color: var(--ok); }
 .say input.wrong { border-color: var(--danger); }
+.rules { border: 2px solid var(--line); background: var(--bg-2); padding: 8px 12px; }
+.rules summary { cursor: pointer; font-family: var(--f-pixel-b); color: var(--amber); font-size: 14px; }
+.rules[open] summary { margin-bottom: 8px; }
 .how { display: grid; gap: 6px; margin: 0; padding-left: 18px; font-size: 14px; }
 </style>
 
@@ -1322,7 +1325,7 @@ function levelButtons() {
       <span class="skills">${L.skills.map(k => `<em>${k}</em>`).join('')}</span><small>${L.story}</small><span class="rec${r ? ' done' : ''}">${rec}</span></button>`;
   }).join('')}</div>`;
 }
-function startLevel(n) { LEVEL = n; S = null; hide(); newLoop(); $('sayInput').focus(); }
+function startLevel(n) { if (!played) { played = true; store.set('ag520.played', true); } LEVEL = n; S = null; hide(); newLoop(); $('sayInput').focus(); }
 function bindLevels() {
   document.querySelectorAll('.lvl').forEach(b => b.addEventListener('click', () => {
     const due = dueWords();
@@ -1394,13 +1397,13 @@ function review(words, i, right, done) {
   });
 }
 function chooseLevel() {
-  show(`<h2>상황 선택</h2><p class="lead">같은 건물, 같은 오후. 다른 일이 벌어져요.</p>${levelButtons()}<button class="ghost" id="close" type="button">닫기</button>`, () => { bindLevels(); $('close').addEventListener('click', hide); });
+  show(`<h2>상황 선택</h2><p class="lead">같은 건물, 같은 오후. 다른 일이 벌어져요.</p>${rules(false)}${levelButtons()}<button class="ghost" id="close" type="button">닫기</button>`, () => { bindLevels(); $('close').addEventListener('click', hide); });
 }
 $('levelBtn').addEventListener('click', () => { if (overlayClosed()) chooseLevel(); });
-function intro() {
-  show(`
-    <h2>다시, 5시 20분</h2>
-    <p>영어로만 돌아가는 건물 메이플 코트. 오후 5시 20분부터, 정해진 시간 안에 목표를 이뤄야 해요.</p>
+// The rules start open for a first visit and folded once the player has started a situation.
+let played = store.get('ag520.played', false) || store.get('ag520.loops', 0) > 0;
+function rules(open) {
+  return `<details class="rules"${open ? ' open' : ''}><summary>규칙 ${open ? '' : '다시 '}보기</summary>
     <ul class="how">
       <li>이 건물의 간판과 사람들의 말은 전부 <b>영어</b>예요. 한국어는 통하지 않아요.</li>
       <li>간판은 <b>문 앞까지 가야</b> 읽혀요. 하나씩 확인하면 시간이 드니, 사람들에게 길을 묻는 게 빠를 수 있어요.</li>
@@ -1410,6 +1413,13 @@ function intro() {
       <li>사람들은 각자 <b>일과대로</b> 움직여요. 시간이 지나면 있던 사람이 자리를 비우기도 해요.</li>
       <li>시간이 다 되면 <b>주마등</b>이 스치고, 같은 오후 5시 20분으로 돌아가요. 매번 배치가 조금씩 달라져요.</li>
     </ul>
+  </details>`;
+}
+function intro() {
+  show(`
+    <h2>다시, 5시 20분</h2>
+    <p>영어로만 돌아가는 건물 메이플 코트. 오후 5시 20분부터, 정해진 시간 안에 목표를 이뤄야 해요.</p>
+    ${rules(!played)}
     <p><b>상황을 고르세요.</b></p>
     ${levelButtons()}`, bindLevels);
 }
