@@ -33,6 +33,8 @@ export function toTrackJson(row) {
     hasCover: Boolean(row.cover),
     hasLyrics: Boolean(row.lyrics),
     createdAt: row.created_at,
+    playCount: row.play_count ?? 0,
+    lastPlayedAt: row.last_played_at ?? null,
   };
 }
 
@@ -241,6 +243,15 @@ export function createTracksRouter(db, config) {
     const sets = Object.keys(fields).map((k) => `${k} = ?`).join(', ');
     db.prepare(`UPDATE tracks SET ${sets} WHERE id = ?`).run(...Object.values(fields), track.id);
     res.json(toTrackJson(getTrack(track.id)));
+  });
+
+  // 한 번 들었음을 기록한다. 언제 셀지(절반 이상 들었을 때)는 브라우저가 정한다.
+  router.post('/:id/plays', (req, res) => {
+    const track = getTrack(req.params.id);
+    if (!track) return res.status(404).json({ error: '곡을 찾을 수 없습니다' });
+    db.prepare('UPDATE tracks SET play_count = play_count + 1, last_played_at = ? WHERE id = ?').run(Date.now(), track.id);
+    const updated = getTrack(track.id);
+    res.json({ playCount: updated.play_count, lastPlayedAt: updated.last_played_at });
   });
 
   router.get('/:id/lyrics', (req, res) => {

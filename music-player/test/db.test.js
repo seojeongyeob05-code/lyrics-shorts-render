@@ -24,7 +24,9 @@ test('예전 DB를 열면 hash 컬럼이 추가되고 기존 곡의 해시를 �
     fs.writeFileSync(path.join(dir, 'a.wav'), 'abcd');
 
     const db = openDb(file);
-    assert.ok(db.prepare('PRAGMA table_info(tracks)').all().some((c) => c.name === 'hash'));
+    const columns = db.prepare('PRAGMA table_info(tracks)').all().map((c) => c.name);
+    for (const name of ['hash', 'lyrics', 'play_count', 'last_played_at']) assert.ok(columns.includes(name), name);
+    assert.equal(db.prepare('SELECT play_count FROM tracks WHERE id = 1').get().play_count, 0);
     assert.equal(await backfillHashes(db, dir), 2);
 
     const rows = db.prepare('SELECT title, hash FROM tracks ORDER BY id').all();

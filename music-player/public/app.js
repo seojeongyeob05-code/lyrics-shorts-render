@@ -5,6 +5,7 @@ import { groupTracks, UNKNOWN_ARTIST } from './groups.js';
 import { planUploads, mergeResults } from './upload-plan.js';
 import { clickSelection, pruneSelection } from './selection.js';
 import { planPlaylistAdd } from './playlist-add.js';
+import { createListenTracker, recentTracks, topTracks } from './listening.js';
 
 // ───────────── 유틸 ─────────────
 const $ = (sel) => document.querySelector(sel);
@@ -111,6 +112,17 @@ async function loadPlaylists() {
 }
 
 const GRID_VIEWS = { artists: 'artist', albums: 'album' }; // 묶음 목록 보기 → 그 안의 곡 목록 보기
+// 라이브러리에서 자동으로 뽑는 목록
+const SMART_LISTS = {
+  recent: {
+    title: '최근 추가한 곡', pick: recentTracks,
+    empty: '라이브러리가 비어 있습니다.',
+  },
+  top: {
+    title: '많이 들은 곡', pick: topTracks,
+    empty: '아직 들은 곡이 없습니다. 곡을 절반 이상(최대 4분) 들으면 여기에 쌓입니다.',
+  },
+};
 
 async function openView(view) {
   const sameView = view?.type === state.view.type
@@ -126,6 +138,9 @@ async function openView(view) {
   } else if (GRID_VIEWS[view?.type]) {
     state.view = { type: view.type };
     state.rows = state.tracks;
+  } else if (SMART_LISTS[view?.type]) {
+    state.view = { type: view.type };
+    state.rows = SMART_LISTS[view.type].pick(state.tracks);
   } else if (view?.type === 'artist' || view?.type === 'album') {
     const group = groupTracks(state.tracks, view.type).find((g) => g.name === view.name);
     state.view = { type: view.type, name: view.name };
@@ -197,7 +212,7 @@ function setQuery(value) {
   $('#search').value = value;
 }
 
-const VIEW_KIND = { library: '라이브러리', playlist: '플레이리스트', artist: '아티스트', album: '앨범' };
+const VIEW_KIND = { library: '라이브러리', playlist: '플레이리스트', artist: '아티스트', album: '앨범', recent: '라이브러리', top: '라이브러리' };
 
 function renderMain() {
   // 선택 막대는 곡 목록을 다 그린 뒤 renderSelection이 다시 보여 준다.
@@ -212,7 +227,7 @@ function renderMain() {
   const total = shown.reduce((sum, t) => sum + (t.duration || 0), 0);
 
   $('#view-kind').textContent = VIEW_KIND[view.type];
-  $('#view-title').textContent = view.type === 'library' ? '모든 곡' : view.name;
+  $('#view-title').textContent = view.type === 'library' ? '모든 곡' : SMART_LISTS[view.type]?.title ?? view.name;
   $('#view-meta').textContent = query
     ? `검색 결과 ${shown.length}곡 / 전체 ${rows.length}곡`
     : `${rows.length}곡 · ${fmtTotal(total)}`;
@@ -231,7 +246,7 @@ function renderMain() {
   } else if (view.type === 'artist' || view.type === 'album') {
     actions.push(h('button', { class: 'btn', onclick: safe(() => openView({ type: `${view.type}s` })) },
       view.type === 'artist' ? '← 모든 아티스트' : '← 모든 앨범'));
-  } else {
+  } else if (view.type !== 'top') {
     actions.push(h('button', { class: 'btn', onclick: () => $('#file-input').click() }, '＋ 업로드'));
   }
   $('#view-actions').replaceChildren(...actions);
@@ -240,6 +255,10 @@ function renderMain() {
   if (!rows.length) {
     if (view.type === 'artist' || view.type === 'album') {
       list.replaceChildren(h('div', { class: 'empty' }, `이 ${VIEW_KIND[view.type]}에 해당하는 곡이 없습니다.`));
+      return;
+    }
+    if (SMART_LISTS[view.type]) {
+      list.replaceChildren(h('div', { class: 'empty' }, SMART_LISTS[view.type].empty));
       return;
     }
     list.replaceChildren(isPlaylist
@@ -258,7 +277,7 @@ function renderMain() {
     h('div', { class: 't-num' },
       h('span', { class: 'num' }, '#'),
       h('input', { type: 'checkbox', class: 't-check', id: 'select-all', 'aria-label': '모두 선택', onclick: (e) => { e.stopPropagation(); toggleSelectAll(); } })),
-    h('div', {}, '제목'), h('div', { class: 't-album' }, '앨범'),
+    h('div', {}, '제목'), h('div', { class: 't-album' }, view.type === 'top' ? '들은 횟수' : '앨범'),
     h('div', { class: 't-dur' }, '길이'), h('div'));
   list.replaceChildren(head, ...shown.map((t, i) => h('div', {
     class: 'track-row',
@@ -278,7 +297,7 @@ function renderMain() {
     h('div', { class: 't-text' },
       h('div', { class: 't-title' }, t.title),
       h('div', { class: 't-artist' }, artistLink(t)))),
-  h('div', { class: 't-album' }, albumLink(t)),
+  h('div', { class: 't-album' }, view.type === 'top' ? `${t.playCount}회` : albumLink(t)),
   h('div', { class: 't-dur' }, fmt(t.duration)),
   h('button', {
     class: 'icon-btn', title: '더 보기', html: ICON.more,
@@ -668,7 +687,17 @@ function applyShuffle() {
   player.index = cur ? 0 : -1;
 }
 
+// 곡을 절반 이상 들으면 서버에 한 번 들었다고 기록한다.
+const listenTracker = createListenTracker(() => {
+  const t = currentTrack();
+  if (!t) return;
+  api('POST', `/api/tracks/${t.id}/plays`)
+    .then(({ playCount, lastPlayedAt }) => Object.assign(t, { playCount, lastPlayedAt }))
+    .catch(() => { /* 기록 실패는 재생에 영향 없음 */ });
+});
+
 function load(autoplay, startAt = 0) {
+  listenTracker.reset();
   const track = currentTrack();
   if (!track) {
     audio.pause();
@@ -1204,9 +1233,13 @@ audio.addEventListener('timeupdate', () => {
     setFill(seek);
   }
   syncLyrics();
+  if (!audio.paused) listenTracker.tick(audio.currentTime, audio.duration);
   if (Date.now() - lastSave > 5000) { lastSave = Date.now(); savePlayer(); }
 });
-audio.addEventListener('seeked', () => syncLyrics(true));
+audio.addEventListener('seeked', () => {
+  listenTracker.seeked(audio.currentTime);
+  syncLyrics(true);
+});
 audio.addEventListener('loadedmetadata', () => {
   seek.max = audio.duration || 0;
   $('#time-dur').textContent = fmt(audio.duration);
@@ -1221,7 +1254,10 @@ audio.addEventListener('emptied', () => {
 audio.addEventListener('play', renderPlayer);
 audio.addEventListener('pause', renderPlayer);
 audio.addEventListener('volumechange', () => { renderPlayer(); savePlayer(); });
-audio.addEventListener('ended', () => next(true));
+audio.addEventListener('ended', () => {
+  listenTracker.reset(); // 한 곡 반복이면 다시 들을 때 또 센다
+  next(true);
+});
 audio.addEventListener('error', () => {
   if (audio.getAttribute('src')) toast('이 곡을 재생할 수 없습니다. 브라우저가 지원하지 않는 형식일 수 있습니다.');
 });

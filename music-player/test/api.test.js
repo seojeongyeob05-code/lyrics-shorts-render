@@ -223,6 +223,24 @@ test('업로드 한도: 상태 API가 파일 크기 한도를 알려 주고, 파
   assert.deepEqual(fs.readdirSync(path.join(dataDir, 'music')).filter((f) => f.endsWith('.lrc')), []);
 });
 
+test('재생 기록: 들은 횟수와 마지막으로 들은 때를 저장한다', async () => {
+  let list = await (await call('GET', '/api/tracks')).json();
+  assert.equal(list.find((t) => t.id === trackId).playCount, 0);
+  assert.equal(list.find((t) => t.id === trackId).lastPlayedAt, null);
+
+  const before = Date.now();
+  await call('POST', `/api/tracks/${trackId}/plays`);
+  const res = await call('POST', `/api/tracks/${trackId}/plays`);
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.playCount, 2);
+  assert.ok(body.lastPlayedAt >= before);
+
+  list = await (await call('GET', '/api/tracks')).json();
+  assert.equal(list.find((t) => t.id === trackId).playCount, 2);
+  assert.equal((await call('POST', '/api/tracks/9999/plays')).status, 404);
+});
+
 test('스트리밍은 Range 요청을 지원한다', async () => {
   const full = await call('GET', `/api/tracks/${trackId}/stream`);
   assert.equal(full.status, 200);

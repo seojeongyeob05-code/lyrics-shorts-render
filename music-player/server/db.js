@@ -54,6 +54,8 @@ function migrate(db) {
   const trackColumns = db.prepare('PRAGMA table_info(tracks)').all().map((c) => c.name);
   if (!trackColumns.includes('hash')) db.exec('ALTER TABLE tracks ADD COLUMN hash TEXT');
   if (!trackColumns.includes('lyrics')) db.exec('ALTER TABLE tracks ADD COLUMN lyrics TEXT');
+  if (!trackColumns.includes('play_count')) db.exec('ALTER TABLE tracks ADD COLUMN play_count INTEGER NOT NULL DEFAULT 0');
+  if (!trackColumns.includes('last_played_at')) db.exec('ALTER TABLE tracks ADD COLUMN last_played_at INTEGER');
   db.exec('CREATE INDEX IF NOT EXISTS idx_tracks_hash ON tracks(hash)');
 }
 
