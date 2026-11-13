@@ -6,5 +6,7 @@
   "next_color": "#7FE7FF",
   "progress_color": "#FF4FD8",
   "progress_track": "#2A2540",
-  "font_size": 80
+  "font_size": 80,
+  "title_color": "#FF4FD8",
+  "artist_color": "#7FE7FF"
 }

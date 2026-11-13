@@ -15,6 +15,7 @@ python3 -m shorts render song.lrc --audio song.mp3 --bg bg.jpg --start 0:45 --du
 python3 -m shorts frame song.lrc --bg bg.jpg --at 0:50
 ```
 
+- 곡 제목·가수는 LRC의 `[ti:]`/`[ar:]`를 화면 위쪽에 표시. `--title`/`--artist`로 바꾸고, 빈 문자열(`--title ""`)이면 숨김
 - `--preview`: 절반 해상도·15fps로 5배쯤 빠르게 뽑아 보기(`노래.preview.mp4`). 확인 후 옵션을 빼고 다시 렌더
 - 시간은 `45`, `0:45`, `1:02.5` 모두 가능
 - `--duration`을 빼면 곡 끝까지(음원이 없으면 마지막 가사 줄까지)

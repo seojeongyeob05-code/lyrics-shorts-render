@@ -45,6 +45,15 @@ def probe_duration(path: str) -> float:
     return float(out.stdout)
 
 
+def _apply_info(args, lyrics: lrc.Lyrics) -> lrc.Lyrics:
+    """--title/--artist로 LRC의 곡 정보를 덮어쓴다."""
+    if args.title is not None:
+        lyrics.meta["ti"] = args.title
+    if args.artist is not None:
+        lyrics.meta["ar"] = args.artist
+    return lyrics
+
+
 def _renderer(args) -> FrameRenderer:
     try:
         style = load_style(args.style)
@@ -83,7 +92,7 @@ class ProgressPrinter:
 
 def cmd_render(args) -> None:
     song_len = probe_duration(args.audio) if args.audio else None
-    lyrics = lrc.load(args.lrc, duration=song_len)
+    lyrics = _apply_info(args, lrc.load(args.lrc, duration=song_len))
     if not lyrics.lines:
         raise SystemExit(f"가사 줄이 없습니다: {args.lrc}")
 
@@ -111,7 +120,7 @@ def cmd_render(args) -> None:
 
 
 def cmd_frame(args) -> None:
-    lyrics = lrc.load(args.lrc)
+    lyrics = _apply_info(args, lrc.load(args.lrc))
     out = args.out or os.path.splitext(args.lrc)[0] + ".png"
     _renderer(args).render(lyrics, args.at).save(out)
     print(out)
@@ -133,6 +142,8 @@ def build_parser() -> argparse.ArgumentParser:
     common.add_argument("-o", "--out", help="출력 파일 (기본: 가사 파일 이름)")
     common.add_argument("--bg", help="배경 이미지")
     common.add_argument("--font", help="폰트 파일 (기본: 스타일 설정 또는 한글 폰트 자동 탐색)")
+    common.add_argument("--title", help="화면 위쪽 곡 제목 (기본: LRC [ti:], 빈 문자열이면 숨김)")
+    common.add_argument("--artist", help="곡 제목 아래 가수 (기본: LRC [ar:], 빈 문자열이면 숨김)")
     common.add_argument("--style", default="default",
                         help="스타일 프리셋 이름 또는 JSON 파일 (목록: python -m shorts styles)")
 

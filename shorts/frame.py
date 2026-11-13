@@ -59,6 +59,12 @@ class Style:
     progress_height: int = 8
     progress_width: float = 0.7  # 화면 폭 대비
     progress_bottom: int = 160  # 화면 아래 끝에서 띄울 거리(px)
+    show_info: bool = True  # 곡 정보(LRC [ti:] 제목, [ar:] 가수)를 화면 위쪽에 표시
+    info_y: float = 0.14  # 곡 정보 블록의 세로 가운데(0=위, 1=아래)
+    title_size: int = 54
+    artist_size: int = 38
+    title_color: Color = (255, 255, 255)
+    artist_color: Color = (170, 170, 185)
 
     def scaled(self, k: float) -> Style:
         """픽셀 단위 값을 k배 한 Style(빠른 미리보기용 저해상도). 크기는 짝수로 맞춘다."""
@@ -72,6 +78,7 @@ class Style:
             self, width=even(self.width), height=even(self.height),
             font_size=px(self.font_size), next_font_size=px(self.next_font_size),
             line_gap=px(self.line_gap), stroke_width=px(self.stroke_width),
+            title_size=px(self.title_size), artist_size=px(self.artist_size),
             progress_height=px(self.progress_height), progress_bottom=px(self.progress_bottom),
             bg_blur=self.bg_blur * k)
 
@@ -121,6 +128,9 @@ class FrameRenderer:
         self._bg = make_background(s, background)
         self._font = load_font(s.font_path, s.font_size)
         self._next_font = load_font(s.font_path, s.next_font_size)
+        self._title_font = load_font(s.font_path, s.title_size)
+        self._artist_font = load_font(s.font_path, s.artist_size)
+        self._info: Image.Image | None = None  # 곡 정보 레이어(RGBA). 가사와 따로 페이드 없이 얹음
         self._cache: dict[tuple, Image.Image] = {}  # 가사 레이어(RGBA)
         self._cache_owner: Lyrics | None = None
         self._bounds: list[float] = []
@@ -212,10 +222,16 @@ class FrameRenderer:
             return self._static[1], True
         return self._composite(self.background_at(t), layer, alpha), False
 
-    @staticmethod
-    def _composite(bg: Image.Image, layer: Image.Image, alpha: float) -> Image.Image:
-        """배경 위에 가사 레이어를 alpha(0~1) 불투명도로 얹은 새 이미지."""
+    def _composite(self, bg: Image.Image, layer: Image.Image, alpha: float) -> Image.Image:
+        """배경 위에 가사 레이어를 alpha(0~1) 불투명도로, 곡 정보는 그대로 얹은 새 이미지."""
         out = bg.copy()
+        self._paste(out, layer, alpha)
+        if self._info is not None:
+            self._paste(out, self._info, 1.0)
+        return out
+
+    @staticmethod
+    def _paste(out: Image.Image, layer: Image.Image, alpha: float) -> None:
         bbox = layer.getbbox()  # 글자가 있는 영역만 합성
         if bbox and alpha > 0:
             part = layer.crop(bbox)
@@ -223,7 +239,28 @@ class FrameRenderer:
             if alpha < 1:
                 mask = mask.point(lambda v: round(v * alpha))
             out.paste(part, bbox[:2], mask)
-        return out
+
+    def _draw_info(self, meta: dict[str, str]) -> Image.Image | None:
+        """곡 제목(굵게)과 가수를 info_y 근처에 가운데 정렬로 그린 레이어. 둘 다 없으면 None."""
+        s = self.style
+        blocks = [(text, font, size, color) for text, font, size, color in (
+            (meta.get("ti", "").strip(), self._title_font, s.title_size, s.title_color),
+            (meta.get("ar", "").strip(), self._artist_font, s.artist_size, s.artist_color),
+        ) if text]
+        if not s.show_info or not blocks:
+            return None
+        rows = [(row, font, size, color)
+                for text, font, size, color in blocks
+                for row in wrap(text, font, s.width * s.max_text_width)]
+        heights = [size * s.line_spacing for _, _, size, _ in rows]
+        y = s.height * s.info_y - sum(heights) / 2
+        img = Image.new("RGBA", (s.width, s.height), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(img)
+        for (row, font, size, color), h in zip(rows, heights):
+            draw.text((s.width / 2, y + h / 2), row, font=font, fill=color, anchor="mm",
+                      stroke_width=s.stroke_width, stroke_fill=s.stroke_color)
+            y += h
+        return img
 
     def _use(self, lyrics: Lyrics) -> None:
         """다른 가사가 들어오면 캐시를 비운다."""
@@ -231,6 +268,7 @@ class FrameRenderer:
             self._cache.clear()
             self._static = None
             self._cache_owner = lyrics
+            self._info = self._draw_info(lyrics.meta)
             self._bounds = sorted({x for ln in lyrics.lines for x in (ln.start, ln.end)})
 
     def _text_layer(self, lyrics: Lyrics, key: tuple[int | None, int | None],

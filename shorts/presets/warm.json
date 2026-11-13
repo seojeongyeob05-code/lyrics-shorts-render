@@ -7,5 +7,7 @@
   "progress_color": "#FFC978",
   "progress_track": "#5A4434",
   "center_y": 0.68,
-  "progress_bottom": 120
+  "progress_bottom": 120,
+  "title_color": "#FFF1D6",
+  "artist_color": "#D9B48F"
 }

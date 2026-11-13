@@ -8,5 +8,7 @@
   "stroke_width": 2,
   "stroke_color": "#2A1B4A",
   "progress_color": "#FFF6E8",
-  "progress_track": "#7A4A6A"
+  "progress_track": "#7A4A6A",
+  "title_color": "#FFF6E8",
+  "artist_color": "#F3D3C0"
 }

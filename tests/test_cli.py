@@ -81,6 +81,17 @@ class CliTest(unittest.TestCase):
             self.run_cli("frame", self.lrc, "--style", "nope")
         self.assertIn("스타일을 찾을 수 없습니다", str(cm.exception))
 
+    def test_title_and_artist_options(self):
+        from shorts.cli import _apply_info, build_parser
+        from shorts import lrc as lrc_mod
+        ly = lrc_mod.parse("[ti:원래 제목]\n[ar:원래 가수]\n[00:01.00]a")
+        args = build_parser().parse_args(["frame", self.lrc, "--title", "새 제목", "--artist", ""])
+        _apply_info(args, ly)
+        self.assertEqual((ly.meta["ti"], ly.meta["ar"]), ("새 제목", ""))
+        args = build_parser().parse_args(["frame", self.lrc])
+        ly2 = lrc_mod.parse("[ti:그대로]\n[00:01.00]a")
+        self.assertEqual(_apply_info(args, ly2).meta["ti"], "그대로")
+
     def test_start_after_song_end_is_an_error(self):
         with self.assertRaises(SystemExit) as cm:
             self.run_cli("render", self.lrc, "--start", "1:00")

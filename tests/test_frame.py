@@ -250,6 +250,43 @@ class ZoomTest(unittest.TestCase):
         self.assertNotEqual(a.tobytes(), b.tobytes())
 
 
+class SongInfoTest(unittest.TestCase):
+    BASE = dict(width=200, height=400, font_size=20, next_font_size=14, title_size=18,
+                artist_size=14, fade=0.4, bg_color=(0, 0, 0), text_color=(255, 255, 255),
+                next_color=(255, 200, 0), title_color=(0, 255, 0), artist_color=(0, 0, 255))
+    LRC = "[ti:Song]\n[ar:Band]\n[00:01.00]one\n[00:03.00]two"
+
+    def rows(self, img, color):
+        return _rows_with(img, color, tol=60)
+
+    def test_title_above_artist_near_top(self):
+        img = FrameRenderer(Style(**self.BASE)).render(lrc.parse(self.LRC, duration=5), 2)
+        title, artist = self.rows(img, (0, 255, 0)), self.rows(img, (0, 0, 255))
+        self.assertTrue(title and artist)
+        self.assertLess(max(title), min(artist))
+        self.assertLess(max(artist), 400 * 0.3)
+
+    def test_info_does_not_fade_with_lyrics(self):
+        r = FrameRenderer(Style(**self.BASE))
+        ly = lrc.parse(self.LRC, duration=5)
+        steady, mid_fade = r.render(ly, 2), r.render(ly, 3.2)  # 3.2초 = 줄 바뀌는 페이드 한가운데
+        box = (0, 0, 200, int(400 * 0.3))
+        self.assertEqual(steady.crop(box).tobytes(), mid_fade.crop(box).tobytes())
+
+    def test_hidden_when_missing_or_disabled(self):
+        plain = lrc.parse("[00:01.00]one", duration=5)
+        img = FrameRenderer(Style(**self.BASE)).render(plain, 2)
+        self.assertFalse(self.rows(img, (0, 255, 0)))
+        off = FrameRenderer(Style(**self.BASE, show_info=False)).render(lrc.parse(self.LRC, duration=5), 2)
+        self.assertFalse(self.rows(off, (0, 255, 0)))
+
+    def test_render_bytes_matches_with_info(self):
+        ly = lrc.parse(self.LRC, duration=5)
+        a, b = FrameRenderer(Style(**self.BASE)), FrameRenderer(Style(**self.BASE))
+        for t in [0.5, 1.1, 2.0, 3.1, 4.0]:
+            self.assertEqual(a.render_bytes(ly, t, t / 5), b.render(ly, t, t / 5).tobytes())
+
+
 class ScaledStyleTest(unittest.TestCase):
     def test_halves_pixel_values_and_keeps_ratios(self):
         s = Style(stroke_width=3, bg_blur=22).scaled(0.5)
