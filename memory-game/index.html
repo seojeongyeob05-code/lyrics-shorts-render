@@ -174,6 +174,9 @@ main.play { display: grid; gap: 22px; grid-template-columns: minmax(0, 1.1fr) mi
 .rules { border: 2px solid var(--line); background: var(--bg-2); padding: 8px 12px; }
 .rules summary { cursor: pointer; font-family: var(--f-pixel-b); color: var(--amber); font-size: 14px; }
 .rules[open] summary { margin-bottom: 8px; }
+mark.focus { background: transparent; color: var(--amber); border-bottom: 2px dotted var(--amber); }
+.msg.place mark.focus { color: #ffe08a; border-color: #ffe08a; }
+.goal .focusline { color: var(--ink); }
 .how { display: grid; gap: 6px; margin: 0; padding-left: 18px; font-size: 14px; }
 </style>
 
@@ -194,6 +197,7 @@ main.play { display: grid; gap: 22px; grid-template-columns: minmax(0, 1.1fr) mi
   <section class="goal" aria-live="polite">
     <strong id="goalTitle">목표: 경비실로 가서 지갑을 무사히 되찾기</strong>
     <span class="meta wallet" id="walletDesc">당신의 지갑: <b>갈색</b> · 안에 <b>학생증</b></span>
+    <span class="meta focusline" id="focusLine" hidden></span>
     <span class="meta" id="goalMeta">경비실은 오후 6시에 문을 닫습니다. 걷기·말하기·몸짓·번역기 모두 시간이 흘러요.</span>
   </section>
 
@@ -438,7 +442,20 @@ function grade(w, ok) {
   const j = journal[w];
   j.box = ok ? Math.min(j.box + 1, REVIEW_DAYS.length - 1) : 0;
   j.due = Date.now() + DAY * REVIEW_DAYS[j.box] - 3600000;
+  if (ok) delete j.missed; else j.missed = Date.now();
   store.set('ag520.journal', journal);
+}
+// Words missed in review stay in focus for three days: marked when they show up, and using one counts as a review.
+const focusWords = () => VOCAB.map(([w]) => w).filter(w => journal[w] && journal[w].missed && Date.now() - journal[w].missed < 3 * DAY);
+function highlight(text) {
+  let html = esc(text);
+  for (const w of focusWords()) html = html.replace(new RegExp('\\b(' + w + ')\\b', 'gi'), '<mark class="focus" title="다시 볼 단어">$1</mark>');
+  return html;
+}
+function showFocus() {
+  const f = focusWords();
+  $('focusLine').hidden = !f.length;
+  $('focusLine').innerHTML = f.length ? `다시 볼 단어: ${f.map(w => `<mark class="focus">${esc(w)}</mark>`).join(' ')} · 대사에서 찾거나 직접 써보세요.` : '';
 }
 function scanSeen(text) {
   const t = text.toLowerCase();
@@ -501,6 +518,7 @@ function newLoop() {
     $('walletDesc').innerHTML = '할머니가 무엇을 원하는지는 <b>직접 알아들어야</b> 해요.';
     $('goalMeta').textContent = '할머니는 오후 5시 50분에 집으로 들어갑니다. 그 전에 전해드려야 해요.';
   }
+  showFocus();
   sys(S.loop === 1 ? (S.level === 1 ? '오후 5시 20분. 방금 전까지 있던 건물 로비로 돌아왔다.' : '오후 5시 20분. 벤치에 앉은 옆집 할머니가 이쪽을 보며 손짓한다.') : '…눈을 떠보니 다시 오후 5시 20분, 건물 입구였다. 그런데 어딘가 배치가 달라 보인다.');
   place('MAPLE COURT — Welcome, residents and guests.', '메이플 코트 — 입주민과 방문객 여러분, 환영합니다.');
   if (S.level === 3 && S.bigParcel) {
@@ -766,11 +784,11 @@ function push(kind, html) {
   $('log').appendChild(d); $('log').scrollTop = $('log').scrollHeight; return d;
 }
 const sys = text => push('sys', esc(text));
-function place(en, ko, label = '표지판') { scanSeen(en); const el = push('place', `<span class="name">${esc(label)}</span>${esc(en)}`); S.lastNpc = { en, ko, el }; }
+function place(en, ko, label = '표지판') { scanSeen(en); const el = push('place', `<span class="name">${esc(label)}</span>${highlight(en)}`); S.lastNpc = { en, ko, el }; }
 let typing = null;
 function finishTyping() {
   if (!typing) return;
-  clearInterval(typing.timer); typing.el.textContent = typing.text; typing = null;
+  clearInterval(typing.timer); typing.el.innerHTML = highlight(typing.text); typing = null;
   $('log').scrollTop = $('log').scrollHeight;
 }
 function npcSay(id, en, ko) {
@@ -779,7 +797,7 @@ function npcSay(id, en, ko) {
   $('log').querySelectorAll('.next').forEach(n => n.remove());
   const el = push('npc', `<img class="face" src="${FACE_URL[id]}" alt=""><span class="name">${esc(NPC_INFO[id].name)}</span><div class="bubble"><span class="sr">${esc(en)}</span><span class="en" aria-hidden="true" data-full="${esc(en)}"></span><span class="next" aria-hidden="true">▼</span></div>`);
   const span = el.querySelector('.en');
-  if (reduceMotion) span.textContent = en;
+  if (reduceMotion) span.innerHTML = highlight(en);
   else {
     let i = 0;
     typing = { el: span, text: en, timer: setInterval(() => { i += 2; span.textContent = en.slice(0, i); if (i >= en.length) finishTyping(); }, 18) };
@@ -1244,7 +1262,10 @@ function act(I, raw, cost, meText, meKind) {
   npcSay(id, en, ko);
   if (ok && meKind === 'me') {
     const t = raw.toLowerCase();
-    for (const [w] of VOCAB) if (new RegExp('\\b' + w + '\\b').test(t)) { mark(w, 'seen'); mark(w, 'used'); }
+    for (const [w] of VOCAB) if (new RegExp('\\b' + w + '\\b').test(t)) {
+      mark(w, 'seen'); mark(w, 'used');
+      if (focusWords().includes(w)) { grade(w, true); sys(`✨ 다시 볼 단어 "${w}"를 직접 써서 통했어요! 복습한 것으로 기록했어요.`); showFocus(); }
+    }
   }
   spend(cost);
 }
