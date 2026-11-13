@@ -247,7 +247,18 @@ input[type=range]::-moz-range-thumb { width: 12px; height: 12px; border: 0; bord
 .dialog h3 { margin: 0 0 14px; }
 .dialog input { width: 100%; }
 .field-list { display: grid; gap: 12px; }
-.dialog:has(textarea) { width: min(560px, calc(100% - 32px)); }
+.dialog:has(textarea), .dialog:has(.sync-list) { width: min(560px, calc(100% - 32px)); }
+.panel-actions { display: flex; gap: 12px; }
+.sync-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
+.sync-controls .spacer { flex: 1; }
+.sync-controls .btn { padding: 6px 12px; font-size: 13px; }
+.sync-clock { font-variant-numeric: tabular-nums; color: var(--muted); min-width: 40px; }
+.sync-list { list-style: none; margin: 8px 0 0; padding: 0; max-height: 46vh; overflow: auto; border: 1px solid var(--line); border-radius: 8px; }
+.sync-line { display: flex; gap: 12px; padding: 7px 12px; cursor: pointer; color: var(--muted); }
+.sync-line:hover { background: var(--hover); }
+.sync-line.done { color: var(--text); }
+.sync-line.target { background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--text); font-weight: 600; }
+.sync-stamp { flex: none; font: 12px/1.9 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--muted); }
 .dialog textarea {
   width: 100%; min-height: 280px; resize: vertical; padding: 10px 12px; outline: none;
   background: var(--bg); color: inherit; border: 1px solid var(--line); border-radius: 8px;

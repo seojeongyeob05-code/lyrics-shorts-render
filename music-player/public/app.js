@@ -6,6 +6,7 @@ import { planUploads, mergeResults } from './upload-plan.js';
 import { clickSelection, pruneSelection } from './selection.js';
 import { planPlaylistAdd } from './playlist-add.js';
 import { createListenTracker, recentTracks, topTracks } from './listening.js';
+import { createSync, stamp, undo, jumpTo, missingCount, toLrc, lrcTime } from './lyric-sync.js';
 
 // ───────────── 유틸 ─────────────
 const $ = (sel) => document.querySelector(sel);
@@ -971,6 +972,7 @@ function renderLyrics() {
   const t = currentTrack();
   const parsed = lyricsState.parsed;
   $('#lyrics-edit').hidden = !t;
+  $('#lyrics-sync').hidden = !t || !parsed?.lines.length;
   box.classList.toggle('synced', Boolean(parsed?.synced));
   lyricsState.active = -1;
   if (!t) return box.replaceChildren(h('div', { class: 'empty' }, '재생 중인 곡이 없습니다'));
@@ -1028,6 +1030,79 @@ async function editLyrics(t) {
   await refreshView();
   if (currentTrack()?.id === t.id) loadLyrics(true);
   toast(updated.hasLyrics ? '가사를 저장했습니다' : '가사를 지웠습니다');
+}
+
+// 싱크 맞추기: 노래를 들으며 줄이 시작될 때 Enter(또는 "찍기")를 누른다.
+let syncingLyrics = false;
+
+async function openLyricSync() {
+  const t = currentTrack();
+  if (!t) return;
+  const parsed = parseLyrics((await api('GET', `/api/tracks/${t.id}/lyrics`)).lyrics);
+  if (!parsed.lines.length) return toast('먼저 가사를 넣어 주세요');
+  let sync = createSync(parsed.lines);
+
+  const list = h('ol', { class: 'sync-list' });
+  const progress = h('span', { class: 'muted' });
+  const clock = h('span', { class: 'sync-clock' });
+  const playBtn = h('button', { type: 'button', class: 'icon-btn play', title: '재생/일시정지 (Space)', onclick: togglePlay });
+  const render = () => {
+    list.replaceChildren(...sync.lines.map((line, i) => h('li', {
+      class: `sync-line${i === sync.target ? ' target' : ''}${line.time != null ? ' done' : ''}`,
+      title: '이 줄부터 다시 찍기',
+      onclick: () => { sync = jumpTo(sync, i); render(); },
+    },
+    h('span', { class: 'sync-stamp' }, line.time != null ? lrcTime(line.time).slice(1, -1) : '--:--.--'),
+    h('span', {}, line.text || '♪'))));
+    list.querySelector('.target')?.scrollIntoView({ block: 'center' });
+    progress.textContent = `${sync.lines.length - missingCount(sync)} / ${sync.lines.length}줄`;
+  };
+  const doStamp = () => { sync = stamp(sync, audio.currentTime); render(); };
+  const doUndo = () => { sync = undo(sync); render(); };
+  const tick = () => {
+    clock.textContent = fmt(audio.currentTime);
+    playBtn.innerHTML = audio.paused ? ICON.play : ICON.pause;
+  };
+  const onKey = (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); doStamp(); }
+    else if (e.key === 'Backspace') { e.preventDefault(); doUndo(); }
+    else if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+  };
+  const events = ['timeupdate', 'play', 'pause', 'seeked'];
+  events.forEach((ev) => audio.addEventListener(ev, tick));
+  $('#dialog').addEventListener('keydown', onKey);
+  syncingLyrics = true;
+  tick();
+  render();
+
+  let result;
+  try {
+    result = await openDialog(`싱크 맞추기 · ${t.title}`, [
+      h('p', { class: 'dialog-hint' }, '재생하면서 각 줄이 시작될 때 Enter(또는 "찍기")를 누르세요. ⌫ 되돌리기, Space 재생/일시정지. 줄을 누르면 그 줄부터 다시 찍습니다.'),
+      h('div', { class: 'sync-controls' },
+        playBtn,
+        h('button', { type: 'button', class: 'btn', onclick: () => { audio.currentTime = 0; } }, '처음부터'),
+        h('button', { type: 'button', class: 'btn', onclick: () => { audio.currentTime = Math.max(0, audio.currentTime - 3); } }, '−3초'),
+        clock,
+        h('span', { class: 'spacer' }),
+        h('button', { type: 'button', class: 'btn', onclick: doUndo }, '되돌리기'),
+        h('button', { type: 'button', class: 'btn primary', onclick: doStamp }, '찍기')),
+      progress,
+      list,
+    ]);
+  } finally {
+    syncingLyrics = false;
+    events.forEach((ev) => audio.removeEventListener(ev, tick));
+    $('#dialog').removeEventListener('keydown', onKey);
+  }
+  if (result !== 'ok') return;
+  const missing = missingCount(sync);
+  if (missing === sync.lines.length) return toast('시간을 찍은 줄이 없어 저장하지 않았습니다');
+  if (missing && !confirm(`아직 시간을 찍지 않은 ${missing}줄은 가사에서 빠집니다. 저장할까요?`)) return;
+  await api('PUT', `/api/tracks/${t.id}/lyrics`, { lyrics: toLrc(sync) });
+  await loadLibrary();
+  if (currentTrack()?.id === t.id) loadLyrics(true);
+  toast('싱크 가사를 저장했습니다');
 }
 
 // ───────────── 드래그 정렬 ─────────────
@@ -1202,6 +1277,7 @@ $('#btn-queue').addEventListener('click', () => togglePanel('queue'));
 $('#btn-lyrics').innerHTML = ICON.lyrics;
 $('#btn-lyrics').addEventListener('click', () => togglePanel('lyrics'));
 $('#lyrics-edit').addEventListener('click', safe(() => currentTrack() && editLyrics(currentTrack())));
+$('#lyrics-sync').addEventListener('click', safe(openLyricSync));
 setPanel(store.get('mp_panel', store.get('mp_queue_open', false) ? 'queue' : null));
 $('#queue-clear').addEventListener('click', clearUpcoming);
 
@@ -1256,6 +1332,7 @@ audio.addEventListener('pause', renderPlayer);
 audio.addEventListener('volumechange', () => { renderPlayer(); savePlayer(); });
 audio.addEventListener('ended', () => {
   listenTracker.reset(); // 한 곡 반복이면 다시 들을 때 또 센다
+  if (syncingLyrics) return renderPlayer(); // 싱크 맞추는 중에는 다음 곡으로 넘어가지 않음
   next(true);
 });
 audio.addEventListener('error', () => {
