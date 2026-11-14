@@ -363,6 +363,67 @@ const VOCAB = [
   ['patrol', '순찰'], ['rounds', '순찰 (한 바퀴 돌기)'], ['back', '돌아온'], ['quarter', '15분 (한 시간의 4분의 1)'],
 ];
 // Grandma explains words in easy English (never in Korean)
+// Example sentences grandma uses to bring back words the player missed in review.
+const EXAMPLES = {
+  "security office": ["If you lose something here, go to the security office.", "여기서 뭘 잃어버리면 경비실로 가렴."],
+  "security": ["The guard works in security. He keeps us safe.", "경비원은 보안 일을 해. 우리를 안전하게 지켜주지."],
+  "office": ["My son works in a big office downtown.", "우리 아들은 시내 큰 사무실에서 일해."],
+  "wallet": ["I keep my bus card in my wallet.", "난 버스 카드를 지갑에 넣고 다녀."],
+  "lost": ["I lost my glasses again! Oh, they're on my head.", "또 안경을 잃어버렸네! 아, 머리 위에 있구나."],
+  "found": ["Someone found my scarf and gave it back.", "누가 내 스카프를 주워서 돌려줬단다."],
+  "lost and found": ["Lost things go to the lost and found.", "잃어버린 물건은 분실물 보관소로 가."],
+  "left": ["The elevator is on the left.", "엘리베이터는 왼쪽에 있어."],
+  "right": ["Turn right at the plant, dear.", "화분에서 오른쪽으로 돌아, 얘야."],
+  "straight ahead": ["Go straight ahead. Don't turn.", "곧장 앞으로 가. 돌지 말고."],
+  "color": ["What color is your coat? Mine is purple.", "네 코트는 무슨 색이니? 내 건 보라색이야."],
+  "black": ["The guard wears a black cap.", "경비원은 검은 모자를 써."],
+  "brown": ["My old bench is brown.", "내 낡은 벤치는 갈색이야."],
+  "red": ["The vending machine is red.", "자판기는 빨간색이야."],
+  "blue": ["The janitor has a blue apron.", "청소부는 파란 앞치마를 해."],
+  "look like": ["What does your cat look like? Is it big?", "네 고양이는 어떻게 생겼니? 크니?"],
+  "inside": ["My tea bags are inside the box.", "내 티백은 상자 안에 있어."],
+  "card": ["I paid with my card.", "카드로 계산했단다."],
+  "photo": ["Here is a photo of my grandson.", "이게 우리 손주 사진이야."],
+  "ticket": ["I have a ticket for the movie tonight.", "오늘 밤 영화표가 있어."],
+  "restroom": ["Excuse me, where is the restroom?", "실례지만, 화장실이 어디예요?"],
+  "mail": ["The mail comes at noon.", "우편은 정오에 와."],
+  "gym": ["Young people go to the gym after work.", "젊은 사람들은 퇴근하고 헬스장에 가."],
+  "management office": ["Pay the rent at the management office.", "월세는 관리사무소에 내."],
+  "staff": ["Only staff can go in that room.", "그 방엔 직원만 들어갈 수 있어."],
+  "only": ["This door is for staff only.", "이 문은 직원 전용이야."],
+  "package": ["I got a package from my daughter!", "딸한테서 택배가 왔단다!"],
+  "help": ["Can you help me with this bag?", "이 가방 좀 도와줄래?"],
+  "closed": ["The bank is closed on Sunday.", "은행은 일요일에 문을 닫아."],
+  "sign": ["Please sign here, the man said.", "여기 서명해 주세요, 하고 그 사람이 말했지."],
+  "signature": ["My signature is very curly.", "내 서명은 아주 꼬불꼬불해."],
+  "locker": ["My gym locker is number seven.", "내 헬스장 사물함은 7번이야."],
+  "too big": ["This coat is too big for me.", "이 코트는 나한테 너무 커."],
+  "apartment": ["My apartment is on the third floor.", "우리 집은 3층이야."],
+  "code": ["The door code is my birthday.", "현관 비밀번호는 내 생일이야."],
+  "parcel": ["The parcel was heavy.", "그 소포는 무거웠어."],
+  "thirteen": ["I have thirteen cups. Too many!", "난 컵이 열세 개야. 너무 많지!"],
+  "thirty": ["I waited thirty minutes for the bus.", "버스를 30분이나 기다렸어."],
+  "fourteen": ["My grandson is fourteen.", "우리 손주는 열네 살이야."],
+  "forty": ["Forty years in this building!", "이 건물에서 40년이야!"],
+  "fifteen": ["The bus comes every fifteen minutes.", "버스는 15분마다 와."],
+  "fifty": ["This scarf was fifty dollars.", "이 스카프는 50달러였어."],
+  "sixteen": ["My granddaughter is sixteen.", "우리 손녀는 열여섯 살이야."],
+  "sixty": ["There are sixty lockers in the mail room.", "우편물실엔 보관함이 60개 있어."],
+  "small": ["A small cup is enough for me.", "나한텐 작은 컵이면 충분해."],
+  "medium": ["I'll have a medium tea, please.", "중간 사이즈 차로 주세요."],
+  "large": ["A large coffee keeps me awake all night.", "큰 커피를 마시면 밤새 잠이 안 와."],
+  "size": ["What size are your shoes?", "신발 사이즈가 몇이니?"],
+  "milk": ["I like milk in my tea.", "난 차에 우유 넣는 게 좋아."],
+  "oat": ["Oat milk is good for my tummy.", "귀리 우유가 내 배에 좋아."],
+  "almond": ["Almond milk tastes a little sweet.", "아몬드 우유는 조금 달아."],
+  "to go": ["A coffee to go, please!", "커피 포장으로 주세요!"],
+  "for here": ["For here, please. I want to sit.", "먹고 갈게요. 앉고 싶어서요."],
+  "favor": ["Can you do me a favor, dear?", "부탁 하나 들어줄래, 얘야?"],
+  "patrol": ["The guard goes on patrol every evening.", "경비원은 매일 저녁 순찰을 돌아."],
+  "rounds": ["The nurse makes her rounds at night.", "간호사는 밤에 회진을 돌아."],
+  "back": ["I'll be back in ten minutes.", "10분 뒤에 돌아올게."],
+  "quarter": ["It's a quarter to six. Time for my show!", "6시 15분 전이야. 내 드라마 할 시간!"],
+};
 const GLOSSARY = {
   security: 'SECURITY means keeping people and things safe. The guard works for security!',
   office: 'An OFFICE is a small room where someone works. Like a desk room.',
@@ -497,7 +558,7 @@ function newLoop() {
     bOrder: { drink: null, size: null, milk: null, here: null }, bAsk: null, bSaid: [], carrying: null, heardRequest: false,
     bigParcel: LEVEL === 3 && Math.random() < 0.5, apt: (2 + Math.floor(Math.random() * 14)) * 100 + 1 + Math.floor(Math.random() * 8), aptStage: 0,
     locker: pick(LOCKERS), code: Array.from({ length: 4 }, () => Math.floor(Math.random() * 10)).join(''), lockerStage: 0, lockerTried: null,
-    facing: 1, mistakes: [], read: new Set(), visited: new Set(), greeted: new Set(), phrases: [], done: false, lastNpc: null,
+    exUsed: new Set(), facing: 1, mistakes: [], read: new Set(), visited: new Set(), greeted: new Set(), phrases: [], done: false, lastNpc: null,
   };
   S.npcs = {
     janitor: [5, 8], grandma: [9, 10],
@@ -949,7 +1010,14 @@ function explain(w) { scanKnown(w); return [GLOSSARY[w], '(할머니가 쉬운 �
 const first = (I, p) => { const f = [...I].find(i => i.startsWith(p)); return f ? f.slice(p.length) : null; };
 const contentsIn = I => [...I].filter(i => i.startsWith('c:')).map(i => i.slice(2));
 
+function grandmaExample() {
+  const w = focusWords().find(w => EXAMPLES[w] && !S.exUsed.has(w));
+  if (!w) return;
+  S.exUsed.add(w);
+  npcSay('grandma', `Oh, and here's a word for you, dear: "${EXAMPLES[w][0]}"`, `아, 그리고 이 말 한번 들어보렴: "${EXAMPLES[w][1]}"`);
+}
 function greet(id) {
+  if (id === 'grandma') setTimeout(() => { if (S && !S.done) grandmaExample(); }, 0);
   if (S.level === 2 && id === 'grandma') {
     if (S.carrying) { const [en, ko] = R.grandma2(new Set(), ''); return npcSay(id, en, ko); }
     S.heardRequest = true;
