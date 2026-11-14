@@ -529,10 +529,10 @@ function renderSelection() {
 
 async function deleteTracks(tracks) {
   if (!tracks.length || !confirm(`선택한 ${tracks.length}곡을 라이브러리에서 삭제할까요?\n파일도 서버에서 지워지고 모든 플레이리스트에서 빠집니다.`)) return;
-  for (const t of tracks) await api('DELETE', `/api/tracks/${t.id}`).catch((err) => { if (!/찾을 수 없/.test(err.message)) throw err; });
+  const { deleted } = await api('POST', '/api/tracks/bulk-delete', { trackIds: [...new Set(tracks.map((t) => t.id))] });
   await Promise.all([loadLibrary(), loadPlaylists()]);
   await refreshView();
-  toast(`${tracks.length}곡을 삭제했습니다`);
+  toast(`${deleted.length}곡을 삭제했습니다`);
 }
 
 async function removeEntries(rows) {

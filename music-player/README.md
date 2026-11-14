@@ -101,6 +101,7 @@ music-player/
 | POST | `/api/tracks/:id/plays` | 한 번 들었음을 기록 (들은 횟수 +1) |
 | GET / PUT | `/api/tracks/:id/lyrics` | 가사 조회 / 저장 `{ lyrics }` (비우면 삭제) |
 | DELETE | `/api/tracks/:id` | 곡 삭제 (파일 포함) |
+| POST | `/api/tracks/bulk-delete` | 여러 곡 한꺼번에 삭제 `{ trackIds: [] }` → `{ deleted, missing }` |
 | GET | `/api/tracks/:id/stream` · `/cover` | 오디오 스트림 (Range 지원), 커버 이미지 |
 | GET / POST | `/api/playlists` | 플레이리스트 목록 / 만들기 |
 | GET / PATCH / DELETE | `/api/playlists/:id` | 상세(곡 포함), 이름 변경, 삭제 |

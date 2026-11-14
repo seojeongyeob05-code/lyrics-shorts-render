@@ -5,6 +5,7 @@ import path from 'node:path';
 import { Router } from 'express';
 import multer from 'multer';
 import { parseFile } from 'music-metadata';
+import { transaction } from './db.js';
 
 export const AUDIO_TYPES = new Map([
   ['.mp3', 'audio/mpeg'],
@@ -69,6 +70,7 @@ export async function backfillHashes(db, musicDir) {
 }
 
 export const MAX_LYRICS = 100_000;
+export const MAX_BULK = 1000;
 
 function lrcTimestamp(ms) {
   const cs = Math.round(ms / 10);
@@ -272,13 +274,34 @@ export function createTracksRouter(db, config) {
     res.json(toTrackJson(getTrack(track.id)));
   });
 
+  // DB에서 먼저 한꺼번에 지우고(하나라도 실패하면 모두 취소), 그다음 파일을 지운다.
+  async function removeTracks(tracks) {
+    const del = db.prepare('DELETE FROM tracks WHERE id = ?');
+    transaction(db, () => tracks.forEach((t) => del.run(t.id)));
+    for (const t of tracks) {
+      await fs.rm(path.join(musicDir, t.filename), { force: true });
+      if (t.cover) await fs.rm(path.join(coverDir, t.cover), { force: true });
+    }
+  }
+
   router.delete('/:id', async (req, res) => {
     const track = getTrack(req.params.id);
     if (!track) return res.status(404).json({ error: '곡을 찾을 수 없습니다' });
-    db.prepare('DELETE FROM tracks WHERE id = ?').run(track.id);
-    await fs.rm(path.join(musicDir, track.filename), { force: true });
-    if (track.cover) await fs.rm(path.join(coverDir, track.cover), { force: true });
+    await removeTracks([track]);
     res.status(204).end();
+  });
+
+  // 여러 곡 삭제. 이미 없는 곡은 missing으로 알려 주고 나머지는 지운다.
+  router.post('/bulk-delete', async (req, res) => {
+    const ids = req.body?.trackIds;
+    if (!Array.isArray(ids) || !ids.length || ids.length > MAX_BULK || !ids.every(Number.isInteger)) {
+      return res.status(400).json({ error: `삭제할 곡 번호를 1~${MAX_BULK}개 보내 주세요` });
+    }
+    const unique = [...new Set(ids)];
+    const found = unique.map((id) => getTrack(id)).filter(Boolean);
+    await removeTracks(found);
+    const deleted = found.map((t) => t.id);
+    res.json({ deleted, missing: unique.filter((id) => !deleted.includes(id)) });
   });
 
   // sendFile이 Range 요청을 처리하므로 탐색바로 구간 이동이 된다.

@@ -271,6 +271,31 @@ test('플레이리스트: 추가, 순서 변경, 제거', async () => {
   assert.equal(lists[0].trackCount, 1);
 });
 
+test('여러 곡 삭제: 한 번에 지우고, 없는 곡은 따로 알려 주며, 잘못된 요청은 거부한다', async () => {
+  const form = new FormData();
+  form.append('files', new Blob([makeWav(5)], { type: 'audio/wav' }), '지울 곡 1.wav');
+  form.append('files', new Blob([makeWav(6)], { type: 'audio/wav' }), '지울 곡 2.wav');
+  const { added } = await (await call('POST', '/api/tracks', { form })).json();
+  const [a, b] = added.map((t) => t.id);
+  const pl = await (await call('POST', '/api/playlists', { body: { name: '지울 목록' } })).json();
+  await call('POST', `/api/playlists/${pl.id}/tracks`, { body: { trackIds: [a, b, trackId] } });
+  const filesBefore = fs.readdirSync(path.join(dataDir, 'music')).length;
+
+  for (const body of [{}, { trackIds: [] }, { trackIds: 'a' }, { trackIds: [1.5] }, { trackIds: Array(1001).fill(1) }]) {
+    assert.equal((await call('POST', '/api/tracks/bulk-delete', { body })).status, 400, JSON.stringify(body).slice(0, 40));
+  }
+
+  const res = await call('POST', '/api/tracks/bulk-delete', { body: { trackIds: [a, b, 9999, a] } });
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), { deleted: [a, b], missing: [9999] });
+  assert.equal(fs.readdirSync(path.join(dataDir, 'music')).length, filesBefore - 2);
+  const list = await (await call('GET', '/api/tracks')).json();
+  assert.ok(!list.some((t) => t.id === a || t.id === b));
+  const detail = await (await call('GET', `/api/playlists/${pl.id}`)).json();
+  assert.deepEqual(detail.tracks.map((t) => t.id), [trackId]);
+  assert.equal((await call('DELETE', `/api/playlists/${pl.id}`)).status, 204);
+});
+
 test('곡을 삭제하면 파일과 플레이리스트 항목도 사라진다', async () => {
   assert.equal((await call('DELETE', `/api/tracks/${trackId}`)).status, 204);
   assert.equal((await call('GET', `/api/tracks/${trackId}/stream`)).status, 404);
