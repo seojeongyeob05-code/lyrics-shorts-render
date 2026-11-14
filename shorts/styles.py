@@ -15,7 +15,7 @@ import json
 import os
 import typing
 
-from .frame import Style
+from .frame import COVER_SHAPES, Style
 
 PRESET_DIR = os.path.join(os.path.dirname(__file__), "presets")
 _FIELDS = {f.name: f for f in dataclasses.fields(Style)}
@@ -54,6 +54,10 @@ def _convert(key: str, value, base_dir: str):
         return None
     if key.endswith("_color") or key in ("progress_track", "bg_gradient"):
         return _color(key, value)
+    if key == "cover_shape":
+        if value not in COVER_SHAPES:
+            raise ValueError(f"{key}: {', '.join(COVER_SHAPES)} 중 하나여야 합니다 (받은 값: {value!r})")
+        return value
     if key == "font_path":
         if value is None:
             return None

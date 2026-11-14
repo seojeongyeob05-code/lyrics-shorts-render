@@ -64,7 +64,8 @@ def _renderer(args) -> FrameRenderer:
     if getattr(args, "preview", False):
         style = style.scaled(0.5)
     bg = Image.open(args.bg) if args.bg else None
-    return FrameRenderer(style, background=bg)
+    cover = Image.open(args.cover) if args.cover else None
+    return FrameRenderer(style, background=bg, cover=cover)
 
 
 class ProgressPrinter:
@@ -141,6 +142,7 @@ def build_parser() -> argparse.ArgumentParser:
     common.add_argument("lrc", help="LRC 가사 파일")
     common.add_argument("-o", "--out", help="출력 파일 (기본: 가사 파일 이름)")
     common.add_argument("--bg", help="배경 이미지")
+    common.add_argument("--cover", help="앨범 아트 이미지 (모양·크기·위치는 스타일의 cover_*)")
     common.add_argument("--font", help="폰트 파일 (기본: 스타일 설정 또는 한글 폰트 자동 탐색)")
     common.add_argument("--title", help="화면 위쪽 곡 제목 (기본: LRC [ti:], 빈 문자열이면 숨김)")
     common.add_argument("--artist", help="곡 제목 아래 가수 (기본: LRC [ar:], 빈 문자열이면 숨김)")

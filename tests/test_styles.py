@@ -57,6 +57,7 @@ class StylesTest(unittest.TestCase):
             "badbool.json": ({"progress_bar": "no"}, "true/false"),
             "broken.json": ("{not json", "JSON"),
             "list.json": ([1, 2], "객체"),
+            "shape.json": ({"cover_shape": "star"}, "rounded"),
         }
         for name, (data, needle) in cases.items():
             with self.subTest(name=name):

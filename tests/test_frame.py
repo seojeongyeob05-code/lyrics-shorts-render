@@ -3,7 +3,7 @@ import unittest
 from PIL import Image
 
 from shorts import lrc
-from shorts.frame import FrameRenderer, Style, cover_fit, make_background
+from shorts.frame import FrameRenderer, Style, cover_fit, make_background, make_cover_layer
 
 LYRICS = lrc.parse("[00:01.00]first line\n[00:03.00]second line\n[00:06.00]third", duration=8)
 
@@ -285,6 +285,51 @@ class SongInfoTest(unittest.TestCase):
         a, b = FrameRenderer(Style(**self.BASE)), FrameRenderer(Style(**self.BASE))
         for t in [0.5, 1.1, 2.0, 3.1, 4.0]:
             self.assertEqual(a.render_bytes(ly, t, t / 5), b.render(ly, t, t / 5).tobytes())
+
+
+class CoverTest(unittest.TestCase):
+    BASE = dict(width=200, height=400, cover_size=100, cover_y=0.3, cover_shadow=0,
+                bg_color=(0, 0, 0), fade=0.4, font_size=20)
+
+    def setUp(self):
+        self.art = Image.new("RGB", (300, 200), (255, 0, 0))  # 가로로 긴 그림도 정사각형으로
+
+    def test_square_is_centered_at_cover_y(self):
+        layer = make_cover_layer(Style(**self.BASE, cover_shape="square"), self.art)
+        self.assertEqual(layer.getbbox(), (50, 70, 150, 170))  # 가로 가운데, 세로 0.3*400=120 중심
+        self.assertEqual(layer.getpixel((100, 120)), (255, 0, 0, 255))
+
+    def test_shapes_cut_corners(self):
+        corner = (52, 72)
+        circle = make_cover_layer(Style(**self.BASE, cover_shape="circle"), self.art)
+        rounded = make_cover_layer(Style(**self.BASE, cover_shape="rounded", cover_radius=0.2), self.art)
+        self.assertEqual(circle.getpixel(corner)[3], 0)
+        self.assertEqual(rounded.getpixel(corner)[3], 0)
+        self.assertEqual(rounded.getpixel((100, 72))[3], 255)  # 위 변 가운데는 남는다
+        edge = circle.getpixel((100 + round(50 * 0.7071), 120 + round(50 * 0.7071)))[3]
+        self.assertTrue(0 < edge < 255)  # 원 가장자리는 부드럽게(안티앨리어싱)
+
+    def test_shadow_below(self):
+        layer = make_cover_layer(Style(**{**self.BASE, "cover_shadow": 0.8}, cover_shape="square"), self.art)
+        r, g, b, a = layer.getpixel((100, 172))  # 그림 바로 아래
+        self.assertGreater(a, 0)
+        self.assertEqual((r, g, b), (0, 0, 0))
+
+    def test_bad_shape(self):
+        with self.assertRaises(ValueError):
+            make_cover_layer(Style(**self.BASE, cover_shape="star"), self.art)
+
+    def test_cover_stays_through_fade_and_with_info(self):
+        ly = lrc.parse("[ti:T]\n[00:01.00]one\n[00:03.00]two", duration=5)
+        style = Style(**self.BASE, cover_shape="square")
+        r = FrameRenderer(style, cover=self.art)
+        steady, fading = r.render(ly, 2), r.render(ly, 3.2)
+        self.assertEqual(steady.getpixel((100, 120)), (255, 0, 0))
+        self.assertEqual(fading.getpixel((100, 120)), (255, 0, 0))
+        self.assertEqual(r.render_bytes(ly, 3.2, 0.5), FrameRenderer(style, cover=self.art).render(ly, 3.2, 0.5).tobytes())
+        # 곡 정보가 없어도 앨범 아트는 나온다
+        plain = lrc.parse("[00:01.00]one", duration=5)
+        self.assertEqual(FrameRenderer(style, cover=self.art).render(plain, 2).getpixel((100, 120)), (255, 0, 0))
 
 
 class ScaledStyleTest(unittest.TestCase):

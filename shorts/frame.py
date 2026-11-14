@@ -65,6 +65,11 @@ class Style:
     artist_size: int = 38
     title_color: Color = (255, 255, 255)
     artist_color: Color = (170, 170, 185)
+    cover_size: int = 420  # 앨범 아트 한 변(px). FrameRenderer(cover=...)를 줬을 때만 그림
+    cover_y: float = 0.31  # 앨범 아트의 세로 가운데
+    cover_shape: str = "rounded"  # rounded(둥근 사각) / circle(원) / square
+    cover_radius: float = 0.08  # rounded일 때 모서리 반지름(한 변 대비)
+    cover_shadow: float = 0.5  # 아래 그림자 진하기(0이면 없음)
 
     def scaled(self, k: float) -> Style:
         """픽셀 단위 값을 k배 한 Style(빠른 미리보기용 저해상도). 크기는 짝수로 맞춘다."""
@@ -79,6 +84,7 @@ class Style:
             font_size=px(self.font_size), next_font_size=px(self.next_font_size),
             line_gap=px(self.line_gap), stroke_width=px(self.stroke_width),
             title_size=px(self.title_size), artist_size=px(self.artist_size),
+            cover_size=px(self.cover_size),
             progress_height=px(self.progress_height), progress_bottom=px(self.progress_bottom),
             bg_blur=self.bg_blur * k)
 
@@ -122,15 +128,50 @@ def make_background(s: Style, image: Image.Image | None = None) -> Image.Image:
     return bg
 
 
+COVER_SHAPES = ("rounded", "circle", "square")
+
+
+def make_cover_layer(s: Style, cover: Image.Image) -> Image.Image:
+    """앨범 아트를 모양대로 오려 그림자와 함께 cover_y에 놓은 전체 화면 크기 RGBA 레이어."""
+    if s.cover_shape not in COVER_SHAPES:
+        raise ValueError(f"cover_shape는 {', '.join(COVER_SHAPES)} 중 하나여야 합니다: {s.cover_shape!r}")
+    size = s.cover_size
+    art = cover_fit(cover.convert("RGB"), (size, size))
+    # 가장자리가 계단지지 않게 4배로 그린 마스크를 줄여 쓴다
+    big = Image.new("L", (size * 4, size * 4), 0)
+    d = ImageDraw.Draw(big)
+    if s.cover_shape == "circle":
+        d.ellipse((0, 0, size * 4 - 1, size * 4 - 1), fill=255)
+    elif s.cover_shape == "rounded":
+        d.rounded_rectangle((0, 0, size * 4 - 1, size * 4 - 1),
+                            radius=round(size * 4 * s.cover_radius), fill=255)
+    else:
+        d.rectangle((0, 0, size * 4, size * 4), fill=255)
+    mask = big.resize((size, size), Image.LANCZOS)
+
+    x, y = (s.width - size) // 2, round(s.height * s.cover_y - size / 2)
+    layer = Image.new("RGBA", (s.width, s.height), (0, 0, 0, 0))
+    if s.cover_shadow > 0:
+        shadow = Image.new("L", (s.width, s.height), 0)
+        shadow.paste(mask, (x, y + round(size * 0.04)))
+        shadow = shadow.filter(ImageFilter.GaussianBlur(size * 0.06))
+        layer.putalpha(shadow.point(lambda v: round(v * min(1.0, s.cover_shadow))))
+    layer.paste(art, (x, y), mask)
+    return layer
+
+
 class FrameRenderer:
-    def __init__(self, style: Style | None = None, background: Image.Image | None = None):
+    def __init__(self, style: Style | None = None, background: Image.Image | None = None,
+                 cover: Image.Image | None = None):
         self.style = s = style or Style()
+        self._cover = make_cover_layer(s, cover) if cover is not None else None
         self._bg = make_background(s, background)
         self._font = load_font(s.font_path, s.font_size)
         self._next_font = load_font(s.font_path, s.next_font_size)
         self._title_font = load_font(s.font_path, s.title_size)
         self._artist_font = load_font(s.font_path, s.artist_size)
-        self._info: Image.Image | None = None  # 곡 정보 레이어(RGBA). 가사와 따로 페이드 없이 얹음
+        # 앨범 아트 + 곡 정보 레이어(RGBA). 가사와 따로, 페이드 없이 얹는다
+        self._overlay: Image.Image | None = self._cover
         self._cache: dict[tuple, Image.Image] = {}  # 가사 레이어(RGBA)
         self._cache_owner: Lyrics | None = None
         self._bounds: list[float] = []
@@ -223,11 +264,11 @@ class FrameRenderer:
         return self._composite(self.background_at(t), layer, alpha), False
 
     def _composite(self, bg: Image.Image, layer: Image.Image, alpha: float) -> Image.Image:
-        """배경 위에 가사 레이어를 alpha(0~1) 불투명도로, 곡 정보는 그대로 얹은 새 이미지."""
+        """배경 위에 가사 레이어를 alpha(0~1) 불투명도로, 앨범 아트·곡 정보는 그대로 얹은 새 이미지."""
         out = bg.copy()
         self._paste(out, layer, alpha)
-        if self._info is not None:
-            self._paste(out, self._info, 1.0)
+        if self._overlay is not None:
+            self._paste(out, self._overlay, 1.0)
         return out
 
     @staticmethod
@@ -268,7 +309,11 @@ class FrameRenderer:
             self._cache.clear()
             self._static = None
             self._cache_owner = lyrics
-            self._info = self._draw_info(lyrics.meta)
+            info = self._draw_info(lyrics.meta)
+            if self._cover is not None and info is not None:
+                self._overlay = Image.alpha_composite(self._cover, info)
+            else:
+                self._overlay = info if info is not None else self._cover
             self._bounds = sorted({x for ln in lyrics.lines for x in (ln.start, ln.end)})
 
     def _text_layer(self, lyrics: Lyrics, key: tuple[int | None, int | None],
