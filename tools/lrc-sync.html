@@ -77,6 +77,8 @@
   #lines li.next { outline: 2px dashed var(--accent); outline-offset: -2px; }
   #lines li.playing { background: var(--now); }
   #lines li.gap { color: var(--muted); font-style: italic; }
+  #lines .w.sung { color: var(--done); }
+  #lines .w.cursor { text-decoration: underline 2px var(--accent); text-underline-offset: 4px; }
   .tapbar {
     position: fixed; left: 0; right: 0; bottom: 0; padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
     background: var(--panel); border-top: 1px solid var(--line);
@@ -95,7 +97,7 @@
 <body>
 <main>
   <h1>가사 싱크 도구</h1>
-  <p class="sub">노래를 들으면서 각 줄이 시작될 때 탭하면 LRC 가사 파일이 만들어져요. 파일은 이 브라우저 밖으로 나가지 않아요.</p>
+  <p class="sub">노래를 들으면서 각 줄(또는 단어)이 시작될 때 탭하면 LRC 가사 파일이 만들어져요. 파일은 이 브라우저 밖으로 나가지 않아요.</p>
 
   <section>
     <h2>1. 음원</h2>
@@ -120,9 +122,15 @@
 
   <section>
     <h2>3. 탭하기</h2>
+    <label class="row">탭 단위
+      <select id="mode">
+        <option value="line">줄마다</option>
+        <option value="word">단어마다 (노래방)</option>
+      </select>
+    </label>
     <ol id="lines"></ol>
     <p class="hint">
-      <kbd>Space</kbd> 다음 줄 시작 · <kbd>.</kbd> 여기서 앞 줄 끝(쉬는 구간) ·
+      <kbd>Space</kbd> 다음 줄(단어마다 모드면 다음 단어) 시작 · <kbd>.</kbd> 여기서 앞 줄 끝(쉬는 구간) ·
       <kbd>Backspace</kbd> 마지막 탭 취소 · <kbd>←</kbd> 3초 뒤로.
       목록에서 줄을 누르면 그 줄 2초 전부터 다시 들어요.
     </p>
@@ -158,25 +166,54 @@ const LrcSync = {
     const cc = total % 100;
     return `${String(mm).padStart(2, "0")}:${String(ss).padStart(2, "0")}.${String(cc).padStart(2, "0")}`;
   },
-  /** 붙여넣은 가사 → 줄 배열(빈 줄·앞뒤 공백 제거) */
+  /** 붙여넣은 가사 → 줄 배열(빈 줄·앞뒤 공백 제거, 줄 안 공백은 한 칸) */
   splitLines(text) {
-    return text.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+    return text.split(/\r?\n/).map(s => s.trim().split(/\s+/).join(" ")).filter(Boolean);
   },
-  /** entries: [{time, text}] (text가 ""이면 쉬는 구간) → LRC 문자열 */
-  buildLrc(entries, title) {
+  words(line) { return line.split(" "); },
+  /**
+   * taps: [{time, line, word}] 또는 쉼 {time, gap: true} → LRC 문자열.
+   * 한 줄에서 첫 단어 말고도 탭한 단어가 있으면 노래방(Enhanced LRC) 형식으로 쓴다:
+   *   [00:01.00]<00:01.00>첫 <00:01.50>단어
+   * 마지막 단어는 다음 줄(또는 쉼)까지 이어지므로 닫는 태그는 쓰지 않는다.
+   */
+  buildLrc(taps, lines, title) {
+    const fmt = LrcSync.formatTime;
+    const byLine = new Map();
+    for (const e of taps) if (!e.gap) {
+      if (!byLine.has(e.line)) byLine.set(e.line, new Map());
+      byLine.get(e.line).set(e.word, e.time);
+    }
+    const events = taps.filter(e => e.gap).map(e => ({ time: e.time, text: "" }));
+    for (const [line, words] of byLine) {
+      if (!words.has(0) || line >= lines.length) continue;
+      const ws = LrcSync.words(lines[line]);
+      const karaoke = [...words.keys()].some(w => w > 0);
+      const text = karaoke
+        ? ws.map((w, i) => (words.has(i) ? `<${fmt(words.get(i))}>` : "") + w).join(" ")
+        : lines[line];
+      events.push({ time: words.get(0), text });
+    }
+    events.sort((a, b) => a.time - b.time);
     const head = title ? [`[ti:${title}]`] : [];
-    const body = [...entries]
-      .sort((a, b) => a.time - b.time)
-      .map(e => `[${LrcSync.formatTime(e.time)}]${e.text}`);
-    return head.concat(body).join("\n") + "\n";
+    return head.concat(events.map(e => `[${fmt(e.time)}]${e.text}`)).join("\n") + "\n";
+  },
+  /** 다음에 탭할 자리 {line, word}. mode: "line"(줄마다) | "word"(단어마다) */
+  nextSpot(taps, lines, mode) {
+    const last = [...taps].reverse().find(e => !e.gap);
+    if (!last) return { line: 0, word: 0 };
+    if (mode === "word" && last.line < lines.length &&
+        last.word + 1 < LrcSync.words(lines[last.line]).length) {
+      return { line: last.line, word: last.word + 1 };
+    }
+    return { line: last.line + 1, word: 0 };
   },
 };
 
 // ---- 화면 상태 ----
 const $ = id => document.getElementById(id);
 const audio = $("audio");
-const state = { lines: [], entries: [], title: "" };
-let nextLine = 0; // 다음에 탭할 가사 줄
+const state = { lines: [], taps: [], title: "", mode: "line" };
 
 function store(key, value) {
   try { localStorage.setItem("lrc-sync:" + key, JSON.stringify(value)); } catch (e) {}
@@ -187,54 +224,58 @@ function restore(key, fallback) {
 }
 
 function latency() { return Math.max(0, parseFloat($("latency").value) || 0); }
+function nextSpot() { return LrcSync.nextSpot(state.taps, state.lines, state.mode); }
 
 const app = {
   setLyrics(text) {
     $("lyrics").value = text;
-    state.lines = LrcSync.splitLines(text);
-    // 가사가 바뀌면 앞에서부터 글자가 그대로인 줄의 탭만 남긴다
+    const lines = LrcSync.splitLines(text);
+    // 가사가 바뀌면 처음 달라진 줄부터의 탭은 지운다
     let keep = 0;
-    const byLine = new Map(state.entries.filter(e => e.text !== "").map(e => [e.line, e]));
-    while (byLine.has(keep) && state.lines[keep] === byLine.get(keep).text) keep++;
-    state.entries = state.entries.filter(e => e.text === "" || e.line < keep);
-    nextLine = keep;
+    while (keep < lines.length && lines[keep] === state.lines[keep]) keep++;
+    state.lines = lines;
+    state.taps = state.taps.filter(e => e.gap || e.line < keep);
     render();
   },
-  /** 다음 줄을 time(기본: 지금 재생 위치)에 시작 */
+  setMode(mode) {
+    state.mode = mode === "word" ? "word" : "line";
+    $("mode").value = state.mode;
+    render();
+  },
+  /** 다음 줄(단어 모드면 다음 단어)을 time(기본: 지금 재생 위치)에 시작 */
   tap(time) {
-    if (nextLine >= state.lines.length) return false;
+    const spot = nextSpot();
+    if (spot.line >= state.lines.length) return false;
     const t = Math.max(0, (time ?? audio.currentTime) - latency());
-    state.entries.push({ time: t, text: state.lines[nextLine], line: nextLine });
-    nextLine++;
+    state.taps.push({ time: t, line: spot.line, word: spot.word });
     render();
     return true;
   },
   /** 여기서 앞 줄이 끝남(빈 가사 줄) */
   gap(time) {
     const t = Math.max(0, (time ?? audio.currentTime) - latency());
-    state.entries.push({ time: t, text: "" });
+    state.taps.push({ time: t, gap: true });
     render();
   },
   undo() {
-    const e = state.entries.pop();
-    if (e && e.text !== "") nextLine--;
+    state.taps.pop();
     render();
   },
   reset() {
-    state.entries = [];
-    nextLine = 0;
+    state.taps = [];
     render();
   },
-  lrc() { return LrcSync.buildLrc(state.entries, state.title); },
+  lrc() { return LrcSync.buildLrc(state.taps, state.lines, state.title); },
 };
 
 function render() {
   const ol = $("lines");
   ol.textContent = "";
-  const items = state.lines.map((text, i) => ({ text, i, time: null }));
-  for (const e of state.entries) if (e.text !== "") items[e.line].time = e.time;
-  const rows = items.map(x => ({ ...x, gap: false }))
-    .concat(state.entries.filter(e => e.text === "").map(e => ({ text: "(쉼)", time: e.time, gap: true })))
+  const spot = nextSpot();
+  const tapped = state.lines.map(() => new Map());
+  for (const e of state.taps) if (!e.gap && e.line < state.lines.length) tapped[e.line].set(e.word, e.time);
+  const rows = state.lines.map((text, i) => ({ text, i, time: tapped[i].get(0) ?? null, gap: false }))
+    .concat(state.taps.filter(e => e.gap).map(e => ({ text: "(쉼)", time: e.time, gap: true })))
     .sort((a, b) => (a.time ?? Infinity) - (b.time ?? Infinity) || (a.i ?? 0) - (b.i ?? 0));
   for (const r of rows) {
     const li = document.createElement("li");
@@ -242,11 +283,23 @@ function render() {
     t.className = "t";
     t.textContent = r.time == null ? "--:--.--" : LrcSync.formatTime(r.time);
     const s = document.createElement("span");
-    s.textContent = r.text;
+    if (r.gap) {
+      s.textContent = r.text;
+    } else {
+      // 단어마다 span: 탭한 단어는 초록, 다음에 탭할 단어는 밑줄
+      LrcSync.words(r.text).forEach((w, k) => {
+        const span = document.createElement("span");
+        span.className = "w";
+        span.textContent = w;
+        if (tapped[r.i].has(k)) span.classList.add("sung");
+        if (state.mode === "word" && spot.line === r.i && spot.word === k) span.classList.add("cursor");
+        s.append(span, " ");
+      });
+    }
     li.append(t, s);
     if (r.gap) li.classList.add("gap");
     if (r.time != null) li.classList.add("marked");
-    if (!r.gap && r.i === nextLine) li.classList.add("next");
+    if (!r.gap && r.i === spot.line) li.classList.add("next");
     li.dataset.time = r.time ?? "";
     li.addEventListener("click", () => {
       if (r.time != null && audio.src) { audio.currentTime = Math.max(0, r.time - 2); audio.play(); }
@@ -254,11 +307,15 @@ function render() {
     ol.append(li);
   }
   $("out").value = app.lrc();
-  $("tap").disabled = nextLine >= state.lines.length;
-  $("tap").textContent = nextLine >= state.lines.length ? "모든 줄 완료" : `다음 줄 시작 (${nextLine + 1}/${state.lines.length})`;
-  $("undo").disabled = state.entries.length === 0;
+  const done = spot.line >= state.lines.length;
+  $("tap").disabled = done;
+  $("tap").textContent = done ? "모든 줄 완료"
+    : state.mode === "word" ? `다음: ${LrcSync.words(state.lines[spot.line])[spot.word]}`
+    : `다음 줄 시작 (${spot.line + 1}/${state.lines.length})`;
+  $("undo").disabled = state.taps.length === 0;
   store("lyrics", $("lyrics").value);
-  store("entries", state.entries);
+  store("taps", state.taps);
+  store("mode", state.mode);
   store("latency", $("latency").value);
 }
 
@@ -282,6 +339,7 @@ $("audioFile").addEventListener("change", e => {
   render();
 });
 $("rate").addEventListener("change", e => { audio.playbackRate = parseFloat(e.target.value); });
+$("mode").addEventListener("change", e => app.setMode(e.target.value));
 $("latency").addEventListener("change", render);
 $("lyrics").addEventListener("input", e => app.setLyrics(e.target.value));
 $("tap").addEventListener("click", () => app.tap());
@@ -320,10 +378,15 @@ document.addEventListener("keydown", e => {
   else if (e.key === "ArrowLeft") { audio.currentTime = Math.max(0, audio.currentTime - 3); }
 });
 
-// 이전에 작업하던 내용 복원
+// 이전에 작업하던 내용 복원. 예전 형식({time, text, line})으로 저장된 탭도 읽는다.
 $("latency").value = restore("latency", "0.15");
-state.entries = restore("entries", []);
-app.setLyrics(restore("lyrics", ""));
+const savedLyrics = restore("lyrics", "");
+state.lines = LrcSync.splitLines(savedLyrics);
+state.taps = restore("taps", null) ?? restore("entries", []).map(e =>
+  e.text === "" ? { time: e.time, gap: true } : { time: e.time, line: e.line, word: 0 });
+state.mode = restore("mode", "line");
+$("mode").value = state.mode;
+app.setLyrics(savedLyrics);
 window.LrcSync = LrcSync;
 window.app = app;
 </script>

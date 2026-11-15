@@ -56,6 +56,24 @@ class SyncToolTest(unittest.TestCase):
         self.assertEqual(self.r["afterReload"], self.r["afterUndo"])
         self.assertEqual(self.r["afterEdit"], "[00:01.00]첫 줄\n")
 
+    def test_word_mode_makes_karaoke_lrc(self):
+        w = self.r["word"]
+        self.assertEqual(w["label"], "다음: Hello")
+        self.assertEqual(w["full"], "[00:01.00]<00:01.00>Hello <00:01.50>big <00:02.00>world\n"
+                                    "[00:04.00]<00:04.00>next <00:04.50>line\n")
+        self.assertEqual(w["cursorWords"], 0)  # 다 찍으면 다음 단어 표시 없음
+        ly = lrc.parse(w["full"], duration=6)
+        self.assertEqual(ly.lines[0].text, "Hello big world")
+        self.assertEqual(ly.lines[0].marks, ((1.0, 0), (1.5, 6), (2.0, 10)))
+        self.assertEqual(ly.lines[1].marks, ((4.0, 0), (4.5, 5)))
+        self.assertEqual(w["afterUndo"], "[00:01.00]<00:01.00>Hello <00:01.50>big <00:02.00>world\n"
+                                         "[00:04.00]next line\n")
+        self.assertFalse(w["lineModeTap"])  # 줄 모드: 둘째 줄 다음은 없음
+
+    def test_mode_saved_and_legacy_taps_read(self):
+        self.assertEqual(self.r["modeAfterReload"], "word")
+        self.assertEqual(self.r["legacy"], "[00:01.00]a\n[00:02.00]\n")
+
     def test_keyboard(self):
         self.assertEqual(self.r["afterKey"], "[00:00.00]첫 줄\n")
         self.assertEqual(self.r["afterKeyUndo"].strip(), "")

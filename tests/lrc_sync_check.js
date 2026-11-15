@@ -43,6 +43,35 @@ const path = require("path");
   await page.keyboard.press("Backspace");
   out.afterKeyUndo = await page.evaluate(() => app.lrc());
 
+  // 단어마다(노래방) 모드
+  out.word = await page.evaluate(() => {
+    app.reset();
+    app.setLyrics("Hello  big world\nnext line");
+    app.setMode("word");
+    const r = { label: document.querySelector("#tap").textContent };
+    app.tap(1.15); app.tap(1.65); app.tap(2.15); app.tap(4.15); app.tap(4.65);
+    r.full = app.lrc();
+    r.cursorWords = document.querySelectorAll("#lines .w.cursor").length;
+    app.undo();
+    r.afterUndo = app.lrc();  // 둘째 줄은 첫 단어만 → 일반 줄
+    app.setMode("line");      // 줄 모드로 바꾸면 다음 탭은 다음 줄로
+    r.lineModeTap = app.tap(6);
+    return r;
+  });
+  await page.evaluate(() => app.setMode("word"));
+  await page.reload();
+  out.modeAfterReload = await page.evaluate(() => document.querySelector("#mode").value);
+
+  // 예전 형식으로 저장된 탭({time, text, line})도 읽는다
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("lrc-sync:lyrics", JSON.stringify("a\nb"));
+    localStorage.setItem("lrc-sync:entries", JSON.stringify([
+      { time: 1, text: "a", line: 0 }, { time: 2, text: "" }]));
+  });
+  await page.reload();
+  out.legacy = await page.evaluate(() => app.lrc());
+
   // 폰 화면에서 가로 스크롤이 생기지 않는다
   out.overflowX = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
   out.errors = errors;
