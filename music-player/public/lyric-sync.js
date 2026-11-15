@@ -39,3 +39,6 @@ export function toLrc(sync) {
     .map((l) => `${lrcTime(l.time)}${l.text}`)
     .join('\n');
 }
+
+// 처음 열었을 때와 비교해 찍은 시간이 바뀌었는지 (닫기 전에 확인할지 정할 때 쓴다).
+export const hasChanges = (before, after) => before.lines.some((l, i) => l.time !== after.lines[i].time);

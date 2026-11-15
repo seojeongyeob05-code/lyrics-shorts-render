@@ -6,7 +6,7 @@ import { planUploads, mergeResults } from './upload-plan.js';
 import { clickSelection, pruneSelection } from './selection.js';
 import { planPlaylistAdd } from './playlist-add.js';
 import { createListenTracker, recentTracks, topTracks } from './listening.js';
-import { createSync, stamp, undo, jumpTo, missingCount, toLrc, lrcTime } from './lyric-sync.js';
+import { createSync, stamp, undo, jumpTo, missingCount, toLrc, lrcTime, hasChanges } from './lyric-sync.js';
 
 // ───────────── 유틸 ─────────────
 const $ = (sel) => document.querySelector(sel);
@@ -1041,6 +1041,7 @@ async function openLyricSync() {
   const parsed = parseLyrics((await api('GET', `/api/tracks/${t.id}/lyrics`)).lyrics);
   if (!parsed.lines.length) return toast('먼저 가사를 넣어 주세요');
   let sync = createSync(parsed.lines);
+  const initial = sync;
 
   const list = h('ol', { class: 'sync-list' });
   const progress = h('span', { class: 'muted' });
@@ -1068,8 +1069,25 @@ async function openLyricSync() {
     else if (e.key === 'Backspace') { e.preventDefault(); doUndo(); }
     else if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
   };
+  // 재생 속도: 빠른 부분을 정확히 찍도록 늦출 수 있다 (음 높이는 그대로).
+  const speeds = [1, 0.75, 0.5];
+  const speedBtns = speeds.map((rate) => h('button', {
+    type: 'button',
+    class: 'btn speed',
+    title: `${rate}배속`,
+    onclick: () => { audio.playbackRate = rate; speedBtns.forEach((b, i) => b.classList.toggle('active', speeds[i] === rate)); },
+  }, `${rate}×`));
+  speedBtns[0].classList.add('active');
+
+  // 찍은 내용이 있는데 Esc·취소로 닫으려 하면 한 번 묻는다.
+  const keepOpen = () => hasChanges(initial, sync) && !confirm('찍은 시간이 저장되지 않습니다. 닫을까요?');
+  const onCancel = (e) => { if (keepOpen()) e.preventDefault(); };
+  const onCancelClick = (e) => { if (e.target.closest('button[value="cancel"]') && keepOpen()) e.preventDefault(); };
+
   const events = ['timeupdate', 'play', 'pause', 'seeked'];
   events.forEach((ev) => audio.addEventListener(ev, tick));
+  $('#dialog').addEventListener('cancel', onCancel);
+  $('#dialog').addEventListener('click', onCancelClick, true);
   $('#dialog').addEventListener('keydown', onKey);
   syncingLyrics = true;
   tick();
@@ -1084,6 +1102,7 @@ async function openLyricSync() {
         h('button', { type: 'button', class: 'btn', onclick: () => { audio.currentTime = 0; } }, '처음부터'),
         h('button', { type: 'button', class: 'btn', onclick: () => { audio.currentTime = Math.max(0, audio.currentTime - 3); } }, '−3초'),
         clock,
+        h('span', { class: 'speed-group', role: 'group', 'aria-label': '재생 속도' }, speedBtns),
         h('span', { class: 'spacer' }),
         h('button', { type: 'button', class: 'btn', onclick: doUndo }, '되돌리기'),
         h('button', { type: 'button', class: 'btn primary', onclick: doStamp }, '찍기')),
@@ -1092,7 +1111,10 @@ async function openLyricSync() {
     ]);
   } finally {
     syncingLyrics = false;
+    audio.playbackRate = 1;
     events.forEach((ev) => audio.removeEventListener(ev, tick));
+    $('#dialog').removeEventListener('cancel', onCancel);
+    $('#dialog').removeEventListener('click', onCancelClick, true);
     $('#dialog').removeEventListener('keydown', onKey);
   }
   if (result !== 'ok') return;

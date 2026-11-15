@@ -49,3 +49,13 @@ test('원래 상태를 바꾸지 않는다', () => {
   assert.equal(s.lines[0].time, null);
   assert.equal(s.target, 0);
 });
+
+test('찍은 시간이 바뀌었는지 알려 준다', async () => {
+  const { hasChanges } = await import('../public/lyric-sync.js');
+  const start = createSync([{ text: '가', time: 1 }, { text: '나' }]);
+  assert.equal(hasChanges(start, start), false);
+  assert.equal(hasChanges(start, jumpTo(start, 0)), false); // 줄만 옮긴 것은 변경 아님
+  const stamped = stamp(start, 2);
+  assert.equal(hasChanges(start, stamped), true);
+  assert.equal(hasChanges(start, undo(stamped)), false); // 찍었다가 되돌리면 원래대로
+});
