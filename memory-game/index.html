@@ -296,7 +296,38 @@ const LEVELS = {
        story: '로비에 들어서자 벤치에 앉은 옆집 할머니가 손짓한다. 무릎이 아파서 부탁할 게 있다고 한다. 할머니는 5시 50분에 TV를 보러 집에 들어간다.' },
   3: { diff: 2, skills: ['쪽지 읽기', '영어 숫자', '조건 문장'], name: '택배 찾기', goal: '목표: 택배 기사의 쪽지를 읽고, 보관함에서 택배를 꺼내오기', target: 'mail',
        story: '집에 오니 문에 택배 기사의 쪽지가 붙어 있다. 아무도 없어서 택배를 건물 어딘가에 맡겨둔 모양이다. 쪽지는 영어로 쓰여 있다.' },
+  4: { diff: 2, skills: ['길 안내하기', '방향 말하기', '간판 읽기'], name: '길 잃은 방문객', goal: '목표: 길 잃은 방문객에게 영어로 길을 알려주기 (세 곳)', target: null,
+       story: '로비에서 지도를 든 관광객이 두리번거린다. 친구 집에 놀러 왔다가 건물 안에서 길을 잃었다. 이번엔 내가 길을 알려줄 차례다.' },
 };
+// Situation 4: the player gives directions. What the visitor asks for, in the visitor's words.
+const VISIT = {
+  restroom: { word: 'restroom', ask: "Excuse me, where's the restroom?", ko: '실례합니다, 화장실이 어디예요?' },
+  cafe: { word: 'coffee shop', ask: 'Is there a coffee shop in this building? Where is it?', ko: '이 건물에 커피숍이 있어요? 어디예요?' },
+  mail: { word: 'mail room', ask: "Where's the mail room? I need to drop off a letter.", ko: '우편물실이 어디예요? 편지를 부쳐야 해서요.' },
+  gym: { word: 'gym', ask: 'Do you know where the gym is?', ko: '헬스장이 어디 있는지 아세요?' },
+  management: { word: 'management office', ask: "I'm looking for the management office. Where is it?", ko: '관리사무소를 찾고 있어요. 어디예요?' },
+  security: { word: 'security office', ask: 'Where can I find the security office?', ko: '경비실은 어디서 찾을 수 있어요?' },
+};
+// Reads a direction from what the player said, as seen from the lobby facing the rooms: a-e are the room slots.
+function dirOf(raw, I) {
+  const d = [...I].find(i => i.startsWith('dir:'));
+  if (d) return d.slice(4);
+  const t = ' ' + raw.toLowerCase() + ' ';
+  const L = /\bleft\b/.test(t), Rt = /\bright\b/.test(t) && !/\bright (there|here|now|away)\b/.test(t), A = /\b(ahead|straight|forward|front|end of the hall)\b/.test(t);
+  if (L && A) return 'a';
+  if (Rt && A) return 'c';
+  if (L) return 'd';
+  if (Rt) return 'e';
+  if (A) return 'b';
+  return null;
+}
+function roomIn(raw) {
+  const t = raw.toLowerCase();
+  const map = [[/restroom|toilet|bathroom/, 'restroom'], [/coffee|cafe|café|daily grind/, 'cafe'], [/mail/, 'mail'], [/gym/, 'gym'], [/management/, 'management'], [/security|guard/, 'security'], [/staff/, 'staff']];
+  const hit = map.find(([re]) => re.test(t));
+  return hit && S.slotOf[hit[1]] ? hit[1] : null;
+}
+const whereLine = room => { const d = SLOTS[S.slotOf[room]]; return [`The ${ROOMS[room].name.toLowerCase()}? It's ${d.dir}. (points ${d.point})`, `${ROOMS[room].ko}? ${d.dirKo}에 있어요. (${d.dirKo}을 가리키며)`, true]; };
 // Situation 3: numbers written as words. Teens and tens are easy to mix up, so lockers are drawn from those pairs.
 const ONES = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
 const TENS = { twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60 };
@@ -356,7 +387,7 @@ const VOCAB = [
   ['found', '찾았다, 발견했다'], ['lost and found', '분실물 보관소'], ['left', '왼쪽'], ['right', '오른쪽'], ['straight ahead', '곧장 앞으로'],
   ['color', '색깔'], ['black', '검은색'], ['brown', '갈색'], ['red', '빨간색'], ['blue', '파란색'], ['look like', '~처럼 생기다'],
   ['inside', '안에'], ['card', '카드'], ['photo', '사진'], ['ticket', '표'], ['restroom', '화장실'], ['mail', '우편'],
-  ['gym', '헬스장'], ['management office', '관리사무소'], ['staff', '직원'], ['only', '~만, 오직'], ['package', '택배, 소포'], ['help', '돕다'], ['closed', '문을 닫은'], ['sign', '서명하다'], ['locker', '보관함'], ['too big', '너무 큰'], ['apartment', '아파트, 집 호수'], ['code', '비밀번호'], ['parcel', '소포, 택배'],
+  ['gym', '헬스장'], ['management office', '관리사무소'], ['staff', '직원'], ['only', '~만, 오직'], ['package', '택배, 소포'], ['help', '돕다'], ['closed', '문을 닫은'], ['sign', '서명하다'], ['locker', '보관함'], ['coffee shop', '커피숍'], ['ahead', '앞쪽에'], ['too big', '너무 큰'], ['apartment', '아파트, 집 호수'], ['code', '비밀번호'], ['parcel', '소포, 택배'],
   ['thirteen', '13'], ['thirty', '30'], ['fourteen', '14'], ['forty', '40'], ['fifteen', '15'], ['fifty', '50'], ['sixteen', '16'], ['sixty', '60'], ['signature', '서명'],
   ['small', '작은'], ['medium', '중간'], ['large', '큰'], ['size', '크기'], ['milk', '우유'], ['oat', '귀리'], ['almond', '아몬드'],
   ['to go', '가지고 갈게요 (포장)'], ['for here', '여기서 먹을게요'], ['favor', '부탁'],
@@ -396,6 +427,8 @@ const EXAMPLES = {
   "closed": ["The bank is closed on Sunday.", "은행은 일요일에 문을 닫아."],
   "sign": ["Please sign here, the man said.", "여기 서명해 주세요, 하고 그 사람이 말했지."],
   "signature": ["My signature is very curly.", "내 서명은 아주 꼬불꼬불해."],
+  "coffee shop": ["There's a nice coffee shop in our building.", "우리 건물에 괜찮은 커피숍이 있어."],
+  "ahead": ["The bus stop is just ahead.", "버스 정류장은 바로 앞에 있어."],
   "locker": ["My gym locker is number seven.", "내 헬스장 사물함은 7번이야."],
   "too big": ["This coat is too big for me.", "이 코트는 나한테 너무 커."],
   "apartment": ["My apartment is on the third floor.", "우리 집은 3층이야."],
@@ -473,6 +506,7 @@ const NPC_INFO = {
   grandma: { icon: '👵', name: 'Mrs. Park', ko: '옆집 할머니' },
   barista: { icon: '🧑‍🍳', name: 'Barista', ko: '카페 직원' },
   locker: { icon: '🔐', name: 'Parcel locker', ko: '택배 보관함' },
+  visitor: { icon: '🧳', name: 'Visitor', ko: '방문객' },
 };
 
 // ---------- storage ----------
@@ -553,7 +587,7 @@ function newLoop() {
     loop: S ? S.loop + 1 : 1, t: START, x: 7, y: 11, zone: 'hall', roomAt, slotOf,
     color: pick(Object.keys(COLORS)), content: pick(Object.keys(CONTENTS)),
     guardStage: 0, janitorTold: false, janitorAsked: false,
-    level: LEVEL, end: LEVEL === 2 ? GRANDMA_LEAVES : END,
+    level: LEVEL, end: LEVEL === 2 || LEVEL === 4 ? GRANDMA_LEAVES : END, vq: [], vi: 0,
     order: { drink: pick(Object.keys(DRINKS)), size: pick(Object.keys(SIZES)), milk: pick(Object.keys(MILKS)) },
     bOrder: { drink: null, size: null, milk: null, here: null }, bAsk: null, bSaid: [], carrying: null, heardRequest: false,
     bigParcel: LEVEL === 3 && Math.random() < 0.5, apt: (2 + Math.floor(Math.random() * 14)) * 100 + 1 + Math.floor(Math.random() * 8), aptStage: 0,
@@ -565,6 +599,7 @@ function newLoop() {
     guard: SLOTS[slotOf.security].npc, barista: SLOTS[slotOf.cafe].npc,
   };
   if (S.level === 3) S.npcs.locker = SLOTS[slotOf.mail].npc;
+  if (S.level === 4) { S.npcs.visitor = [6, 10]; S.vq = shuffle(order.filter(r => r !== 'staff')).slice(0, 3); }
   $('log').innerHTML = '';
   renderStatic();
   render();
@@ -572,6 +607,9 @@ function newLoop() {
   if (S.level === 1) {
     $('walletDesc').innerHTML = `당신의 지갑: <b>${COLORS[S.color]}</b> · 안에 <b>${CONTENTS[S.content].ko}</b>`;
     $('goalMeta').textContent = '경비실은 오후 6시에 문을 닫습니다. 걷기·말하기·몸짓·번역기 모두 시간이 흘러요.';
+  } else if (S.level === 4) {
+    $('walletDesc').innerHTML = '방문객이 묻는 곳의 방향을 <b>영어로</b> 알려주세요. 어느 방이 어디인지는 간판을 읽거나 사람들에게 물어봐야 알 수 있어요.';
+    $('goalMeta').textContent = '방문객은 오후 5시 50분에 버스를 타러 떠납니다.';
   } else if (S.level === 3) {
     $('walletDesc').innerHTML = `당신의 집: <b>${S.apt}호</b> · 택배가 어디 있는지는 <b>쪽지에 영어로</b> 적혀 있어요. 대화창 맨 위로 올리면 다시 읽을 수 있어요.`;
     $('goalMeta').textContent = '우편물실은 오후 6시에 잠깁니다.';
@@ -580,7 +618,7 @@ function newLoop() {
     $('goalMeta').textContent = '할머니는 오후 5시 50분에 집으로 들어갑니다. 그 전에 전해드려야 해요.';
   }
   showFocus();
-  sys(S.loop === 1 ? (S.level === 1 ? '오후 5시 20분. 방금 전까지 있던 건물 로비로 돌아왔다.' : '오후 5시 20분. 벤치에 앉은 옆집 할머니가 이쪽을 보며 손짓한다.') : '…눈을 떠보니 다시 오후 5시 20분, 건물 입구였다. 그런데 어딘가 배치가 달라 보인다.');
+  sys(S.loop === 1 ? { 1: '오후 5시 20분. 방금 전까지 있던 건물 로비로 돌아왔다.', 2: '오후 5시 20분. 벤치에 앉은 옆집 할머니가 이쪽을 보며 손짓한다.', 3: '오후 5시 20분. 집 문에 쪽지가 붙어 있다.', 4: '오후 5시 20분. 로비에서 지도를 든 관광객이 두리번거리고 있다.' }[S.level] : '…눈을 떠보니 다시 오후 5시 20분, 건물 입구였다. 그런데 어딘가 배치가 달라 보인다.');
   place('MAPLE COURT — Welcome, residents and guests.', '메이플 코트 — 입주민과 방문객 여러분, 환영합니다.');
   if (S.level === 3 && S.bigParcel) {
     place("Hi! Sorry I missed you. Your package was too big for the parcel lockers, so I left it with the guard at the SECURITY OFFICE. Have a good one! — Dan, Speedy Delivery",
@@ -620,6 +658,9 @@ const SPRITES = {
     '.....ssmmss.....', '......ssss......', '....YAAAAAAY....', '...YYAAAAAAYY...', '...YYAAyyAAYY...', '...sYAAAAAAYs...',
     '....DAAAAAAD....', '....DDD..DDD....', '....ooo..ooo....'] },
 };
+SPRITES.visitor = { pal: { T: '#e8d29a', t: '#a0522d', G: '#3f9f6a', c: '#2a1f2d', B: '#8a5a34', K: '#c9b08a' }, rows: [
+  '', '....TTTTTTTT....', '...TTTTTTTTTT...', '....tttttttt....', '....ssssssss....', '....sesssses....', '....ssssssss....', '.....ssmmss.....',
+  '......ssss......', '....GGGGGGGG....', '...BGGcccGGGB...', '...BGGGGGGGGB...', '...sGGGGGGGGs...', '....KKKKKKKK....', '....KKK..KKK....', '....ooo..ooo....'] };
 SPRITES.locker = { pal: { G: '#7d8590', l: '#b3bcc6', s: '#5ad1c8', D: '#3a3f49' }, rows: [
   '', '..GGGGGGGGGGGGG.', '..GsssssGllGllG.', '..GsssssGllGllG.', '..GGGGGGGGGGGGG.', '..GllGllGllGllG.', '..GllGllGllGllG.', '..GGGGGGGGGGGGG.',
   '..GllGllGllGllG.', '..GllGllGllGllG.', '..GGGGGGGGGGGGG.', '..GllGllGllGllG.', '..GllGllGllGllG.', '..GGGGGGGGGGGGG.', '..GDDDDDDDDDDDG.', '..GGGGGGGGGGGGG.'] };
@@ -935,6 +976,7 @@ function enterRoom(slot) {
   const key = S.roomAt[slot], room = ROOMS[key];
   if (key === 'security' && S.guardOnPatrol) officeSign();
   else place(room.place[0], room.place[1]);
+  if (S.level === 4) { S.visited.add(key); return; }
   const target = S.level === 3 && S.bigParcel ? 'security' : LEVELS[S.level].target, T = ROOMS[target];
   if (key === target || S.visited.has(key)) { S.visited.add(key); return; }
   S.visited.add(key);
@@ -1025,6 +1067,8 @@ function greet(id) {
     return npcSay(id, `Oh, sweetie, could you do me a favor? My knees hurt today. Could you get me ${orderEn(o)} from the Daily Grind? To go, please!`,
       `얘야, 부탁 하나 들어줄래? 오늘 무릎이 아파서. 데일리 그라인드에서 ${orderKo(o)} 하나 사다 줄 수 있니? 포장으로!`);
   }
+  if (id === 'visitor') { const q = S.vq[S.vi]; return npcSay(id, `Hi! I'm visiting a friend here, but I'm totally lost. ${VISIT[q].ask}`, `안녕하세요! 여기 사는 친구 만나러 왔는데 완전히 길을 잃었어요. ${VISIT[q].ko}`); }
+  if (S.level === 4 && id === 'janitor') { S.janitorAsked = true; return npcSay(id, 'Oh, hi! That visitor looks lost. Do you know your way around here?', '어머, 안녕! 저 방문객 길 잃은 것 같네. 여기 길 잘 알아?'); }
   if (id === 'locker') { S.lockerStage = 0; return npcSay(id, 'PARCEL LOCKER. Please enter your locker number.', '택배 보관함. 보관함 번호를 입력하세요.'); }
   if (S.level === 3 && id === 'janitor') { S.janitorAsked = true; return npcSay(id, 'Oh, hi! Are you looking for something?', '어머, 안녕! 뭐 찾니?'); }
   if (S.level === 2 && id === 'janitor') { S.janitorAsked = true; return npcSay(id, 'Hi, honey! Running an errand?', '안녕! 심부름 가는 중이야?'); }
@@ -1188,6 +1232,53 @@ const R = {
     if (I.has('thanks')) return ["Anytime, sweetie. Good luck!", '언제든지, 얘야. 행운을 빈다!', true];
     if (I.has('greet')) return ["Hello again! Take your time, dear.", '또 왔구나! 천천히 하렴.', true];
     return ["Hmm? Tell me just one word you don't know, dear.", '응? 모르는 단어 하나만 말해주렴.', false];
+  },
+  visitor(I, raw) {
+    const q = S.vq[S.vi];
+    if (!q) return ['Thank you so much! You saved my day.', '정말 고마워요! 덕분에 살았어요.', true];
+    const slot = S.slotOf[q], d = SLOTS[slot], V = VISIT[q];
+    if (I.has('korean')) { miss('한국어', `"${raw}"`, '방문객은 한국어를 못 알아들어요. left, right, straight ahead 같은 말이나 방향 가리키기로 알려주세요.'); return ["Sorry, I only speak English...", '죄송해요, 전 영어밖에 못 해요…', false]; }
+    if (I.has('confused')) return [`(She holds up her map and speaks slowly.) Where... is... the ${V.word.toUpperCase()}?`, `(지도를 들어 보이며 천천히) ${ROOMS[q].ko}… 어디… 예요?`, true];
+    const ans = dirOf(raw, I);
+    if (!ans) {
+      if (I.has('yes') || I.has('no')) { miss('무관', `"${raw}"`, `"${V.ask}"는 위치를 묻는 질문이에요. yes나 no가 아니라 방향(left, right, straight ahead)을 말해야 했어요.`, ['left', 'right', 'straight ahead']); return ['Um... okay, but which way is it?', '음… 네, 근데 어느 쪽이에요?', false]; }
+      if (I.has('greet')) return [`Hi! ${V.ask}`, `안녕하세요! ${V.ko}`, true];
+      miss('무관', `"${raw}"`, `방문객은 ${ROOMS[q].ko}(${V.word})의 방향을 물었어요. "${d.dir}"(${d.dirKo})처럼 말하면 됐어요.`, ['left', 'right', 'straight ahead']);
+      return ['Sorry? Which way is it?', '네? 어느 쪽이에요?', false];
+    }
+    if (ans === slot) {
+      S.vi++; S.phrases.push([raw, `It's ${d.dir}.`]);
+      const next = S.vq[S.vi];
+      if (!next) { S.won = true; setTimeout(win, 900); return [`${cap(d.dir)}? Got it! Thank you so much, you're a lifesaver!`, `${d.dirKo}이요? 알겠어요! 정말 고마워요, 덕분에 살았어요!`, true]; }
+      return [`${cap(d.dir)}? Got it, thanks! Oh, one more thing. ${VISIT[next].ask}`, `${d.dirKo}이요? 알겠어요, 고마워요! 아, 하나 더요. ${VISIT[next].ko}`, true];
+    }
+    const side = { a: 'L', d: 'L', c: 'R', e: 'R', b: 'C' }, went = ROOMS[S.roomAt[ans]];
+    const sameSide = side[ans] === side[slot] && side[ans] !== 'C', opposite = (side[ans] === 'L' && side[slot] === 'R') || (side[ans] === 'R' && side[slot] === 'L');
+    miss(sameSide ? '거의 맞음' : opposite ? '정반대' : '무관', `${ROOMS[q].ko}를 "${raw}"로 안내함`,
+      `${ROOMS[q].ko}(${ROOMS[q].name})는 "${d.dir}"(${d.dirKo})에 있었어요. 당신의 안내로 방문객은 ${went.name}(${went.ko})에 갔어요.${sameSide ? ' 방향은 맞았지만, 앞쪽 줄 방은 "ahead on your left/right", 옆쪽 방은 "on your left/right"예요.' : ''}`,
+      [side[slot] === 'L' ? 'left' : side[slot] === 'R' ? 'right' : 'straight ahead']);
+    S.t += 180;
+    return [`(She walks off, then comes back a few minutes later.) Hmm, that was the ${went.name.toLowerCase()}. Where is the ${V.word}, really?`, `(걸어갔다가 몇 분 뒤 돌아온다) 음, 거긴 ${went.ko}였어요. ${ROOMS[q].ko}는 진짜 어디예요?`, false];
+  },
+  janitor4(I, raw) {
+    if (I.has('korean')) return ["Sorry, honey, I don't understand.", '미안, 못 알아듣겠어.', false];
+    const room = roomIn(raw);
+    if (room) return whereLine(room);
+    if (I.has('confused')) return ['(She points around the lobby.) Which room? Restroom? Gym? Tell me, honey.', '(로비를 가리키며) 어느 방? 화장실? 헬스장? 말해봐.', true];
+    if (I.has('greet') || I.has('thanks') || I.has('yes')) return ["Ask me where any room is, honey. I clean them all!", '어느 방이든 어디 있는지 물어봐. 내가 다 청소하거든!', true];
+    return ["Sorry, honey, I didn't catch that.", '미안, 잘 못 들었어.', false];
+  },
+  guard4(I, raw) {
+    if (I.has('korean')) return ["Sorry? I don't understand.", '네? 못 알아듣겠어요.', false];
+    const room = roomIn(raw);
+    if (room) return whereLine(room);
+    if (S.guardOnPatrol) return ["I'm on my rounds right now, but ask me if you need directions.", '지금 순찰 중이지만, 길이 필요하면 물어보세요.', true];
+    return ['Hi there. Do you need directions?', '안녕하세요. 길 안내가 필요하세요?', true];
+  },
+  grandma4(I, raw) {
+    const room = roomIn(raw), w = glossWord(raw);
+    if (room && !(w && asksMeaning(raw) && /\b(what|mean)\b/i.test(raw))) return whereLine(room);
+    return R.grandma(I, raw);
   },
   grandma3(I, raw) {
     if (I.has('korean')) return ["Oh, I'm sorry, dear. I don't speak Korean. Try one English word, slowly!", '어머, 미안하구나. 난 한국어를 못 해. 영어 단어 하나를 천천히 말해보렴!', false];
@@ -1374,6 +1465,17 @@ gBox.appendChild(tr);
 function openPointer() {
   if (S.done) return;
   const box = $('pointer');
+  if (nearNpc() === 'visitor') {
+    box.innerHTML = '<p>어느 쪽을 가리킬까요? (1분 30초)</p>';
+    for (const [slot, label] of [['a', '↖ 앞쪽 왼편'], ['b', '↑ 곧장 앞'], ['c', '↗ 앞쪽 오른편'], ['d', '← 왼편'], ['e', '→ 오른편']]) {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = label;
+      b.addEventListener('click', () => { closePointer(); act(new Set(['dir:' + slot]), `몸짓: ${label} 가리키기`, COST.gesture, `(${label.slice(2)} 쪽을 가리킨다)`, 'gesture'); });
+      box.appendChild(b);
+    }
+    const x = document.createElement('button'); x.type = 'button'; x.className = 'chip'; x.textContent = '취소';
+    x.addEventListener('click', closePointer); box.appendChild(x);
+    box.hidden = false; return;
+  }
   const zoneKey = S.zone === 'hall' ? 'hall' : S.roomAt[S.zone];
   const objs = OBJECTS[zoneKey] || OBJECTS.hall;
   box.innerHTML = '<p>무엇을 가리킬까요? (1분 30초)</p>';
@@ -1516,6 +1618,9 @@ function intro() {
 function fail() {
   if (S.done || S.won) return; S.done = true;
   const items = S.mistakes.slice();
+  if (S.level === 4) {
+    for (const q of S.vq.slice(S.vi)) { const d = SLOTS[S.slotOf[q]]; items.push({ cat: '놓친 정보', act: `방문객이 찾던 곳: ${VISIT[q].word}`, explain: `${VISIT[q].word}는 ${ROOMS[q].name}(${ROOMS[q].ko}) 간판이 붙은 방이었어요. "It's ${d.dir}."(${d.dirKo})라고 말하면 됐어요.`, at: clockStr(S.t), words: [d.side === 'L' ? 'left' : d.side === 'R' ? 'right' : 'straight ahead'] }); }
+  }
   if (S.level === 3) {
     const codeEn = [...S.code].map(d => ONES[+d]).join(', ');
     if (S.bigParcel) {
@@ -1549,10 +1654,10 @@ function fail() {
   items.forEach(m => m.words.forEach(w => { mark(w, 'seen'); mark(w, 'known'); }));
   const list = items.map(m => `<li><span class="tag ${m.cat.split(' ')[0]}">${m.cat}</span><span class="act">${m.at} · ${esc(m.act)}</span><span>${esc(m.explain)}</span></li>`).join('');
   show(`
-    <h2>${S.failTitle || { 1: '6:00 PM. 경비실 불이 꺼졌다.', 2: '5:50 PM. 할머니가 집으로 들어갔다.', 3: '6:00 PM. 우편물실 문이 잠겼다.' }[S.level]}</h2>
+    <h2>${S.failTitle || { 1: '6:00 PM. 경비실 불이 꺼졌다.', 2: '5:50 PM. 할머니가 집으로 들어갔다.', 3: '6:00 PM. 우편물실 문이 잠겼다.', 4: '5:50 PM. 방문객이 버스를 타러 떠났다.' }[S.level]}</h2>
     <p class="lead">…눈앞에 오늘 오후가 주마등처럼 스친다.</p>
     <ul class="miss">${list || '<li>이번 판에는 기록된 실수가 없어요. 조금만 더 빨랐으면!</li>'}</ul>
-    <p class="lead">주마등에서 뜻을 알게 된 단어는 도감에 💡로 기록돼요. 다음 회차에서는 방 배치와 ${{ 1: '지갑 생김새', 2: '할머니의 주문', 3: '보관함 번호와 비밀번호' }[S.level]}가 바뀌어요.</p>
+    <p class="lead">주마등에서 뜻을 알게 된 단어는 도감에 💡로 기록돼요. 다음 회차에서는 방 배치와 ${{ 1: '지갑 생김새', 2: '할머니의 주문', 3: '보관함 번호와 비밀번호', 4: '방문객이 묻는 곳' }[S.level]}가 바뀌어요.</p>
     <button class="primary" id="again" type="button">다시, 5시 20분</button>`, () => $('again').addEventListener('click', () => { hide(); newLoop(); }));
 }
 
@@ -1569,7 +1674,7 @@ function win() {
     ? `<li>locker <em>${numWord(S.locker)}</em> = ${S.locker}번 · code <em>${[...S.code].map(d => ONES[+d]).join(' ')}</em> = ${S.code}</li>`
     : S.phrases.map(([said, model]) => `<li>"${esc(said)}" <span class="arrow">→ 더 자연스럽게</span> <em>${esc(model)}</em></li>`).join('');
   show(`
-    <h2>${{ 1: '지갑을 되찾았다!', 2: '할머니가 활짝 웃었다!', 3: '택배를 찾았다!' }[S.level]}</h2>
+    <h2>${{ 1: '지갑을 되찾았다!', 2: '할머니가 활짝 웃었다!', 3: '택배를 찾았다!', 4: '방문객이 무사히 길을 찾았다!' }[S.level]}</h2>
     <p class="lead">${S.loop}회차 · ${used}분 사용 · 실수 ${S.mistakes.length}번${newBest ? ' · <b class="newbest">새 최고 기록!</b>' : ''}</p>
     <p>${S.level === 3 ? '쪽지의 숫자를 제대로 읽었어요.' : '당신의 말은 통했어요. 다음엔 이렇게 말해보세요.'}</p>
     <ul class="phr">${phr || '<li>몸짓만으로 해냈어요! 다음엔 한 단어라도 영어로 말해보세요.</li>'}</ul>
