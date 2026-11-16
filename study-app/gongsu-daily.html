@@ -915,7 +915,7 @@ w: $y = 2e^{x}$
 e: 양변을 미분하면 $y' = y - y^2$ ($n = 2$ 베르누이), $x = 0$ 을 넣으면 적분이 $0$ 이라 $y(0) = 2$. $u = \dfrac1y$ 로 $u = 1 + Ce^{-x}$, $u(0) = \dfrac12$ 에서 $C = -\dfrac12$. $\dfrac{1}{1 + e^{-x}}$ 는 ODE는 맞지만 $y(0) = \dfrac12$ 이라 초기조건을 놓친 답이에요 (해설 191번 유형).
 ## 07 | 1계 ODE | 리카티 방정식
 c: $y' = p(x) + q(x)\,y + r(x)\,y^2$ 꼴이에요. 먼저 이 꼴인지 꼭 확인해요. $p = 0$ 이면 베르누이($n = 2$), $r = 0$ 이면 1계 선형이에요.
-c: 특수해 $y_1$ 은 보통 문제에서 줘요. 안 주면 $1,\; x,\; x^2,\; \dfrac1x,\; e^{x},\; \sin x$ 같은 후보를 대입해서 찾아요 (Level 2).
+c: 특수해 $y_1$ 은 보통 문제에서 줘요. 안 주면 $1,\; x,\; x^2,\; \dfrac1x,\; e^{x},\; \sin x,\; \cos x$ 같은 후보를 대입해서 찾아요 (Level 2). 계수에 $\dfrac1x$ 이 보이면 $\dfrac{a}{x}$, 삼각함수가 보이면 $\sin x$, $\cos x$, $\sec x$ 부터 시도해요.
 c: **방법 (1)** $y = y_1 + \dfrac1v$ → $v$ 에 대한 **1계 선형** $v' + (q + 2ry_1)v = -r$
 c: **방법 (2)** $y = y_1 + u$ → $u' = (q + 2ry_1)u + ru^2$ 라는 **베르누이**($n = 2$) → 다시 $u = \dfrac1v$ 로 선형. 두 방법은 결국 같은 식이에요.
 c: 대입할 때 $y_1$ 도 $x$ 의 함수라서 $y_1'$ 이 생겨요. 이걸 빼먹지 마세요 (강의 ★).
@@ -988,19 +988,19 @@ w: $y = \dfrac{3x^2}{C - x^3}$
 w: $y = \dfrac{1}{x} + \dfrac{C - x^3}{3x^2}$
 e: $v' + \dfrac2x v = -1$ 에 $\mu = x^2$: $(x^2v)' = -x^2$, $v = \dfrac{C - x^3}{3x^2}$ ($C$ 덮어씌우기). $y = y_1 + \dfrac1v$ 라서 역수를 더해요. $y_1$ 을 빼먹거나 역수를 안 취하는 실수가 많아요.
 Q mc
-q: $y' = y^2 - \dfrac{y}{x} - \dfrac{1}{x^2}$ 의 특수해를 후보 대입으로 찾으면?
-a: $y_1 = \dfrac{1}{x}$
-w: $y_1 = x$
-w: $y_1 = x^2$
-w: $y_1 = e^{x}$
-e: $y = \dfrac1x$ 를 넣으면 좌변 $-\dfrac{1}{x^2}$, 우변 $\dfrac{1}{x^2} - \dfrac{1}{x^2} - \dfrac{1}{x^2} = -\dfrac{1}{x^2}$ 로 같아요. 계수에 $\dfrac1x$ 이 보이면 $\dfrac{a}{x}$ 꼴부터 시도해요.
+q: $y' = \cos x - (\tan x)\,y + \dfrac{y^2}{\cos x}$ 의 특수해를 후보 대입으로 찾으면?
+a: $y_1 = \sin x$
+w: $y_1 = \cos x$
+w: $y_1 = \tan x$
+w: $y_1 = 1$
+e: 계수에 삼각함수가 있으면 $\sin x,\; \cos x$ 부터 넣어봐요. $y = \sin x$ 이면 우변 $= \cos x - \dfrac{\sin^2 x}{\cos x} + \dfrac{\sin^2 x}{\cos x} = \cos x$ 로 $y' = \cos x$ 와 같아요 (해설 205번 유형).
 Q mc
-q: 위 식 $y' = y^2 - \dfrac{y}{x} - \dfrac{1}{x^2}$ 의 일반해는?
-a: $y = \dfrac{1}{x} + \dfrac{2x}{C - x^2}$
-w: $y = \dfrac{1}{x} + \dfrac{x}{C - x^2}$
-w: $y = \dfrac{2x}{C - x^2}$
-w: $y = \dfrac{1}{x} + \dfrac{C - x^2}{2x}$
-e: $q = -\dfrac1x,\; r = 1,\; y_1 = \dfrac1x$ 라서 $v' + \left(-\dfrac1x + \dfrac2x\right)v = -1$, 즉 $(xv)' = -x$. $v = \dfrac{C - x^2}{2x}$ 이고 $y = \dfrac1x + \dfrac1v$ 예요.
+q: 위 식 $y' = \cos x - (\tan x)\,y + \dfrac{y^2}{\cos x}$ 의 일반해는?
+a: $y = \sin x + \dfrac{1}{C\cos x - \sin x}$
+w: $y = \sin x + \dfrac{1}{C\cos x + \sin x}$
+w: $y = \dfrac{1}{C\cos x - \sin x}$
+w: $y = C\cos x$
+e: $q = -\tan x,\; r = \dfrac{1}{\cos x},\; y_1 = \sin x$ 라서 $q + 2ry_1 = -\tan x + 2\tan x = \tan x$. $v' + (\tan x)v = -\dfrac{1}{\cos x}$ 에 $\mu = \dfrac{1}{\cos x}$ 를 곱하면 $\left(\dfrac{v}{\cos x}\right)' = -\dfrac{1}{\cos^2 x}$, $v = C\cos x - \sin x$. $\int\sec^2 x = \tan x$ 부호를 놓치면 $C\cos x + \sin x$ 가 나와요.
 ## 08 | 1계 ODE | 활용: 토리첼리 법칙
 c: 구멍으로 나가는 물의 속도는 **토리첼리 법칙** $v = \sqrt{2gh}$ 예요.
 c: 단면적 $A$인 탱크, 구멍 면적 $a$: $A\dfrac{dh}{dt} = -a\sqrt{2gh}$. 변수분리하면 $\sqrt{h}$ 가 시간에 대해 일정하게 줄어요.
