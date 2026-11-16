@@ -47,6 +47,20 @@ class ParseTimeTest(unittest.TestCase):
                 cli.parse_time(bad)
 
 
+class SegmentsTest(unittest.TestCase):
+    def test_parse_times(self):
+        self.assertEqual(cli.parse_times("0:45, 1:30,"), [45, 90])
+        self.assertEqual(cli.parse_times("7"), [7])
+        for bad in ["", ",", "0:45,abc"]:
+            with self.assertRaises(argparse.ArgumentTypeError, msg=bad):
+                cli.parse_times(bad)
+
+    def test_segment_paths(self):
+        self.assertEqual(cli.segment_paths("a/song.mp4", 1), ["a/song.mp4"])
+        self.assertEqual(cli.segment_paths("a/song.preview.mp4", 2),
+                         ["a/song.preview-1.mp4", "a/song.preview-2.mp4"])
+
+
 class CliTest(unittest.TestCase):
     def setUp(self):
         self.dir = tempfile.mkdtemp()
@@ -122,6 +136,27 @@ class CliTest(unittest.TestCase):
              "stream=width,height,r_frame_rate", "-of", "json", out],
             capture_output=True, text=True, check=True).stdout)["streams"][0]
         self.assertEqual((info["width"], info["height"], info["r_frame_rate"]), (540, 960, "15/1"))
+
+    @unittest.skipUnless(HAVE_FFMPEG, "ffmpeg 없음")
+    def test_multiple_segments(self):
+        msg = self.run_cli("render", self.lrc, "--start", "1,4.5", "--duration", "2,1.5",
+                           "--fps", "5", "-o", os.path.join(self.dir, "s.mp4"))
+        for name, dur in [("s-1.mp4", 2), ("s-2.mp4", 1.5)]:
+            path = os.path.join(self.dir, name)
+            self.assertIn(path, msg)
+            got = float(subprocess.run(
+                ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of",
+                 "default=nw=1:nk=1", path], capture_output=True, text=True, check=True).stdout)
+            self.assertAlmostEqual(got, dur, delta=0.25)
+
+    def test_segment_errors_before_rendering(self):
+        with self.assertRaises(SystemExit) as cm:
+            self.run_cli("render", self.lrc, "--start", "1,2,3", "--duration", "2,2")
+        self.assertIn("--start 개수(3)", str(cm.exception))
+        with self.assertRaises(SystemExit) as cm:
+            self.run_cli("render", self.lrc, "--start", "1,99", "-o", os.path.join(self.dir, "e.mp4"))
+        self.assertIn("곡 길이", str(cm.exception))
+        self.assertFalse(os.path.exists(os.path.join(self.dir, "e-1.mp4")))  # 하나도 안 만듦
 
     @unittest.skipUnless(HAVE_FFMPEG, "ffmpeg 없음")
     def test_duration_is_capped_at_song_end(self):

@@ -35,6 +35,14 @@ def parse_time(text: str) -> float:
     return int(minutes or 0) * 60 + seconds
 
 
+def parse_times(text: str) -> list[float]:
+    """'0:45,1:30' 처럼 쉼표로 나눈 여러 시간."""
+    parts = [p for p in text.split(",") if p.strip()]
+    if not parts:
+        raise argparse.ArgumentTypeError(f"시간이 없습니다: {text!r}")
+    return [parse_time(p) for p in parts]
+
+
 def probe_duration(path: str) -> float:
     out = subprocess.run(
         ["ffprobe", "-v", "error", "-show_entries", "format=duration",
@@ -91,6 +99,14 @@ class ProgressPrinter:
         self.stream.flush()
 
 
+def segment_paths(base: str, n: int) -> list[str]:
+    """구간이 여러 개면 base 이름 뒤에 -1, -2 ...를 붙인다."""
+    if n == 1:
+        return [base]
+    root, ext = os.path.splitext(base)
+    return [f"{root}-{k}{ext}" for k in range(1, n + 1)]
+
+
 def cmd_render(args) -> None:
     song_len = probe_duration(args.audio) if args.audio else None
     lyrics = _apply_info(args, lrc.load(args.lrc, duration=song_len))
@@ -98,26 +114,34 @@ def cmd_render(args) -> None:
         raise SystemExit(f"가사 줄이 없습니다: {args.lrc}")
 
     end_of_song = song_len if song_len is not None else lyrics.lines[-1].end
-    if args.start >= end_of_song:
-        raise SystemExit(f"--start({args.start:g}s)가 곡 길이({end_of_song:g}s)를 넘습니다")
-    duration = args.duration or end_of_song - args.start
-    duration = min(duration, end_of_song - args.start)
+    starts = args.start
+    durations = args.duration or [None]
+    if len(durations) == 1:
+        durations = durations * len(starts)
+    elif len(durations) != len(starts):
+        raise SystemExit(f"--duration은 1개이거나 --start 개수({len(starts)})와 같아야 합니다")
+    segments = []
+    for start, duration in zip(starts, durations):  # 렌더 전에 모든 구간을 먼저 확인
+        if start >= end_of_song:
+            raise SystemExit(f"--start({start:g}s)가 곡 길이({end_of_song:g}s)를 넘습니다")
+        segments.append((start, min(duration or end_of_song - start, end_of_song - start)))
 
-    clip = lyrics.clip(args.start, args.start + duration)
-    out = args.out or os.path.splitext(args.lrc)[0] + ".mp4"
     if args.preview:
         opts = VideoOptions(fps=min(args.fps, 15), preset="ultrafast", crf=28)
-        if not args.out:
-            out = os.path.splitext(args.lrc)[0] + ".preview.mp4"
+        base = args.out or os.path.splitext(args.lrc)[0] + ".preview.mp4"
     else:
         opts = VideoOptions(fps=args.fps)
-    t0 = time.perf_counter()
-    progress = ProgressPrinter(sys.stderr) if sys.stderr.isatty() else None
-    drawn = render_video(clip, out, duration, _renderer(args), opts,
-                         audio=args.audio, audio_start=args.start, on_progress=progress)
-    if progress:
-        progress.done()
-    print(f"{out}  ({duration:.1f}s, 그린 프레임 {drawn}장, {time.perf_counter() - t0:.1f}s 소요)")
+        base = args.out or os.path.splitext(args.lrc)[0] + ".mp4"
+    renderer = _renderer(args)
+    for (start, duration), out in zip(segments, segment_paths(base, len(segments))):
+        clip = lyrics.clip(start, start + duration)
+        t0 = time.perf_counter()
+        progress = ProgressPrinter(sys.stderr) if sys.stderr.isatty() else None
+        drawn = render_video(clip, out, duration, renderer, opts,
+                             audio=args.audio, audio_start=start, on_progress=progress)
+        if progress:
+            progress.done()
+        print(f"{out}  ({duration:.1f}s, 그린 프레임 {drawn}장, {time.perf_counter() - t0:.1f}s 소요)")
 
 
 def cmd_frame(args) -> None:
@@ -151,8 +175,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     r = sub.add_parser("render", parents=[common], help="mp4 영상 만들기")
     r.add_argument("--audio", help="음원 파일")
-    r.add_argument("--start", type=parse_time, default=0.0, help="시작 지점 (예: 0:45)")
-    r.add_argument("--duration", type=parse_time, help="길이 (기본: 곡 끝까지)")
+    r.add_argument("--start", type=parse_times, default=[0.0],
+                   help="시작 지점 (예: 0:45). 쉼표로 여러 개 주면 구간마다 영상 하나씩: 0:45,1:30")
+    r.add_argument("--duration", type=parse_times,
+                   help="길이 (기본: 곡 끝까지). 하나면 모든 구간 공통, 여러 개면 구간마다: 20,15")
     r.add_argument("--fps", type=int, default=30)
     r.add_argument("--preview", action="store_true",
                    help="빠른 미리보기: 절반 해상도·15fps, 기본 출력 이름 *.preview.mp4")

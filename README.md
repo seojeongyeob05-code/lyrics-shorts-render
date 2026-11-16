@@ -19,6 +19,7 @@ python3 -m shorts frame song.lrc --bg bg.jpg --at 0:50
 - `--cover 앨범아트.jpg`: 곡 정보와 가사 사이에 앨범 아트. 모양은 스타일의 `cover_shape`(`rounded`/`circle`/`square`), 크기 `cover_size`, 위치 `cover_y`
 - `--preview`: 절반 해상도·15fps로 5배쯤 빠르게 뽑아 보기(`노래.preview.mp4`). 확인 후 옵션을 빼고 다시 렌더
 - 시간은 `45`, `0:45`, `1:02.5` 모두 가능
+- 여러 구간 한 번에: `--start 0:45,1:30 --duration 20` → `노래-1.mp4`, `노래-2.mp4` (길이도 `20,15`처럼 구간마다 줄 수 있음)
 - `--duration`을 빼면 곡 끝까지(음원이 없으면 마지막 가사 줄까지)
 - 폰트는 한글 폰트를 자동으로 찾음. 직접 지정: `--font 경로` 또는 환경변수 `SHORTS_FONT`
 
