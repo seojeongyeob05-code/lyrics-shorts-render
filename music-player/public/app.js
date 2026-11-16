@@ -7,6 +7,7 @@ import { clickSelection, pruneSelection } from './selection.js';
 import { planPlaylistAdd } from './playlist-add.js';
 import { createListenTracker, recentTracks, topTracks } from './listening.js';
 import { createSync, stamp, undo, jumpTo, missingCount, toLrc, lrcTime, hasChanges } from './lyric-sync.js';
+import { SHORTCUTS, OTHER_SHORTCUTS, findShortcut } from './shortcuts.js';
 
 // ───────────── 유틸 ─────────────
 const $ = (sel) => document.querySelector(sel);
@@ -1197,11 +1198,12 @@ function showMenu(anchor, items) {
 }
 const hideMenu = () => { $('#menu').hidden = true; };
 
-function openDialog(title, children, { ok = true } = {}) {
+function openDialog(title, children, { ok = true, cancelLabel = '취소' } = {}) {
   const dlg = $('#dialog');
   $('#dialog-title').textContent = title;
   $('#dialog-body').replaceChildren(...children);
   $('#dialog-ok').hidden = !ok;
+  dlg.querySelector('button[value="cancel"]').textContent = cancelLabel;
   dlg.returnValue = '';
   return new Promise((resolve) => {
     dlg.addEventListener('close', () => resolve(dlg.returnValue), { once: true });
@@ -1419,16 +1421,46 @@ addEventListener('keydown', (e) => {
     state.selected = new Set(state.shown.map(rowKey));
     renderSelection();
   }
-  if (e.key === '/' && !e.target.closest('input, textarea, dialog') && !$('#app').hidden) {
-    e.preventDefault();
-    $('#search').focus();
-  }
-  const typing = e.target.closest('input, textarea, button, dialog');
-  if (e.code === 'Space' && !typing && !$('#app').hidden) {
-    e.preventDefault();
-    togglePlay();
-  }
+  // 입력 중이거나 창(대화상자)이 열려 있으면 단축키를 쓰지 않는다.
+  if ($('#app').hidden || e.target.closest('input, textarea, select, dialog, [contenteditable]')) return;
+  const action = findShortcut(e);
+  if (!action) return;
+  if (action === 'togglePlay' && e.target.closest('button')) return; // 버튼 위의 Space는 그 버튼을 누름
+  e.preventDefault();
+  SHORTCUT_ACTIONS[action]();
 });
+
+// ───────────── 키보드 단축키 ─────────────
+const seekBy = (sec) => {
+  if (!audio.getAttribute('src')) return;
+  audio.currentTime = Math.min(Math.max(audio.currentTime + sec, 0), audio.duration || 0);
+};
+
+const SHORTCUT_ACTIONS = {
+  togglePlay,
+  seekBack: () => seekBy(-5),
+  seekForward: () => seekBy(5),
+  prev,
+  next: () => next(),
+  mute: () => $('#btn-mute').click(),
+  shuffle: toggleShuffle,
+  repeat: cycleRepeat,
+  lyrics: () => togglePanel('lyrics'),
+  queue: () => togglePanel('queue'),
+  search: () => $('#search').focus(),
+  help: () => showShortcuts(),
+};
+
+function showShortcuts() {
+  const row = ({ keys, label }) => h('tr', {},
+    h('td', {}, keys.flatMap((k, i) => [i ? ' + ' : null, h('kbd', {}, k)])),
+    h('td', {}, label));
+  openDialog('키보드 단축키', [
+    h('table', { class: 'shortcut-table' }, h('tbody', {}, [...SHORTCUTS, ...OTHER_SHORTCUTS].map(row))),
+  ], { ok: false, cancelLabel: '닫기' });
+}
+
+$('#shortcut-help').addEventListener('click', showShortcuts);
 
 // ───────────── 시작 ─────────────
 renderPlayer();
