@@ -86,7 +86,26 @@ main.play { display: grid; gap: 22px; grid-template-columns: minmax(0, 1.1fr) mi
 
 /* --- dialogue --- */
 .talk { background: var(--panel); display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; min-width: 0; height: min(660px, 80vh); border: 2px solid var(--frame); box-shadow: 0 0 0 2px var(--frame-dark), inset 0 0 0 2px var(--frame-dark); }
-@media (max-width: 880px) { .talk { height: 560px; } }
+/* Phone: compact header, the map sticks to the top with the arrow pad over its bottom-right wall corner,
+   and the dialogue fills the rest of the screen, so walking and talking are both visible. */
+@media (max-width: 880px) {
+  body { padding-block: 10px 16px; }
+  .app { gap: 10px; }
+  .brand h1 { font-size: 24px; }
+  .brand p, .hint, #goalMeta { display: none; }
+  .clock { font-size: 18px; padding: 0 8px; }
+  .goal { padding: 8px 12px; gap: 2px; }
+  .goal strong { font-size: 14px; }
+  main.play { gap: 10px; }
+  .mapwrap { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-bottom: 6px; display: block; }
+  .pad { position: absolute; right: 6px; bottom: 12px; grid-template-columns: repeat(3, 30px); grid-template-rows: repeat(2, 28px); gap: 3px; z-index: 2; }
+  .pad button { font-size: 14px; padding: 0; opacity: 0.92; }
+  .talk { height: max(300px, calc(100dvh - (100vw - 32px) * 0.8 - 30px)); }
+  .talk .controls { padding: 8px; gap: 8px; }
+  .controls .chips { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+  .controls .chip { flex: none; }
+  .pad { right: 4px; grid-template-columns: repeat(3, 27px); grid-template-rows: repeat(2, 26px); }
+}
 .talk .who { padding: 10px 14px; border-bottom: 2px solid var(--frame-dark); background: var(--bg-2); font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 8px; }
 .talk .who b { color: var(--ink); }
 .swap { border: 2px solid var(--amber); background: var(--bg); padding: 0 8px; font-size: 12px; margin-left: 4px; }
