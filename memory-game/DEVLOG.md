@@ -2,6 +2,22 @@
 
 배포 링크(비공개): https://claude.ai/artifact/JwYf98yBEL1xhmtUwnTyhv (매일 같은 링크에 재배포)
 
+## 2026-11-17 (18일차)
+
+### 한 일
+- **상황 4에 랜드마크 안내 추가**: 실제로 길을 알려줄 때 자주 쓰는 "It's next to the gym", "by the vending machine" 같은 말을 받아준다.
+  - next to / beside / near / by / close to + 방 이름(또는 자판기)을 알아듣는다. 벽을 맞댄 옆방이면 맞은 것으로 친다.
+  - 맞으면 방문객이 정확한 방향 표현으로 되받는다: "Next to the mail room... so ahead on your right? Got it!" 방향 단어를 몰라도 통하고, 정확한 표현을 듣게 된다.
+  - 옆방이 아닌 곳을 기준으로 말하면 방문객이 그 근처의 엉뚱한 방에 다녀온다.
+  - 성공 화면에서 "It's ahead on your right, next to the mail room."처럼 방향과 랜드마크를 합친 문장을 보여준다.
+  - 도감에 next to, vending machine을 추가했다(할머니 예문 포함).
+- 헤드리스 브라우저로 랜드마크 오답·방 기준 정답·자판기 기준 정답, 상황 1~4 회귀 테스트를 확인했다.
+
+### 다음 할 일
+- GPT로 만든 NPC 흉상 초상화가 오면 대화창 얼굴 자리에 연결
+- 휴대폰 키보드가 올라올 때 입력칸이 가려지지 않는지 실기기 확인
+- 할머니가 다시 볼 단어가 여러 개일 때 두 번째 대화에서 다음 예문 들려주기
+
 ## 2026-11-16 (17일차)
 
 ### 한 일

@@ -340,6 +340,15 @@ function dirOf(raw, I) {
   if (A) return 'b';
   return null;
 }
+// "Next to the gym", "by the vending machine": rooms that share a wall, and the doors a landmark stands beside.
+const NEIGHBORS = { a: ['b', 'd'], b: ['a', 'c'], c: ['b', 'e'], d: ['a'], e: ['c'] };
+function landmarkIn(raw) {
+  const m = raw.toLowerCase().match(/\b(next to|beside|near|by|close to)\b(.*)/);
+  if (!m) return null;
+  if (/vending|machine|drink/.test(m[2])) return { name: 'vending machine', near: ['e'] };
+  const room = roomIn(m[2]);
+  return room ? { name: ROOMS[room].name.toLowerCase(), near: NEIGHBORS[S.slotOf[room]] } : null;
+}
 function roomIn(raw) {
   const t = raw.toLowerCase();
   const map = [[/restroom|toilet|bathroom/, 'restroom'], [/coffee|cafe|café|daily grind/, 'cafe'], [/mail/, 'mail'], [/gym/, 'gym'], [/management/, 'management'], [/security|guard/, 'security'], [/staff/, 'staff']];
@@ -406,7 +415,7 @@ const VOCAB = [
   ['found', '찾았다, 발견했다'], ['lost and found', '분실물 보관소'], ['left', '왼쪽'], ['right', '오른쪽'], ['straight ahead', '곧장 앞으로'],
   ['color', '색깔'], ['black', '검은색'], ['brown', '갈색'], ['red', '빨간색'], ['blue', '파란색'], ['look like', '~처럼 생기다'],
   ['inside', '안에'], ['card', '카드'], ['photo', '사진'], ['ticket', '표'], ['restroom', '화장실'], ['mail', '우편'],
-  ['gym', '헬스장'], ['management office', '관리사무소'], ['staff', '직원'], ['only', '~만, 오직'], ['package', '택배, 소포'], ['help', '돕다'], ['closed', '문을 닫은'], ['sign', '서명하다'], ['locker', '보관함'], ['coffee shop', '커피숍'], ['ahead', '앞쪽에'], ['too big', '너무 큰'], ['apartment', '아파트, 집 호수'], ['code', '비밀번호'], ['parcel', '소포, 택배'],
+  ['gym', '헬스장'], ['management office', '관리사무소'], ['staff', '직원'], ['only', '~만, 오직'], ['package', '택배, 소포'], ['help', '돕다'], ['closed', '문을 닫은'], ['sign', '서명하다'], ['locker', '보관함'], ['next to', '~ 옆에'], ['vending machine', '자판기'], ['coffee shop', '커피숍'], ['ahead', '앞쪽에'], ['too big', '너무 큰'], ['apartment', '아파트, 집 호수'], ['code', '비밀번호'], ['parcel', '소포, 택배'],
   ['thirteen', '13'], ['thirty', '30'], ['fourteen', '14'], ['forty', '40'], ['fifteen', '15'], ['fifty', '50'], ['sixteen', '16'], ['sixty', '60'], ['signature', '서명'],
   ['small', '작은'], ['medium', '중간'], ['large', '큰'], ['size', '크기'], ['milk', '우유'], ['oat', '귀리'], ['almond', '아몬드'],
   ['to go', '가지고 갈게요 (포장)'], ['for here', '여기서 먹을게요'], ['favor', '부탁'],
@@ -448,6 +457,8 @@ const EXAMPLES = {
   "signature": ["My signature is very curly.", "내 서명은 아주 꼬불꼬불해."],
   "coffee shop": ["There's a nice coffee shop in our building.", "우리 건물에 괜찮은 커피숍이 있어."],
   "ahead": ["The bus stop is just ahead.", "버스 정류장은 바로 앞에 있어."],
+  "next to": ["My apartment is next to the elevator.", "우리 집은 엘리베이터 옆이야."],
+  "vending machine": ["The vending machine ate my coin!", "자판기가 내 동전을 먹었어!"],
   "locker": ["My gym locker is number seven.", "내 헬스장 사물함은 7번이야."],
   "too big": ["This coat is too big for me.", "이 코트는 나한테 너무 커."],
   "apartment": ["My apartment is on the third floor.", "우리 집은 3층이야."],
@@ -1258,7 +1269,9 @@ const R = {
     const slot = S.slotOf[q], d = SLOTS[slot], V = VISIT[q];
     if (I.has('korean')) { miss('한국어', `"${raw}"`, '방문객은 한국어를 못 알아들어요. left, right, straight ahead 같은 말이나 방향 가리키기로 알려주세요.'); return ["Sorry, I only speak English...", '죄송해요, 전 영어밖에 못 해요…', false]; }
     if (I.has('confused')) return [`(She holds up her map and speaks slowly.) Where... is... the ${V.word.toUpperCase()}?`, `(지도를 들어 보이며 천천히) ${ROOMS[q].ko}… 어디… 예요?`, true];
-    const ans = dirOf(raw, I);
+    let ans = dirOf(raw, I), via = null;
+    const lm = !ans && landmarkIn(raw);
+    if (lm) { via = lm.name; ans = lm.near.includes(slot) ? slot : lm.near[0]; }
     if (!ans) {
       if (I.has('yes') || I.has('no')) { miss('무관', `"${raw}"`, `"${V.ask}"는 위치를 묻는 질문이에요. yes나 no가 아니라 방향(left, right, straight ahead)을 말해야 했어요.`, ['left', 'right', 'straight ahead']); return ['Um... okay, but which way is it?', '음… 네, 근데 어느 쪽이에요?', false]; }
       if (I.has('greet')) return [`Hi! ${V.ask}`, `안녕하세요! ${V.ko}`, true];
@@ -1266,10 +1279,11 @@ const R = {
       return ['Sorry? Which way is it?', '네? 어느 쪽이에요?', false];
     }
     if (ans === slot) {
-      S.vi++; S.phrases.push([raw, `It's ${d.dir}.`]);
+      S.vi++; S.phrases.push([raw, via ? `It's ${d.dir}, next to the ${via}.` : `It's ${d.dir}.`]);
       const next = S.vq[S.vi];
-      if (!next) { S.won = true; setTimeout(win, 900); return [`${cap(d.dir)}? Got it! Thank you so much, you're a lifesaver!`, `${d.dirKo}이요? 알겠어요! 정말 고마워요, 덕분에 살았어요!`, true]; }
-      return [`${cap(d.dir)}? Got it, thanks! Oh, one more thing. ${VISIT[next].ask}`, `${d.dirKo}이요? 알겠어요, 고마워요! 아, 하나 더요. ${VISIT[next].ko}`, true];
+      const heard = via ? `Next to the ${via}... so ${d.dir}?` : `${cap(d.dir)}?`, heardKo = via ? `${via} 옆이면… ${d.dirKo}이요?` : `${d.dirKo}이요?`;
+      if (!next) { S.won = true; setTimeout(win, 900); return [`${heard} Got it! Thank you so much, you're a lifesaver!`, `${heardKo} 알겠어요! 정말 고마워요, 덕분에 살았어요!`, true]; }
+      return [`${heard} Got it, thanks! Oh, one more thing. ${VISIT[next].ask}`, `${heardKo} 알겠어요, 고마워요! 아, 하나 더요. ${VISIT[next].ko}`, true];
     }
     const side = { a: 'L', d: 'L', c: 'R', e: 'R', b: 'C' }, went = ROOMS[S.roomAt[ans]];
     const sameSide = side[ans] === side[slot] && side[ans] !== 'C', opposite = (side[ans] === 'L' && side[slot] === 'R') || (side[ans] === 'R' && side[slot] === 'L');
