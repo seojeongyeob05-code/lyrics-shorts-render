@@ -271,6 +271,22 @@ test('플레이리스트: 추가, 순서 변경, 제거', async () => {
   assert.equal(lists[0].trackCount, 1);
 });
 
+test('플레이리스트 내보내기: m3u8 본문과 한글 파일 이름', async () => {
+  const pl = await (await call('POST', '/api/playlists', { body: { name: '출근길: 아침/저녁' } })).json();
+  await call('POST', `/api/playlists/${pl.id}/tracks`, { body: { trackIds: [trackId, trackId] } });
+  const res = await call('GET', `/api/playlists/${pl.id}/export.m3u8`);
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get('content-type'), /^audio\/x-mpegurl/);
+  const disposition = res.headers.get('content-disposition');
+  assert.match(disposition, /filename="____ _____\.m3u8"/);
+  assert.ok(disposition.includes(`filename*=UTF-8''${encodeURIComponent('출근길_ 아침_저녁.m3u8')}`));
+  const t = (await (await call('GET', '/api/tracks')).json()).find((x) => x.id === trackId);
+  const name = t.artist ? `${t.artist} - ${t.title}` : t.title;
+  assert.equal(await res.text(), `#EXTM3U\n#EXTINF:1,${name}\n${name}\n#EXTINF:1,${name}\n${name}\n`);
+  assert.equal((await call('GET', '/api/playlists/9999/export.m3u8')).status, 404);
+  assert.equal((await call('DELETE', `/api/playlists/${pl.id}`)).status, 204);
+});
+
 test('여러 곡 삭제: 한 번에 지우고, 없는 곡은 따로 알려 주며, 잘못된 요청은 거부한다', async () => {
   const form = new FormData();
   form.append('files', new Blob([makeWav(5)], { type: 'audio/wav' }), '지울 곡 1.wav');

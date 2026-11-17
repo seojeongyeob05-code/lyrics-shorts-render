@@ -8,6 +8,7 @@ import { planPlaylistAdd } from './playlist-add.js';
 import { createListenTracker, recentTracks, topTracks } from './listening.js';
 import { createSync, stamp, undo, jumpTo, missingCount, toLrc, lrcTime, hasChanges } from './lyric-sync.js';
 import { SHORTCUTS, OTHER_SHORTCUTS, findShortcut } from './shortcuts.js';
+import { parseM3u, matchEntries, decodeText } from './m3u.js';
 
 // ───────────── 유틸 ─────────────
 const $ = (sel) => document.querySelector(sel);
@@ -243,6 +244,7 @@ function renderMain() {
   if (isPlaylist) {
     actions.push(
       h('button', { class: 'btn', onclick: safe(renamePlaylist) }, '이름 변경'),
+      h('button', { class: 'btn', disabled: !rows.length, onclick: () => exportPlaylist(view.id) }, '내보내기'),
       h('button', { class: 'btn danger', onclick: safe(deletePlaylist) }, '삭제'),
     );
   } else if (view.type === 'artist' || view.type === 'album') {
@@ -413,6 +415,28 @@ async function createPlaylist() {
   const playlist = await api('POST', '/api/playlists', { name });
   await loadPlaylists();
   return playlist;
+}
+
+// .m3u8 파일로 내려받는다 (다른 플레이어에서 열거나 백업용). 파일 이름은 서버가 정한다.
+function exportPlaylist(id) {
+  const a = h('a', { href: `/api/playlists/${id}/export.m3u8`, download: '' });
+  document.body.append(a);
+  a.click();
+  a.remove();
+}
+
+// .m3u/.m3u8의 곡을 라이브러리에서 찾아 새 플레이리스트로 만든다.
+async function importPlaylist(file) {
+  const entries = parseM3u(decodeText(await file.arrayBuffer()));
+  if (!entries.length) return toast('플레이리스트 파일에 곡이 없습니다');
+  const { ids, unmatched } = matchEntries(entries, state.tracks);
+  if (!ids.length) return toast(`라이브러리에서 찾은 곡이 없습니다 (${entries.length}곡 모두 없음)`, 6000);
+  const name = file.name.replace(/\.m3u8?$/i, '').trim().slice(0, 100) || '가져온 플레이리스트';
+  const playlist = await api('POST', '/api/playlists', { name });
+  await api('POST', `/api/playlists/${playlist.id}/tracks`, { trackIds: ids });
+  await loadPlaylists();
+  await openView({ type: 'playlist', id: playlist.id });
+  toast(`'${name}' 플레이리스트를 만들었습니다: ${ids.length}곡${unmatched.length ? ` (라이브러리에 없는 곡 ${unmatched.length}개 건너뜀)` : ''}`, 6000);
 }
 
 async function renamePlaylist() {
@@ -1379,6 +1403,13 @@ $('#logout').addEventListener('click', safe(async () => {
 $('#search').addEventListener('input', (e) => {
   state.query = e.target.value;
   renderMain();
+});
+
+$('#import-playlist').addEventListener('click', () => $('#m3u-input').click());
+$('#m3u-input').addEventListener('change', (e) => {
+  const [file] = e.target.files;
+  e.target.value = '';
+  if (file) importPlaylist(file).catch((err) => toast(err.message));
 });
 
 $('#file-input').addEventListener('change', (e) => {

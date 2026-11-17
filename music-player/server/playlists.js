@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { transaction } from './db.js';
 import { toTrackJson } from './tracks.js';
+import { toM3u } from '../public/m3u.js';
 
 function cleanName(value) {
   const name = typeof value === 'string' ? value.trim() : '';
@@ -48,6 +49,20 @@ export function createPlaylistsRouter(db) {
       name: playlist.name,
       tracks: entries(playlist.id).map((row) => ({ ...toTrackJson(row), entryId: row.entry_id })),
     });
+  });
+
+  // .m3u8로 내려받기. 한글 이름이 깨지지 않도록 파일 이름을 UTF-8(filename*)로도 보낸다.
+  router.get('/:id/export.m3u8', (req, res) => {
+    const playlist = findOwned(req, res);
+    if (!playlist) return;
+    const tracks = entries(playlist.id).map(toTrackJson);
+    const fileName = `${playlist.name.replace(/[\\/:*?"<>|]/g, '_')}.m3u8`;
+    const asciiName = fileName.replace(/[^\x20-\x7e]/g, '_').replace(/"/g, '_');
+    res.set({
+      'Content-Type': 'audio/x-mpegurl; charset=utf-8',
+      'Content-Disposition': `attachment; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+    });
+    res.send(toM3u(tracks));
   });
 
   router.patch('/:id', (req, res) => {
