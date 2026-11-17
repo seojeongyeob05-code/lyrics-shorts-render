@@ -140,3 +140,12 @@
 - 렌더러(폰트·배경·앨범 아트)는 한 번만 준비해서 구간마다 재사용
 - 테스트 4개 추가(전체 94개 통과)
 - 로드맵 3단계(18~21) 추가. 다음: 18 — 곡 설정 파일(`song.json`) 하나로 렌더
+
+## 2026-11-17 — 18일차: 곡 설정 파일
+- `shorts/project.py`: `노래.json`에 lyrics·audio·bg·cover·font·style·title·artist·start·duration·fps·preview·out을 적어 두고 `python -m shorts render 노래.json`/`frame 노래.json`. 경로는 JSON 위치 기준, 시간은 `45`/`"0:45"`/`"0:45,1:30"`/`["0:45", 90]` 모두 가능. 오타·없는 파일·잘못된 값은 렌더 전에 항목 이름과 함께 에러
+- 명령줄 옵션이 설정 파일보다 우선(`--style`/`--start`/`--fps` 기본값을 설정 파일 반영 뒤에 채우도록 바꿈). 출력 이름 기본값은 설정 파일 이름 기준
+- `style`에 스타일 dict를 직접 쓸 수 있게 `styles.style_from_dict()` 분리(`extends`는 설정 파일 옆 파일 또는 프리셋 이름)
+- 시간 파싱(`parse_time`/`parse_times`)을 `project.py`로 옮기고 cli에서 가져다 씀
+- `examples/demo/`: 직접 쓴 짧은 노래방 LRC + 설정 파일(인라인 sunset 스타일, 구간 2개). 렌더 결과물은 .gitignore
+- 테스트 8개 추가(전체 102개 통과)
+- 다음: 19 — `frame --guide`: 쇼츠 앱 UI(제목·버튼·설명)가 덮는 영역을 반투명으로 표시

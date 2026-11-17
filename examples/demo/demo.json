@@ -1,0 +1,10 @@
+{
+  "lyrics": "demo.lrc",
+  "style": {
+    "extends": "sunset",
+    "font_size": 76,
+    "cover_shape": "circle"
+  },
+  "start": ["0:00", "0:06"],
+  "duration": 6
+}

@@ -87,14 +87,24 @@ def load_style(name_or_path: str, _seen: tuple[str, ...] = ()) -> Style:
             data = json.load(f)
         except json.JSONDecodeError as e:
             raise ValueError(f"{path}: JSON 형식 오류 ({e})") from None
-    if not isinstance(data, dict):
-        raise ValueError(f"{path}: 최상위는 {{...}} 객체여야 합니다")
+    return style_from_dict(data, os.path.dirname(path), path, _seen + (path,))
 
-    base = load_style(data.pop("extends"), _seen + (path,)) if "extends" in data else Style()
+
+def style_from_dict(data, base_dir: str, where: str = "스타일",
+                    _seen: tuple[str, ...] = ()) -> Style:
+    """{"text_color": ...} 같은 dict로 Style을 만든다. 상대 경로는 base_dir 기준."""
+    if not isinstance(data, dict):
+        raise ValueError(f"{where}: 최상위는 {{...}} 객체여야 합니다")
+    data = dict(data)
+    if "extends" in data:
+        ext = data.pop("extends")
+        local = os.path.join(base_dir, ext)
+        base = load_style(local if os.path.isfile(local) else ext, _seen)
+    else:
+        base = Style()
     data.pop("description", None)
     unknown = sorted(set(data) - set(_FIELDS))
     if unknown:
-        raise ValueError(f"{path}: 알 수 없는 항목 {', '.join(unknown)} "
+        raise ValueError(f"{where}: 알 수 없는 항목 {', '.join(unknown)} "
                          f"(쓸 수 있는 항목: {', '.join(_FIELDS)})")
-    base_dir = os.path.dirname(path)
     return dataclasses.replace(base, **{k: _convert(k, v, base_dir) for k, v in data.items()})

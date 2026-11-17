@@ -1,3 +1,5 @@
 __pycache__/
 *.pyc
 out/
+examples/**/*.mp4
+examples/**/*.png

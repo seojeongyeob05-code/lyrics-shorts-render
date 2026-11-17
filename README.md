@@ -23,6 +23,32 @@ python3 -m shorts frame song.lrc --bg bg.jpg --at 0:50
 - `--duration`을 빼면 곡 끝까지(음원이 없으면 마지막 가사 줄까지)
 - 폰트는 한글 폰트를 자동으로 찾음. 직접 지정: `--font 경로` 또는 환경변수 `SHORTS_FONT`
 
+### 곡 설정 파일 하나로
+
+옵션이 길어지면 JSON 하나에 적어 두고 그 파일로 렌더합니다. 경로는 JSON 파일 위치 기준이고,
+명령줄 옵션을 함께 주면 그쪽이 우선입니다. 예시: `examples/demo/demo.json`
+
+```json
+{
+  "lyrics": "노래.lrc",
+  "audio": "노래.mp3",
+  "bg": "배경.jpg",
+  "cover": "앨범.jpg",
+  "style": "photo",
+  "title": "제목", "artist": "가수",
+  "start": ["0:45", "1:30"],
+  "duration": 20
+}
+```
+
+```
+python3 -m shorts render 노래.json             # 노래-1.mp4, 노래-2.mp4
+python3 -m shorts render 노래.json --preview   # 빠른 확인
+python3 -m shorts frame 노래.json --at 0:50    # 한 장면
+```
+
+`style`에는 프리셋 이름, 스타일 파일, 또는 `{"extends": "neon", "font_size": 80}`처럼 직접 적을 수 있습니다.
+
 ### 가사 타이밍 만들기 (LRC가 없을 때)
 
 `tools/lrc-sync.html`을 브라우저로 엽니다(폰도 됨). 음원을 고르고 가사를 붙여넣은 뒤,

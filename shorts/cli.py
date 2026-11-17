@@ -9,7 +9,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import re
 import subprocess
 import sys
 import time
@@ -18,30 +17,9 @@ from PIL import Image
 
 from . import lrc
 from .frame import FrameRenderer
-from .styles import PRESET_DIR, list_presets, load_style
+from .project import load_project, parse_time, parse_times
+from .styles import PRESET_DIR, list_presets, load_style, style_from_dict
 from .video import VideoOptions, render_video
-
-_TIME = re.compile(r"^(?:(\d+):)?(\d+(?:\.\d+)?)$")
-
-
-def parse_time(text: str) -> float:
-    """'45', '0:45', '1:02.5' 같은 표기를 초로."""
-    m = _TIME.match(text.strip())
-    if not m:
-        raise argparse.ArgumentTypeError(f"시간 형식이 아닙니다: {text!r} (예: 45, 0:45, 1:02.5)")
-    minutes, seconds = m.group(1), float(m.group(2))
-    if minutes is not None and seconds >= 60:
-        raise argparse.ArgumentTypeError(f"초는 60 미만이어야 합니다: {text!r}")
-    return int(minutes or 0) * 60 + seconds
-
-
-def parse_times(text: str) -> list[float]:
-    """'0:45,1:30' 처럼 쉼표로 나눈 여러 시간."""
-    parts = [p for p in text.split(",") if p.strip()]
-    if not parts:
-        raise argparse.ArgumentTypeError(f"시간이 없습니다: {text!r}")
-    return [parse_time(p) for p in parts]
-
 
 def probe_duration(path: str) -> float:
     out = subprocess.run(
@@ -64,7 +42,10 @@ def _apply_info(args, lyrics: lrc.Lyrics) -> lrc.Lyrics:
 
 def _renderer(args) -> FrameRenderer:
     try:
-        style = load_style(args.style)
+        if isinstance(args.style, dict):  # 곡 설정 파일에 직접 적은 스타일
+            style = style_from_dict(args.style, args.project_dir, "곡 설정 파일의 style")
+        else:
+            style = load_style(args.style)
     except ValueError as e:
         raise SystemExit(str(e)) from None
     if args.font:
@@ -128,10 +109,10 @@ def cmd_render(args) -> None:
 
     if args.preview:
         opts = VideoOptions(fps=min(args.fps, 15), preset="ultrafast", crf=28)
-        base = args.out or os.path.splitext(args.lrc)[0] + ".preview.mp4"
+        base = args.out or args.stem + ".preview.mp4"
     else:
         opts = VideoOptions(fps=args.fps)
-        base = args.out or os.path.splitext(args.lrc)[0] + ".mp4"
+        base = args.out or args.stem + ".mp4"
     renderer = _renderer(args)
     for (start, duration), out in zip(segments, segment_paths(base, len(segments))):
         clip = lyrics.clip(start, start + duration)
@@ -146,7 +127,7 @@ def cmd_render(args) -> None:
 
 def cmd_frame(args) -> None:
     lyrics = _apply_info(args, lrc.load(args.lrc))
-    out = args.out or os.path.splitext(args.lrc)[0] + ".png"
+    out = args.out or args.stem + ".png"
     _renderer(args).render(lyrics, args.at).save(out)
     print(out)
 
@@ -163,23 +144,23 @@ def build_parser() -> argparse.ArgumentParser:
     sub = p.add_subparsers(dest="command", required=True)
 
     common = argparse.ArgumentParser(add_help=False)
-    common.add_argument("lrc", help="LRC 가사 파일")
-    common.add_argument("-o", "--out", help="출력 파일 (기본: 가사 파일 이름)")
+    common.add_argument("lrc", help="LRC 가사 파일, 또는 곡 설정 파일(.json)")
+    common.add_argument("-o", "--out", help="출력 파일 (기본: 가사·설정 파일 이름)")
     common.add_argument("--bg", help="배경 이미지")
     common.add_argument("--cover", help="앨범 아트 이미지 (모양·크기·위치는 스타일의 cover_*)")
     common.add_argument("--font", help="폰트 파일 (기본: 스타일 설정 또는 한글 폰트 자동 탐색)")
     common.add_argument("--title", help="화면 위쪽 곡 제목 (기본: LRC [ti:], 빈 문자열이면 숨김)")
     common.add_argument("--artist", help="곡 제목 아래 가수 (기본: LRC [ar:], 빈 문자열이면 숨김)")
-    common.add_argument("--style", default="default",
+    common.add_argument("--style",
                         help="스타일 프리셋 이름 또는 JSON 파일 (목록: python -m shorts styles)")
 
     r = sub.add_parser("render", parents=[common], help="mp4 영상 만들기")
     r.add_argument("--audio", help="음원 파일")
-    r.add_argument("--start", type=parse_times, default=[0.0],
+    r.add_argument("--start", type=parse_times,
                    help="시작 지점 (예: 0:45). 쉼표로 여러 개 주면 구간마다 영상 하나씩: 0:45,1:30")
     r.add_argument("--duration", type=parse_times,
                    help="길이 (기본: 곡 끝까지). 하나면 모든 구간 공통, 여러 개면 구간마다: 20,15")
-    r.add_argument("--fps", type=int, default=30)
+    r.add_argument("--fps", type=int)
     r.add_argument("--preview", action="store_true",
                    help="빠른 미리보기: 절반 해상도·15fps, 기본 출력 이름 *.preview.mp4")
     r.set_defaults(func=cmd_render)
@@ -192,8 +173,34 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+_DEFAULTS = {"style": "default", "start": [0.0], "fps": 30}
+
+
+def resolve_args(args) -> argparse.Namespace:
+    """곡 설정 파일(.json)이면 그 값으로 빈 옵션을 채우고, 남은 옵션엔 기본값을 넣는다."""
+    args.project_dir = os.getcwd()
+    if args.lrc.lower().endswith(".json"):
+        try:
+            project = load_project(args.lrc)
+        except (OSError, ValueError) as e:
+            raise SystemExit(f"곡 설정 파일을 읽지 못했습니다: {e}") from None
+        args.project_dir, args.stem = project.pop("_base"), project.pop("_stem")
+        args.lrc = project.pop("lyrics")
+        for key, value in project.items():
+            if hasattr(args, key) and getattr(args, key) in (None, False):  # 명령줄 옵션이 우선
+                setattr(args, key, value)
+    else:
+        args.stem = os.path.splitext(args.lrc)[0]
+    for key, value in _DEFAULTS.items():
+        if getattr(args, key, "-") is None:
+            setattr(args, key, value)
+    return args
+
+
 def main(argv: list[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
+    if hasattr(args, "lrc"):
+        args = resolve_args(args)
     args.func(args)
 
 
