@@ -1087,9 +1087,11 @@ w: 같다
 w: $\dfrac{1}{c^2}$ 배
 e: 유출량이 $c$ 배로 줄어서 $T = \dfrac{A}{ca}\sqrt{\dfrac{2h_0}{g}}$, 즉 $\dfrac1c \approx 1.7$ 배예요. 강의 끝의 "그래프가 실제 실험과 일치할까?"에 대한 답이에요.
 ## 09 | 2계 ODE | 치환 계수내림
-c: **$y$가 없는** 식 $F(x, y', y'') = 0$: $p = y'$, $y'' = p'$
-c: **$x$가 없는** 식 $F(y, y', y'') = 0$: $p = y'$, $y'' = p\dfrac{dp}{dy}$
-c: 어느 쪽이든 2계가 1계로 내려가요.
+c: **$y$가 없는** 식 $F(x, y', y'') = 0$: $p = y'$ 로 치환하면 $y'' = p'$
+c: **$x$가 없는** 식 $F(y, y', y'') = 0$: $p = y'$ 로 치환하고 $y'' = p\dfrac{dp}{dy}$. 증명은 연쇄법칙이에요: $y'' = \dfrac{dp}{dx} = \dfrac{dp}{dy}\cdot\dfrac{dy}{dx} = p\dfrac{dp}{dy}$
+c: 어느 쪽이든 2계가 1계로 내려가요. $p$ 를 구한 뒤 $p = y'$ 을 한 번 더 적분해야 $y$ 가 나와요.
+c: 2계 ODE에는 미지상수가 **2개** ($C_1, C_2$) 생겨요. 상수끼리 곱·합을 덮어씌우는 건 괜찮지만, $C_1$ 과 $C_2$ 를 하나로 합치면 안 돼요 (Q&A 2번).
+c: $y'$, $y''$ 로만 이루어진 식(예: $y'' = (y')^2$)은 두 치환 모두 쓸 수 있어요. 보통 $y'' = p'$ 쪽이 더 간단해요.
 c: 내려온 1계 식이 변수분리가 안 되면 1계 **선형**으로 보고 적분인자를 써요. 초기조건이 있으면 $p$를 구한 직후 $y'(x_0)$ 로 $C_1$ 부터 정하면 계산이 쉬워져요.
 Q mc
 q: $x\,y'' + y' = 0$ 에서 $p = y'$ 로 치환하면 해는?
@@ -1097,7 +1099,7 @@ a: $y = C_1\ln|x| + C_2$
 w: $y = C_1x + C_2$
 w: $y = C_1e^{x} + C_2$
 w: $y = C_1x^2 + C_2$
-e: $xp' + p = 0 \Rightarrow p = \dfrac{C_1}{x} \Rightarrow y = C_1\ln|x| + C_2$
+e: $xp' + p = 0 \Rightarrow p = \dfrac{C_1}{x} \Rightarrow y = C_1\ln|x| + C_2$ (강의 예제 1). $p = y'$ 을 한 번 더 적분해야 $y$ 가 나와요. $p$ 를 $y$ 로 착각하면 $\dfrac{1}{x}$ 을 적분하지 않은 엉뚱한 답이 나와요.
 Q mc
 q: $x$가 없는 식 $y\,y'' = (y')^2$ 에서 $y''$ 는 무엇으로 바꿀까요?
 a: $p\dfrac{dp}{dy}$
@@ -1105,28 +1107,41 @@ w: $\dfrac{dp}{dx}$
 w: $y\dfrac{dp}{dx}$
 w: $p^2$
 e: 연쇄법칙: $y'' = \dfrac{dp}{dx} = \dfrac{dp}{dy}\dfrac{dy}{dx} = p\dfrac{dp}{dy}$
+Q ord
+q: $x$가 없는 식을 치환 계수내림으로 푸는 순서대로 쌓아보세요.
+s: $p = y'$, $y'' = p\dfrac{dp}{dy}$ 로 치환한다
+s: $p$ 와 $y$ 에 대한 1계 ODE를 풀어 $p = f(y)$ 를 얻는다
+s: $p = \dfrac{dy}{dx}$ 로 되돌려 $\dfrac{dy}{f(y)} = dx$ 로 변수분리한다
+s: 한 번 더 적분해 $C_1, C_2$ 가 있는 일반해를 쓴다
+e: 적분을 두 번 하니까 상수도 두 개가 생겨요.
 Q mc
 q: $y\,y'' = (y')^2$ 의 일반해는?
 a: $y = C_2e^{C_1x}$
 w: $y = C_1x + C_2$
 w: $y = C_1\ln x + C_2$
 w: $y = (C_1x + C_2)^2$
-e: $yp\dfrac{dp}{dy} = p^2 \Rightarrow \dfrac{dp}{p} = \dfrac{dy}{y} \Rightarrow p = C_1y$, 다시 변수분리하면 지수함수예요.
+e: $yp\dfrac{dp}{dy} = p^2 \Rightarrow \dfrac{dp}{p} = \dfrac{dy}{y} \Rightarrow p = C_1y$, 즉 $y' = C_1y$ 를 다시 변수분리하면 $y = C_2e^{C_1x}$. $x$ 가 없는 식인데 $y'' = p'$ 로 바꾸면 $x$ 와 $y$ 가 섞여서 풀리지 않아요.
 Q mc
-q: 치환 계수내림을 하면 ODE의 계는 어떻게 될까요?
-a: 하나 줄어든다 (2계 → 1계)
-w: 그대로다
-w: 하나 늘어난다
-w: 0계가 된다
-e: 이름 그대로 계수(계)를 내리는 방법이에요.
-
+q: $x$ 가 없는 식으로 보고 $y'' = -y$ 를 풀면?
+a: $y = C_1\sin(x + C_2)$
+w: $y = C_1\sin x + C_2$
+w: $y = C_1e^{-x} + C_2$
+w: $y = \sin(C_1x + C_2)$
+e: $p\dfrac{dp}{dy} = -y$ 를 적분하면 $p^2 = C_1^2 - y^2$, 즉 $\dfrac{dy}{\sqrt{C_1^2 - y^2}} = \pm dx$. $\arcsin\dfrac{y}{C_1} = \pm x + C_2$ 에서 $\pm$ 는 $\sin(-\theta) = -\sin\theta$ 로 상수에 흡수돼 $y = C_1\sin(x + C_2)$ (해설 217, 227번 유형). 상수를 $\sin$ 밖에 더하면 식이 맞지 않아요. 11강에서 배울 $A\cos x + B\sin x$ 와 같은 해예요.
+Q mc
+q: $y = C_1e^{x} + C_2$ 를 구했을 때, $C_1$ 과 $C_2$ 를 하나의 상수 $C$ 로 합쳐 $y = Ce^{x}$ 로 써도 될까요?
+a: 안 된다. 2계의 일반해에는 서로 독립인 상수가 2개 필요하다
+w: 된다. 상수끼리는 항상 덮어씌울 수 있다
+w: 된다. $C_2$ 는 $0$ 으로 두면 된다
+w: $x = 0$ 에서만 된다
+e: $C_1e^{x}$ 와 $C_2$ 는 곱해진 함수가 달라서 하나로 묶을 수 없어요. $2C$, $C + 3$ 처럼 상수 하나를 다른 상수로 바꾸는 것만 돼요 (강의 ★, Q&A 2번).
 Q mc
 q: $y'' = y'$ 를 $p = y'$ 로 치환해서 풀면?
 a: $y = C_1e^{x} + C_2$
 w: $y = C_1e^{x}$
 w: $y = C_1x + C_2$
 w: $y = C_1e^{-x} + C_2$
-e: $p' = p \Rightarrow p = C_1e^{x}$, 한 번 더 적분하면 상수 $C_2$가 생겨요.
+e: $p' = p \Rightarrow p = C_1e^{x}$, 한 번 더 적분하면 상수 $C_2$가 생겨요. $y = C_1e^{x}$ 도 식은 만족하지만 상수가 하나뿐이라 2계의 **일반해**가 아니에요.
 Q mc
 q: $y'' = 1 + (y')^2$ 의 일반해는?
 a: $y = \ln|\sec(x + C_1)| + C_2$
@@ -1135,19 +1150,30 @@ w: $y = \ln|\cos(x + C_1)| + C_2$
 w: $y = \arctan x + C_1x + C_2$
 e: $p' = 1 + p^2 \Rightarrow \arctan p = x + C_1 \Rightarrow p = \tan(x + C_1)$. $\int \tan u\,du = -\ln|\cos u| = \ln|\sec u|$ 라서 부호에 주의해요.
 Q mc
+q: $x$ 와 $y$ 가 모두 없는 $y'' = (y')^2$ 의 일반해는?
+a: $y = -\ln|x + C_1| + C_2$
+w: $y = \ln|x + C_1| + C_2$
+w: $y = C_1e^{x} + C_2$
+w: $y = -\dfrac{1}{x + C_1}$
+e: $y'' = p'$ 로 두면 $p' = p^2$, $-\dfrac1p = x + C_1$, $p = -\dfrac{1}{x + C_1}$. 한 번 더 적분하면 $-\ln|x + C_1| + C_2$. $p$ 에서 멈추면 $-\dfrac{1}{x + C_1}$ 오답, 부호를 놓치면 $+\ln$ 오답이에요. 강의의 질문 "$y'$, $y''$ 로만 이루어졌다면?"에 대한 답이에요.
+Q mc
 q: $xy'' + y' = x$ 의 일반해는?
 a: $y = \dfrac{x^2}{4} + C_1\ln|x| + C_2$
 w: $y = \dfrac{x^2}{2} + C_1\ln|x| + C_2$
 w: $y = \dfrac{x^2}{4} + C_1x + C_2$
 w: $y = \dfrac{x^3}{6} + C_1\ln|x| + C_2$
-e: $p = y'$ 이면 $xp' + p = x$, 즉 $(xp)' = x$ (적분인자가 이미 곱해진 꼴). $xp = \dfrac{x^2}{2} + C_1 \Rightarrow p = \dfrac{x}{2} + \dfrac{C_1}{x}$ 를 적분해요.
+e: $p = y'$ 이면 $xp' + p = x$, 즉 $(xp)' = x$ (적분인자가 이미 곱해진 꼴). $\dfrac{x^2}{2}$ 에서 $x$ 로 나누는 걸 잊으면 $\dfrac{x^2}{2}$ 이 남은 오답이 나와요. $xp = \dfrac{x^2}{2} + C_1 \Rightarrow p = \dfrac{x}{2} + \dfrac{C_1}{x}$ 를 적분해요.
+Q in
+q: $xy'' + y' = 0,\; y(1) = 2,\; y'(1) = 3$ 의 해를 $y = C_1\ln x + C_2$ 로 쓸 때 $C_1$ 은?
+a: 3
+e: $p = y' = \dfrac{C_1}{x}$ 에 $y'(1) = 3$ 을 먼저 넣으면 $C_1 = 3$. 그다음 $y(1) = C_2 = 2$. 해는 $y = 3\ln x + 2$ 예요.
 Q mc
 q: $y'' = y',\; y(0) = 1,\; y'(0) = 2$ 의 해는?
 a: $y = 2e^{x} - 1$
 w: $y = 2e^{x} + 1$
 w: $y = e^{2x}$
 w: $y = e^{x}$
-e: $p = C_1e^x$ 에 $p(0) = y'(0) = 2$ 를 먼저 넣으면 $C_1 = 2$. $y = 2e^x + C_2$ 에 $y(0) = 1$ 이면 $C_2 = -1$.
+e: $p = C_1e^x$ 에 $p(0) = y'(0) = 2$ 를 먼저 넣으면 $C_1 = 2$. $y = 2e^x + C_2$ 에 $y(0) = 1$ 이면 $C_2 = -1$. $2e^{x} + 1$ 은 $y(0) = 3$ 이라 초기조건이 맞지 않아요.
 ## 10 | 2계 ODE | 공식 계수내림
 c: $y'' + p(x)y' + q(x)y = 0$ 의 해 $y_1$ 하나를 알면 두 번째 해는
 c: $y_2 = y_1\displaystyle\int \frac{e^{-\int p\,dx}}{y_1^2}\,dx$
