@@ -129,6 +129,14 @@ class EffectsTest(unittest.TestCase):
         # 진행 바가 캐시된 화면에 남지 않아야 한다
         self.assertEqual(r.render(LYRICS, 0.2).getpixel((x0 + 2, y)), s.bg_color)
 
+    def test_progress_bar_stays_on_screen(self):
+        # 화면보다 progress_bottom이 크면 맨 위에 붙는다(바이트 경로도 같은 자리)
+        style = Style(width=60, height=100, progress_bottom=500, progress_height=4, fade=0)
+        ly = lrc.parse("[00:00.00]a", duration=2)
+        img = FrameRenderer(style).render(ly, 1, progress=1.0)
+        self.assertEqual(img.getpixel((30, 1)), style.progress_color)
+        self.assertEqual(FrameRenderer(style).render_bytes(ly, 1, 1.0), img.tobytes())
+
     def test_layers_are_cached(self):
         r = FrameRenderer(self.style)
         for k in range(80):
@@ -337,9 +345,9 @@ class ScaledStyleTest(unittest.TestCase):
         s = Style(stroke_width=3, bg_blur=22).scaled(0.5)
         self.assertEqual((s.width, s.height), (540, 960))
         self.assertEqual((s.font_size, s.next_font_size, s.line_gap), (36, 26, 24))
-        self.assertEqual((s.stroke_width, s.progress_height, s.progress_bottom), (2, 4, 80))
+        self.assertEqual((s.stroke_width, s.progress_height, s.progress_bottom), (2, 4, 210))
         self.assertEqual(s.bg_blur, 11)
-        self.assertEqual((s.center_y, s.max_text_width, s.fade), (0.5, 0.86, 0.24))
+        self.assertEqual((s.center_y, s.max_text_width, s.fade), (0.5, 0.68, 0.24))
 
     def test_sizes_stay_even_and_zero_stays_zero(self):
         s = Style(width=1081, height=1919, stroke_width=0).scaled(0.5)

@@ -50,7 +50,7 @@ class Style:
     next_font_size: int = 52
     line_gap: int = 48  # 현재 줄과 다음 줄 사이 간격(px)
     line_spacing: float = 1.25  # 한 가사가 여러 줄로 나뉠 때 줄 높이(글자 크기 배수)
-    max_text_width: float = 0.86  # 화면 폭 대비 최대 글줄 폭
+    max_text_width: float = 0.68  # 화면 폭 대비 최대 글줄 폭. 가운데 정렬이라 오른쪽 끝이 0.84 — 쇼츠 오른쪽 버튼 줄(0.85~)에 안 걸리게
     center_y: float = 0.5  # 현재 줄의 세로 위치(0=위, 1=아래)
     fade: float = 0.24  # 화면이 바뀔 때 페이드 아웃→인 전체 시간(초). 0이면 끔
     progress_bar: bool = True  # render(..., progress=)를 받으면 하단 진행 바를 그림
@@ -58,7 +58,7 @@ class Style:
     progress_track: Color = (70, 70, 84)
     progress_height: int = 8
     progress_width: float = 0.7  # 화면 폭 대비
-    progress_bottom: int = 160  # 화면 아래 끝에서 띄울 거리(px)
+    progress_bottom: int = 420  # 화면 아래 끝에서 띄울 거리(px). 쇼츠 아래쪽 제목·설명 위로
     show_info: bool = True  # 곡 정보(LRC [ti:] 제목, [ar:] 가수)를 화면 위쪽에 표시
     info_y: float = 0.14  # 곡 정보 블록의 세로 가운데(0=위, 1=아래)
     title_size: int = 54
@@ -237,6 +237,19 @@ class FrameRenderer:
         self._zoomed = (t, bg)
         return bg
 
+    def content_boxes(self, lyrics: Lyrics, t: float) -> list[tuple[str, tuple[int, int, int, int]]]:
+        """시각 t에 그려지는 것들의 영역: [(이름, (x0, y0, x1, y1)), ...]."""
+        boxes = []
+        layer = self._text_layer(lyrics, self.state_key(lyrics, t), t)
+        if bbox := layer.getbbox():
+            boxes.append(("가사", bbox))
+        if self._overlay is not None and (bbox := self._overlay.getbbox()):
+            boxes.append(("곡 정보·앨범 아트", bbox))
+        if self.style.progress_bar:
+            x0, y0, w, h, _ = self._progress_geometry(0)
+            boxes.append(("진행 바", (x0, y0, x0 + w, y0 + h)))
+        return boxes
+
     def state_key(self, lyrics: Lyrics, t: float) -> tuple[int | None, int | None]:
         """화면의 가사 내용을 결정하는 값: (현재 줄, 다음 줄) 인덱스."""
         i = lyrics.index_at(t)
@@ -414,8 +427,9 @@ class FrameRenderer:
         s = self.style
         w = round(s.width * s.progress_width)
         filled = round(w * min(1.0, max(0.0, progress)))
-        return (s.width - w) // 2, s.height - s.progress_bottom - s.progress_height, \
-            w, s.progress_height, filled
+        h = min(s.progress_height, s.height)
+        y0 = min(max(0, s.height - s.progress_bottom - h), s.height - h)  # 화면 밖으로 안 나가게
+        return (s.width - w) // 2, y0, w, h, filled
 
     def _draw_progress(self, img: Image.Image, progress: float) -> None:
         s = self.style

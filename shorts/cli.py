@@ -15,7 +15,7 @@ import time
 
 from PIL import Image
 
-from . import lrc
+from . import guide, lrc
 from .frame import FrameRenderer
 from .project import load_project, parse_time, parse_times
 from .styles import PRESET_DIR, list_presets, load_style, style_from_dict
@@ -116,6 +116,8 @@ def cmd_render(args) -> None:
     renderer = _renderer(args)
     for (start, duration), out in zip(segments, segment_paths(base, len(segments))):
         clip = lyrics.clip(start, start + duration)
+        # 줄마다 한 번씩(페이드가 끝난 뒤) 가림 영역에 걸리는지 확인
+        warn_overlaps(renderer, clip, [0.0] + [ln.start + 0.3 for ln in clip.lines], offset=start)
         t0 = time.perf_counter()
         progress = ProgressPrinter(sys.stderr) if sys.stderr.isatty() else None
         drawn = render_video(clip, out, duration, renderer, opts,
@@ -125,11 +127,28 @@ def cmd_render(args) -> None:
         print(f"{out}  ({duration:.1f}s, 그린 프레임 {drawn}장, {time.perf_counter() - t0:.1f}s 소요)")
 
 
+def warn_overlaps(renderer, lyrics, times, offset: float = 0.0) -> None:
+    """쇼츠 앱 UI에 가려질 내용이 있으면 stderr에 알린다."""
+    for content, zone, t in guide.find_overlaps(renderer, lyrics, times):
+        print(f"주의: {content}이(가) 쇼츠 앱의 '{zone}' 자리에 걸려요 "
+              f"({format_time(t + offset)}) — frame --guide로 확인", file=sys.stderr)
+
+
+def format_time(sec: float) -> str:
+    return f"{int(sec // 60)}:{sec % 60:04.1f}"
+
+
 def cmd_frame(args) -> None:
     lyrics = _apply_info(args, lrc.load(args.lrc))
     out = args.out or args.stem + ".png"
-    _renderer(args).render(lyrics, args.at).save(out)
+    renderer = _renderer(args)
+    img = renderer.render(lyrics, args.at, progress=args.at / max(lyrics.lines[-1].end, 1e-6)
+                          if lyrics.lines else None)
+    if args.guide:
+        img = guide.draw_guide(img)
+    img.save(out)
     print(out)
+    warn_overlaps(renderer, lyrics, [args.at])
 
 
 def cmd_styles(args) -> None:
@@ -167,6 +186,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     f = sub.add_parser("frame", parents=[common], help="한 장면 PNG 미리보기")
     f.add_argument("--at", type=parse_time, default=0.0, help="미리볼 시각 (예: 0:50)")
+    f.add_argument("--guide", action="store_true",
+                   help="쇼츠 앱 UI(메뉴·버튼·제목)가 덮는 자리를 반투명 빨강으로 표시")
     f.set_defaults(func=cmd_frame)
 
     sub.add_parser("styles", help="내장 스타일 프리셋 목록").set_defaults(func=cmd_styles)
