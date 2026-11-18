@@ -40,6 +40,7 @@
       <ul id="playlist-nav" class="playlist-nav"></ul>
       <div class="side-foot">
         <span id="username" class="muted"></span>
+        <button class="link" id="backup" title="라이브러리 백업·복원">백업</button>
         <button class="link" id="shortcut-help" title="키보드 단축키 (?)">단축키</button>
         <button class="link" id="logout">로그아웃</button>
       </div>
@@ -113,6 +114,7 @@
   <div id="dropzone" class="dropzone" hidden><div>여기에 음원 파일을 놓으세요</div></div>
   <div id="toast" class="toast" hidden></div>
   <input type="file" id="m3u-input" accept=".m3u,.m3u8" hidden>
+  <input type="file" id="backup-input" accept=".json,application/json" hidden>
   <input type="file" id="file-input" accept=".mp3,.flac,.m4a,.aac,.ogg,.opus,.wav,.webm,.lrc,audio/*" multiple hidden>
 
   <dialog id="dialog" class="dialog">

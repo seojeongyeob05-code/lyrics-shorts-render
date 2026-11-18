@@ -89,7 +89,8 @@ input:focus { border-color: var(--accent); }
 .side-head-actions { display: flex; gap: 2px; }
 .playlist-nav { list-style: none; margin: 0; padding: 0; overflow: auto; flex: 1; }
 .playlist-nav button.drop-target { outline: 2px solid var(--accent); }
-.side-foot { display: flex; justify-content: space-between; padding: 12px 10px 0; border-top: 1px solid var(--line); }
+.side-foot { display: flex; flex-wrap: wrap; gap: 6px 12px; padding: 12px 10px 0; border-top: 1px solid var(--line); }
+.side-foot #username { flex: 1; }
 
 .main { overflow: auto; padding: 24px 28px; min-height: 0; }
 .view-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }

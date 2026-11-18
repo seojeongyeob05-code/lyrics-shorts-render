@@ -1493,6 +1493,42 @@ function showShortcuts() {
 
 $('#shortcut-help').addEventListener('click', showShortcuts);
 
+// ───────────── 백업 ─────────────
+// 음원 파일은 빼고 곡 정보 수정·가사·들은 횟수·플레이리스트를 JSON 한 파일로 받고 되살린다.
+$('#backup').addEventListener('click', safe(async () => {
+  const choice = await chooseDialog('라이브러리 백업', [
+    { value: 'download', label: '백업 파일 받기' },
+    { value: 'restore', label: '백업에서 복원…' },
+  ], '곡 정보 수정, 가사, 들은 횟수, 플레이리스트를 저장합니다. 음원 파일은 들어 있지 않으니 원본은 따로 보관하세요. 복원할 때는 음원을 먼저 다시 올린 뒤 복원하면 같은 곡을 찾아 되살립니다.');
+  if (choice === 'download') {
+    const a = h('a', { href: '/api/backup', download: '' });
+    document.body.append(a);
+    a.click();
+    a.remove();
+  } else if (choice === 'restore') {
+    $('#backup-input').click();
+  }
+}));
+
+$('#backup-input').addEventListener('change', safe(async (e) => {
+  const [file] = e.target.files;
+  e.target.value = '';
+  if (!file) return;
+  let backup;
+  try { backup = JSON.parse(await file.text()); } catch { return toast('백업 파일을 읽을 수 없습니다'); }
+  const count = Array.isArray(backup?.tracks) ? backup.tracks.length : 0;
+  if (!confirm(`백업의 곡 ${count}개 정보와 플레이리스트를 지금 라이브러리에 되살릴까요?\n지금 있는 곡에만 적용되고, 같은 이름의 플레이리스트는 건너뜁니다.`)) return;
+  const r = await api('POST', '/api/backup/restore', backup);
+  await Promise.all([loadLibrary(), loadPlaylists()]);
+  await refreshView();
+  loadLyrics(true);
+  const parts = [`곡 ${r.tracks.restored}개 복원`];
+  if (r.playlists.created.length) parts.push(`플레이리스트 ${r.playlists.created.length}개 생성`);
+  if (r.tracks.missing) parts.push(`라이브러리에 없는 곡 ${r.tracks.missing}개`);
+  if (r.playlists.skipped.length) parts.push(`이미 있는 플레이리스트 ${r.playlists.skipped.length}개 건너뜀`);
+  toast(parts.join(' · '), 8000);
+}));
+
 // ───────────── 시작 ─────────────
 renderPlayer();
 renderQueue();

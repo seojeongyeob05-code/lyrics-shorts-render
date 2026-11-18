@@ -6,6 +6,7 @@ import { openDb } from './db.js';
 import { createAuth } from './auth.js';
 import { backfillHashes, createTracksRouter } from './tracks.js';
 import { createPlaylistsRouter } from './playlists.js';
+import { createBackupRouter } from './backup.js';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 
@@ -35,12 +36,15 @@ export function createApp(config) {
   app.disable('x-powered-by');
   if (config.trustProxy) app.set('trust proxy', 1);
 
-  app.use(express.json({ limit: '1mb' }));
+  // 백업 복원은 내용이 커서 자기 라우터에서 더 큰 한도로 읽는다.
+  const json = express.json({ limit: '1mb' });
+  app.use((req, res, next) => (req.path === '/api/backup/restore' ? next() : json(req, res, next)));
   app.use(auth.loadUser);
 
   app.use('/api/auth', auth.router);
   app.use('/api/tracks', auth.requireAuth, createTracksRouter(db, config));
   app.use('/api/playlists', auth.requireAuth, createPlaylistsRouter(db));
+  app.use('/api/backup', auth.requireAuth, createBackupRouter(db));
   app.use('/api', (_req, res) => res.status(404).json({ error: '없는 API입니다' }));
 
   app.use(express.static(path.join(ROOT, 'public')));
@@ -54,6 +58,8 @@ export function createApp(config) {
       const message = messages[err.code] ?? `업로드 오류: ${err.message}`;
       return res.status(err.code === 'LIMIT_FILE_SIZE' ? 413 : 400).json({ error: message });
     }
+    if (err.type === 'entity.too.large') return res.status(413).json({ error: '보낸 내용이 너무 큽니다' });
+    if (err.type === 'entity.parse.failed') return res.status(400).json({ error: 'JSON 형식이 올바르지 않습니다' });
     console.error(err);
     res.status(err.status || 500).json({ error: '서버 오류가 발생했습니다' });
   });
