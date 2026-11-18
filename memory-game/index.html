@@ -98,6 +98,9 @@ main.play { display: grid; gap: 22px; grid-template-columns: minmax(0, 1.1fr) mi
   .goal strong { font-size: 14px; }
   main.play { gap: 10px; }
   .mapwrap { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-bottom: 6px; display: block; }
+  /* While typing, the on-screen keyboard takes half the screen: let the map scroll away so the dialogue has room. */
+  body.typing .mapwrap { position: static; }
+  body.typing .talk { height: max(260px, calc(var(--vvh, 100dvh) - 20px)); }
   .pad { position: absolute; right: 6px; bottom: 12px; grid-template-columns: repeat(3, 30px); grid-template-rows: repeat(2, 28px); gap: 3px; z-index: 2; }
   .pad button { font-size: 14px; padding: 0; opacity: 0.92; }
   .talk { height: max(300px, calc(100dvh - (100vw - 32px) * 0.8 - 30px)); }
@@ -236,7 +239,7 @@ mark.focus { background: transparent; color: var(--amber); border-bottom: 2px do
       <p class="hint">방향키 또는 WASD로 이동 (한 칸에 30초). 사람 옆에 서면 말을 걸 수 있어요.</p>
     </div>
 
-    <section class="talk">
+    <section class="talk" id="talk">
       <div class="who"><span>대화 상대: <b id="whoName">없음</b> <span id="whoSwap"></span></span><span id="whereName">로비</span></div>
       <div class="log" id="log" aria-live="polite"></div>
       <div class="controls">
@@ -1463,6 +1466,18 @@ function act(I, raw, cost, meText, meKind) {
 }
 
 // ---------- controls ----------
+// Phones: keep the input and the latest lines in view when the keyboard opens or closes.
+const narrow = () => matchMedia('(max-width: 880px)').matches;
+function keepInputInView() {
+  if (!document.body.classList.contains('typing')) return;
+  const vv = window.visualViewport;
+  if (vv) document.documentElement.style.setProperty('--vvh', vv.height + 'px');
+  $('talk').scrollIntoView({ block: 'end' });
+  $('log').scrollTop = $('log').scrollHeight;
+}
+$('sayInput').addEventListener('focus', () => { if (!narrow()) return; document.body.classList.add('typing'); setTimeout(keepInputInView, 250); });
+$('sayInput').addEventListener('blur', () => { document.body.classList.remove('typing'); document.documentElement.style.removeProperty('--vvh'); });
+window.visualViewport?.addEventListener('resize', keepInputInView);
 $('sayForm').addEventListener('submit', e => {
   e.preventDefault();
   const raw = $('sayInput').value.trim();
