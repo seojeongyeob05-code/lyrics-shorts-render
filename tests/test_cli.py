@@ -120,6 +120,7 @@ class CliTest(unittest.TestCase):
         msg = self.run_cli("render", self.lrc, "--audio", audio, "--start", "2.5",
                            "--duration", "3", "--fps", "10", "-o", out)
         self.assertIn("clip.mp4", msg)
+        self.assertRegex(msg, r"그린 프레임 [1-9]\d*장")  # 겹침 검사로 미리 그린 것도 센다
         info = json.loads(subprocess.run(
             ["ffprobe", "-v", "error", "-show_entries", "format=duration:stream=codec_type",
              "-of", "json", out], capture_output=True, text=True, check=True).stdout)

@@ -59,6 +59,13 @@ class Style:
     progress_height: int = 8
     progress_width: float = 0.7  # 화면 폭 대비
     progress_bottom: int = 420  # 화면 아래 끝에서 띄울 거리(px). 쇼츠 아래쪽 제목·설명 위로
+    visualizer: bool = False  # 음악 반응 막대. render(..., levels=)로 막대 높이를 받는다
+    viz_bands: int = 32  # 막대 수(저음 → 고음)
+    viz_height: int = 140  # 가장 높은 막대(px)
+    viz_width: float = 0.68  # 화면 폭 대비
+    viz_bottom: int = 452  # 막대 바닥이 화면 아래 끝에서 떨어진 거리(px). 진행 바 바로 위
+    viz_gap: float = 0.35  # 막대 사이 틈(한 칸 대비)
+    viz_color: Color = (255, 255, 255)
     show_info: bool = True  # 곡 정보(LRC [ti:] 제목, [ar:] 가수)를 화면 위쪽에 표시
     info_y: float = 0.14  # 곡 정보 블록의 세로 가운데(0=위, 1=아래)
     title_size: int = 54
@@ -86,6 +93,7 @@ class Style:
             title_size=px(self.title_size), artist_size=px(self.artist_size),
             cover_size=px(self.cover_size),
             progress_height=px(self.progress_height), progress_bottom=px(self.progress_bottom),
+            viz_height=px(self.viz_height), viz_bottom=px(self.viz_bottom),
             bg_blur=self.bg_blur * k)
 
 
@@ -181,41 +189,60 @@ class FrameRenderer:
         self._bytes = b""
         self.layers_drawn = 0  # 실제로 새로 그린 가사 레이어 수(성능 확인용)
 
-    def render(self, lyrics: Lyrics, t: float, progress: float | None = None) -> Image.Image:
-        """시각 t의 화면. progress(0~1)를 주면 진행 바도 그린다."""
+    def render(self, lyrics: Lyrics, t: float, progress: float | None = None,
+               levels=None) -> Image.Image:
+        """시각 t의 화면. progress(0~1)를 주면 진행 바, levels(막대 높이 0~1 목록)를 주면
+        음악 반응 막대도 그린다."""
         img, shared = self._frame(lyrics, t)
         if shared:
             img = img.copy()  # 캐시된 화면 위에 진행 바를 그리지 않도록
-        if progress is not None and self.style.progress_bar:
-            self._draw_progress(img, progress)
+        self._draw_dynamic(img, progress, levels, 0)
         return img
 
-    def render_bytes(self, lyrics: Lyrics, t: float, progress: float | None = None) -> bytes:
+    def render_bytes(self, lyrics: Lyrics, t: float, progress: float | None = None,
+                     levels=None) -> bytes:
         """render(...).tobytes()와 같은 결과. 영상 인코딩용 빠른 경로.
 
         화면이 그대로인 구간(페이드·노래방 진행·배경 줌 없음)은 화면 바이트를 한 번만
-        만들어 두고 진행 바 줄만 덮어쓴다. 1080x1920 한 장을 바이트로 바꾸는 데 4~5ms가
-        들어서 대부분의 프레임에서 이 비용을 없앤다.
+        만들어 두고, 매 프레임 바뀌는 진행 바·음악 막대가 있는 줄 띠만 다시 그려 덮어쓴다.
+        1080x1920 한 장을 바이트로 바꾸는 데 4~5ms가 들어서 대부분의 프레임에서 이 비용을 없앤다.
         """
         s = self.style
         img, shared = self._frame(lyrics, t)
-        draw_bar = progress is not None and s.progress_bar
         if not shared:
-            if draw_bar:
-                self._draw_progress(img, progress)
+            self._draw_dynamic(img, progress, levels, 0)
             return img.tobytes()
         if self._bytes_of is not img:
             self._bytes_of, self._bytes = img, img.tobytes()
-        if not draw_bar:
+        rows = self._dynamic_rows(progress, levels)
+        if rows is None:
             return self._bytes
+        y0, y1 = rows
+        strip = img.crop((0, y0, s.width, y1))
+        self._draw_dynamic(strip, progress, levels, y0)
         buf = bytearray(self._bytes)
-        x0, y0, w, h, filled = self._progress_geometry(progress)
-        track, bar = bytes(s.progress_track) * w, bytes(s.progress_color) * filled
-        for y in range(y0, y0 + h):
-            off = (y * s.width + x0) * 3
-            buf[off:off + 3 * w] = track
-            buf[off:off + 3 * filled] = bar
+        buf[y0 * s.width * 3:y1 * s.width * 3] = strip.tobytes()
         return bytes(buf)
+
+    def _draw_dynamic(self, img: Image.Image, progress, levels, dy: int) -> None:
+        """매 프레임 바뀌는 것(진행 바, 음악 막대)을 그린다. img가 화면의 dy줄부터 시작하는 띠일 수 있다."""
+        if progress is not None and self.style.progress_bar:
+            self._draw_progress(img, progress, dy)
+        if levels is not None and self.style.visualizer:
+            self._draw_viz(img, levels, dy)
+
+    def _dynamic_rows(self, progress, levels) -> tuple[int, int] | None:
+        """_draw_dynamic이 건드리는 줄 범위 [y0, y1). 없으면 None."""
+        spans = []
+        if progress is not None and self.style.progress_bar:
+            _, y0, _, h, _ = self._progress_geometry(progress)
+            spans.append((y0, y0 + h))
+        if levels is not None and self.style.visualizer:
+            _, y0, _, h = self._viz_geometry()
+            spans.append((y0, y0 + h))
+        if not spans:
+            return None
+        return min(a for a, _ in spans), max(b for _, b in spans)
 
     def background_at(self, t: float) -> Image.Image:
         """시각 t의 배경(돌려받은 이미지를 고치지 말 것)."""
@@ -248,6 +275,9 @@ class FrameRenderer:
         if self.style.progress_bar:
             x0, y0, w, h, _ = self._progress_geometry(0)
             boxes.append(("진행 바", (x0, y0, x0 + w, y0 + h)))
+        if self.style.visualizer:
+            x0, y0, w, h = self._viz_geometry()
+            boxes.append(("음악 막대", (x0, y0, x0 + w, y0 + h)))
         return boxes
 
     def state_key(self, lyrics: Lyrics, t: float) -> tuple[int | None, int | None]:
@@ -431,13 +461,39 @@ class FrameRenderer:
         y0 = min(max(0, s.height - s.progress_bottom - h), s.height - h)  # 화면 밖으로 안 나가게
         return (s.width - w) // 2, y0, w, h, filled
 
-    def _draw_progress(self, img: Image.Image, progress: float) -> None:
+    def _draw_progress(self, img: Image.Image, progress: float, dy: int = 0) -> None:
         s = self.style
         x0, y0, w, h, filled = self._progress_geometry(progress)
+        y0 -= dy
         draw = ImageDraw.Draw(img)
         draw.rectangle((x0, y0, x0 + w - 1, y0 + h - 1), fill=s.progress_track)
         if filled:
             draw.rectangle((x0, y0, x0 + filled - 1, y0 + h - 1), fill=s.progress_color)
+
+    def _viz_geometry(self) -> tuple[int, int, int, int]:
+        """음악 막대 영역의 (왼쪽 x, 위 y, 폭, 높이)."""
+        s = self.style
+        w = round(s.width * s.viz_width)
+        h = max(1, min(s.viz_height, s.height))
+        y0 = min(max(0, s.height - s.viz_bottom - h), s.height - h)
+        return (s.width - w) // 2, y0, w, h
+
+    def _draw_viz(self, img: Image.Image, levels, dy: int = 0) -> None:
+        """막대를 바닥에서 위로. 소리가 없어도 2px짜리 바닥 막대는 남겨 자리를 보여준다."""
+        s = self.style
+        x0, y0, w, h = self._viz_geometry()
+        n = len(levels)
+        if not n:
+            return
+        slot = w / n
+        bar = max(1.0, slot * (1 - s.viz_gap))
+        bottom = y0 + h - dy
+        draw = ImageDraw.Draw(img)
+        for i, v in enumerate(levels):
+            bh = max(2, round(min(1.0, max(0.0, float(v))) * h))
+            left = x0 + i * slot + (slot - bar) / 2
+            draw.rectangle((round(left), bottom - bh, round(left + bar) - 1, bottom - 1),
+                           fill=s.viz_color)
 
     @staticmethod
     def _next_index(lyrics: Lyrics, t: float, current: int | None) -> int | None:

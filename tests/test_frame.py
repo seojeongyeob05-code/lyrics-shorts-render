@@ -1,5 +1,7 @@
 import unittest
 
+import numpy as np
+
 from PIL import Image
 
 from shorts import lrc
@@ -353,6 +355,43 @@ class ScaledStyleTest(unittest.TestCase):
         s = Style(width=1081, height=1919, stroke_width=0).scaled(0.5)
         self.assertEqual((s.width % 2, s.height % 2), (0, 0))
         self.assertEqual(s.stroke_width, 0)
+
+
+class VisualizerTest(unittest.TestCase):
+    BASE = dict(width=200, height=400, font_size=16, next_font_size=12, fade=0,
+                visualizer=True, viz_height=50, viz_bottom=100, viz_width=0.8, viz_gap=0.5,
+                bg_color=(0, 0, 0), viz_color=(0, 255, 0), progress_bar=False)
+
+    def test_bar_heights_follow_levels(self):
+        r = FrameRenderer(Style(**self.BASE))
+        img = r.render(lrc.Lyrics([]), 0, levels=[0.0, 1.0, 0.5, 0.0])
+        x0, y0, w, h = r._viz_geometry()
+        self.assertEqual((x0, y0, w, h), (20, 250, 160, 50))
+        heights = []
+        for i in range(4):
+            x = round(x0 + (i + 0.5) * w / 4)
+            heights.append(sum(img.getpixel((x, y)) == (0, 255, 0) for y in range(y0, y0 + h)))
+        self.assertEqual(heights, [2, 50, 25, 2])  # 소리가 없어도 바닥 2px
+
+    def test_off_or_no_levels_draws_nothing(self):
+        r = FrameRenderer(Style(**{**self.BASE, "visualizer": False}))
+        self.assertEqual(_colors(r.render(lrc.Lyrics([]), 0, levels=[1.0] * 4)), {(0, 0, 0)})
+        r = FrameRenderer(Style(**self.BASE))
+        self.assertEqual(_colors(r.render(lrc.Lyrics([]), 0)), {(0, 0, 0)})
+
+    def test_render_bytes_matches_with_bars_and_progress(self):
+        style = Style(**{**self.BASE, "progress_bar": True, "fade": 0.2})
+        ly = lrc.parse("[00:01.00]a\n[00:02.00]<00:02.00>b <00:02.50>c", duration=4)
+        a, b = FrameRenderer(style), FrameRenderer(style)
+        rng = np.random.default_rng(0)
+        for t in [0.5, 1.05, 1.5, 2.2, 3.5]:  # 정지 화면·페이드·노래방 진행을 모두 지난다
+            lv = rng.random(8)
+            self.assertEqual(a.render_bytes(ly, t, t / 4, lv), b.render(ly, t, t / 4, lv).tobytes())
+
+    def test_content_box_reported(self):
+        r = FrameRenderer(Style(**self.BASE))
+        names = [n for n, _ in r.content_boxes(lrc.Lyrics([]), 0)]
+        self.assertIn("음악 막대", names)
 
 
 class RenderBytesTest(unittest.TestCase):

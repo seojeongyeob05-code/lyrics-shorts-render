@@ -5,7 +5,7 @@
 
 ## 사용법
 
-필요한 것: Python 3.10+, Pillow, ffmpeg
+필요한 것: Python 3.10+, Pillow, numpy, ffmpeg
 
 ```
 # 0:45부터 30초짜리 쇼츠 만들기
@@ -86,6 +86,15 @@ python3 -m shorts render song.lrc --style my-theme.json
   "center_y": 0.62,
   "font_path": "fonts/NanumSquareRoundEB.ttf"
 }
+```
+
+### 음악 반응 막대
+
+스타일에 `"visualizer": true`를 넣고 `--audio`와 함께 렌더하면 진행 바 위에 저음→고음 막대가
+음악에 맞춰 움직입니다. 막대 수 `viz_bands`, 높이 `viz_height`, 색 `viz_color`.
+
+```json
+{"extends": "sunset", "visualizer": true, "viz_color": "#FFF6E8"}
 ```
 
 ### 노래방식 하이라이트

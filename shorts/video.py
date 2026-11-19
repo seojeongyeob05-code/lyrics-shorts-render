@@ -40,11 +40,13 @@ def build_ffmpeg_cmd(out_path: str, size: tuple[int, int], duration: float,
 def render_video(lyrics: Lyrics, out_path: str, duration: float,
                  renderer: FrameRenderer | None = None, opts: VideoOptions | None = None,
                  audio: str | None = None, audio_start: float = 0.0,
-                 on_progress: Callable[[int, int], None] | None = None) -> int:
+                 on_progress: Callable[[int, int], None] | None = None,
+                 levels=None) -> int:
     """[0, duration)초를 렌더링해 out_path에 저장한다. 실제로 그린 프레임 수를 돌려준다.
 
     audio_start: 음원의 몇 초 지점부터 영상 0초에 맞출지(구간 렌더용).
     on_progress(끝난 프레임 수, 전체 프레임 수): 프레임마다 불린다.
+    levels: 프레임마다의 음악 막대 높이 (n_frames, 막대 수). audio.load_levels()로 만든다.
     """
     renderer = renderer or FrameRenderer()
     opts = opts or VideoOptions()
@@ -79,7 +81,8 @@ def render_video(lyrics: Lyrics, out_path: str, duration: float,
                     break
                 t = k / opts.fps
                 # 가사 화면은 renderer가 캐시하므로 줄이 바뀔 때만 새로 그린다.
-                frames.put(renderer.render_bytes(lyrics, t, progress=t / duration))
+                lv = levels[min(k, len(levels) - 1)] if levels is not None and len(levels) else None
+                frames.put(renderer.render_bytes(lyrics, t, progress=t / duration, levels=lv))
                 if on_progress:
                     on_progress(k + 1, n_frames)
         finally:

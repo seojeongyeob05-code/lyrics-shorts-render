@@ -15,7 +15,7 @@ import time
 
 from PIL import Image
 
-from . import guide, lrc
+from . import audio, guide, lrc
 from .frame import FrameRenderer
 from .project import load_project, parse_time, parse_times
 from .styles import PRESET_DIR, list_presets, load_style, style_from_dict
@@ -114,14 +114,23 @@ def cmd_render(args) -> None:
         opts = VideoOptions(fps=args.fps)
         base = args.out or args.stem + ".mp4"
     renderer = _renderer(args)
+    if renderer.style.visualizer and not args.audio:
+        print("주의: 스타일에 visualizer가 켜져 있지만 --audio가 없어서 음악 막대를 그리지 않아요",
+              file=sys.stderr)
     for (start, duration), out in zip(segments, segment_paths(base, len(segments))):
         clip = lyrics.clip(start, start + duration)
+        drawn_before = renderer.layers_drawn  # 아래 겹침 검사도 가사를 미리 그려 캐시한다
         # 줄마다 한 번씩(페이드가 끝난 뒤) 가림 영역에 걸리는지 확인
         warn_overlaps(renderer, clip, [0.0] + [ln.start + 0.3 for ln in clip.lines], offset=start)
         t0 = time.perf_counter()
         progress = ProgressPrinter(sys.stderr) if sys.stderr.isatty() else None
-        drawn = render_video(clip, out, duration, renderer, opts,
-                             audio=args.audio, audio_start=start, on_progress=progress)
+        levels = None
+        if renderer.style.visualizer and args.audio:
+            levels = audio.load_levels(args.audio, start, duration, opts.fps,
+                                       renderer.style.viz_bands)
+        render_video(clip, out, duration, renderer, opts, audio=args.audio,
+                     audio_start=start, on_progress=progress, levels=levels)
+        drawn = renderer.layers_drawn - drawn_before
         if progress:
             progress.done()
         print(f"{out}  ({duration:.1f}s, 그린 프레임 {drawn}장, {time.perf_counter() - t0:.1f}s 소요)")
