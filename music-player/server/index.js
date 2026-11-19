@@ -6,7 +6,7 @@ import { openDb } from './db.js';
 import { createAuth } from './auth.js';
 import { backfillHashes, createTracksRouter } from './tracks.js';
 import { createPlaylistsRouter } from './playlists.js';
-import { createBackupRouter } from './backup.js';
+import { createBackupRouter, runAutoBackup } from './backup.js';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 
@@ -22,6 +22,8 @@ export function loadConfig(env = process.env) {
     secureCookie: env.COOKIE_SECURE === 'true',
     trustProxy: env.TRUST_PROXY === 'true',
     sessionDays: 30,
+    backupDir: path.join(dataDir, 'backups'),
+    autoBackupKeep: env.AUTO_BACKUP_KEEP === undefined ? 7 : Math.max(0, Number(env.AUTO_BACKUP_KEEP) || 0),
   };
 }
 
@@ -72,6 +74,12 @@ if (process.argv[1] === import.meta.filename) {
   const { app, db, purgeExpired } = createApp(config);
   backfillHashes(db, config.musicDir).then((n) => n && console.log(`기존 곡 ${n}개의 중복 검사용 해시를 계산했습니다`));
   setInterval(purgeExpired, 60 * 60 * 1000).unref();
+  // 켤 때 한 번, 그 뒤로 한 시간마다 확인해서 날짜가 바뀌었으면 자동 백업
+  const autoBackup = () => runAutoBackup(db, config.backupDir, { keep: config.autoBackupKeep })
+    .then((files) => files.forEach((f) => console.log(`자동 백업: ${f}`)))
+    .catch((err) => console.error('자동 백업 실패:', err));
+  autoBackup();
+  setInterval(autoBackup, 60 * 60 * 1000).unref();
   app.listen(config.port, () => {
     console.log(`음악 서버 실행 중: http://localhost:${config.port}  (데이터: ${config.dataDir})`);
   });

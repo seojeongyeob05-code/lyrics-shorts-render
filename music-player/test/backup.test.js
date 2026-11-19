@@ -113,3 +113,45 @@ test('복원: 잘못된 파일 거부, 1MB가 넘는 백업도 받음, 로그인
   assert.equal((await s.call('GET', '/api/backup')).status, 401);
   assert.equal((await s.call('POST', '/api/backup/restore', { format: 'my-music-backup', tracks: [], playlists: [] })).status, 401);
 });
+
+test('자동 백업: 하루 한 번, 최근 N개만 보관, 다른 파일은 건드리지 않음', async () => {
+  const { openDb } = await import('../server/db.js');
+  const { runAutoBackup, localDate } = await import('../server/backup.js');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'music-player-auto-'));
+  cleanups.push(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const db = openDb(path.join(dir, 'library.db'));
+  db.prepare("INSERT INTO users (username, password_hash, created_at) VALUES ('me', 'x', 0)").run();
+  db.prepare("INSERT INTO tracks (title, filename, mime, size, created_at, hash, lyrics) VALUES ('곡', 'a.wav', 'audio/wav', 1, 0, 'h1', '[00:01.00]가사')").run();
+  db.prepare("INSERT INTO playlists (user_id, name, created_at) VALUES (1, '목록', 0)").run();
+  db.prepare('INSERT INTO playlist_tracks (playlist_id, track_id, position) VALUES (1, 1, 0)').run();
+
+  const backupDir = path.join(dir, 'backups');
+  const userDir = path.join(backupDir, 'user-1');
+  const day = (n) => new Date(2026, 10, n, 12).getTime(); // 2026-11-n 낮 12시 (서버 시간)
+
+  const first = await runAutoBackup(db, backupDir, { keep: 7, now: day(1) });
+  assert.deepEqual(first.map((f) => path.basename(f)), ['my-music-backup-2026-11-01.json']);
+  const saved = JSON.parse(fs.readFileSync(first[0], 'utf8'));
+  assert.equal(saved.format, 'my-music-backup');
+  assert.deepEqual(saved.tracks.map((t) => [t.hash, t.lyrics]), [['h1', '[00:01.00]가사']]);
+  assert.deepEqual(saved.playlists, [{ name: '목록', tracks: ['h1'] }]);
+
+  // 같은 날 다시 돌면 건너뜀
+  assert.deepEqual(await runAutoBackup(db, backupDir, { keep: 7, now: day(1) + 3600_000 }), []);
+
+  fs.writeFileSync(path.join(userDir, 'my-notes.txt'), '직접 둔 파일');
+  for (let n = 2; n <= 10; n++) await runAutoBackup(db, backupDir, { keep: 7, now: day(n) });
+  const files = fs.readdirSync(userDir).sort();
+  assert.deepEqual(files, [
+    ...[4, 5, 6, 7, 8, 9].map((n) => `my-music-backup-2026-11-${String(n).padStart(2, '0')}.json`),
+    'my-music-backup-2026-11-10.json',
+    'my-notes.txt',
+  ]);
+  assert.ok(!files.some((f) => f.endsWith('.tmp')));
+
+  // 0이면 끔
+  assert.deepEqual(await runAutoBackup(db, backupDir, { keep: 0, now: day(11) }), []);
+  assert.ok(!fs.existsSync(path.join(userDir, 'my-music-backup-2026-11-11.json')));
+  assert.equal(localDate(day(3)), '2026-11-03');
+  db.close();
+});

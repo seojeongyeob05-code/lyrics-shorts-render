@@ -1,3 +1,5 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import express, { Router } from 'express';
 import { transaction } from './db.js';
 
@@ -9,11 +11,8 @@ const MAX_BACKUP = '20mb';
 
 const textOrNull = (v, max) => (typeof v === 'string' && v.trim() ? v.trim().normalize('NFC').slice(0, max) : null);
 
-export function createBackupRouter(db) {
-  const router = Router();
-
-  router.get('/', (req, res) => {
-    const tracks = db.prepare(`
+export function buildBackup(db, userId, now = Date.now()) {
+  const tracks = db.prepare(`
       SELECT hash, title, artist, album, lyrics, play_count, last_played_at FROM tracks
       WHERE hash IS NOT NULL ORDER BY id
     `).all().map((t) => ({
@@ -25,17 +24,54 @@ export function createBackupRouter(db) {
       playCount: t.play_count,
       lastPlayedAt: t.last_played_at,
     }));
-    const playlists = db.prepare('SELECT id, name FROM playlists WHERE user_id = ? ORDER BY created_at').all(req.user.id)
-      .map((p) => ({
-        name: p.name,
-        tracks: db.prepare(`
-          SELECT t.hash FROM playlist_tracks pt JOIN tracks t ON t.id = pt.track_id
-          WHERE pt.playlist_id = ? AND t.hash IS NOT NULL ORDER BY pt.position, pt.id
-        `).all(p.id).map((r) => r.hash),
-      }));
-    const date = new Date().toISOString().slice(0, 10);
-    res.set('Content-Disposition', `attachment; filename="my-music-backup-${date}.json"`);
-    res.json({ format: BACKUP_FORMAT, version: BACKUP_VERSION, exportedAt: Date.now(), tracks, playlists });
+  const playlists = db.prepare('SELECT id, name FROM playlists WHERE user_id = ? ORDER BY created_at').all(userId)
+    .map((p) => ({
+      name: p.name,
+      tracks: db.prepare(`
+        SELECT t.hash FROM playlist_tracks pt JOIN tracks t ON t.id = pt.track_id
+        WHERE pt.playlist_id = ? AND t.hash IS NOT NULL ORDER BY pt.position, pt.id
+      `).all(p.id).map((r) => r.hash),
+    }));
+  return { format: BACKUP_FORMAT, version: BACKUP_VERSION, exportedAt: now, tracks, playlists };
+}
+
+// 서버 시간 기준 날짜 (YYYY-MM-DD)
+export function localDate(now = Date.now()) {
+  const d = new Date(now);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+const BACKUP_FILE = /^my-music-backup-(\d{4}-\d{2}-\d{2})\.json$/;
+
+// 자동 백업: 계정마다 backups/user-<id>/ 에 하루 하나씩 저장하고 최근 keep개만 남긴다.
+// 오늘 파일이 이미 있으면 건너뛴다. 임시 파일에 쓴 뒤 이름을 바꿔, 쓰다 끊겨도 깨진 백업이 남지 않는다.
+export async function runAutoBackup(db, backupDir, { keep, now = Date.now() } = {}) {
+  const written = [];
+  if (!keep) return written;
+  for (const { id } of db.prepare('SELECT id FROM users ORDER BY id').all()) {
+    const dir = path.join(backupDir, `user-${id}`);
+    await fs.mkdir(dir, { recursive: true });
+    const file = path.join(dir, `my-music-backup-${localDate(now)}.json`);
+    const exists = await fs.access(file).then(() => true, () => false);
+    if (!exists) {
+      const tmp = `${file}.tmp`;
+      await fs.writeFile(tmp, JSON.stringify(buildBackup(db, id, now)));
+      await fs.rename(tmp, file);
+      written.push(file);
+    }
+    const old = (await fs.readdir(dir)).filter((f) => BACKUP_FILE.test(f)).sort().slice(0, -keep);
+    await Promise.all(old.map((f) => fs.rm(path.join(dir, f), { force: true })));
+  }
+  return written;
+}
+
+export function createBackupRouter(db) {
+  const router = Router();
+
+  router.get('/', (req, res) => {
+    res.set('Content-Disposition', `attachment; filename="my-music-backup-${localDate()}.json"`);
+    res.json(buildBackup(db, req.user.id));
   });
 
   // 복원: 지금 라이브러리에 있는 곡에만 적용한다. 백업에 비어 있는 값(가사 등)은 지금 값을 지우지 않고,

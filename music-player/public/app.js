@@ -1499,7 +1499,7 @@ $('#backup').addEventListener('click', safe(async () => {
   const choice = await chooseDialog('라이브러리 백업', [
     { value: 'download', label: '백업 파일 받기' },
     { value: 'restore', label: '백업에서 복원…' },
-  ], '곡 정보 수정, 가사, 들은 횟수, 플레이리스트를 저장합니다. 음원 파일은 들어 있지 않으니 원본은 따로 보관하세요. 복원할 때는 음원을 먼저 다시 올린 뒤 복원하면 같은 곡을 찾아 되살립니다.');
+  ], '곡 정보 수정, 가사, 들은 횟수, 플레이리스트를 저장합니다. 음원 파일은 들어 있지 않으니 원본은 따로 보관하세요. 복원할 때는 음원을 먼저 다시 올린 뒤 복원하면 같은 곡을 찾아 되살립니다. 서버도 하루 한 번 데이터 폴더의 backups에 자동으로 백업해 최근 7일치를 보관합니다.');
   if (choice === 'download') {
     const a = h('a', { href: '/api/backup', download: '' });
     document.body.append(a);

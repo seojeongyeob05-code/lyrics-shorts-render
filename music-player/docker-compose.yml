@@ -7,6 +7,8 @@ services:
       - "3000:3000"
     environment:
       MAX_UPLOAD_MB: "200"
+      # 자동 백업 보관 일수 (0이면 끔). 백업은 ./data/backups 에 쌓입니다.
+      AUTO_BACKUP_KEEP: "7"
       # HTTPS 리버스 프록시(Caddy, Nginx 등) 뒤에서 쓸 때 켜세요.
       # COOKIE_SECURE: "true"
       # TRUST_PROXY: "true"
