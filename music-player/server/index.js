@@ -46,7 +46,7 @@ export function createApp(config) {
   app.use('/api/auth', auth.router);
   app.use('/api/tracks', auth.requireAuth, createTracksRouter(db, config));
   app.use('/api/playlists', auth.requireAuth, createPlaylistsRouter(db));
-  app.use('/api/backup', auth.requireAuth, createBackupRouter(db));
+  app.use('/api/backup', auth.requireAuth, createBackupRouter(db, config));
   app.use('/api', (_req, res) => res.status(404).json({ error: '없는 API입니다' }));
 
   app.use(express.static(path.join(ROOT, 'public')));

@@ -43,7 +43,7 @@ async function startServer() {
     for (const [name, seconds] of files) form.append('files', new Blob([makeWav(seconds)], { type: 'audio/wav' }), name);
     return (await (await call('POST', '/api/tracks', form)).json()).added;
   };
-  return { call, upload, logout: () => { cookie = ''; } };
+  return { call, upload, dir, logout: () => { cookie = ''; } };
 }
 
 test('백업 → 데이터를 잃음 → 음원을 다시 올리고 복원', async () => {
@@ -154,4 +154,41 @@ test('자동 백업: 하루 한 번, 최근 N개만 보관, 다른 파일은 건
   assert.ok(!fs.existsSync(path.join(userDir, 'my-music-backup-2026-11-11.json')));
   assert.equal(localDate(day(3)), '2026-11-03');
   db.close();
+});
+
+test('자동 백업 목록과 바로 복원, 다른 경로는 읽지 못함', async () => {
+  const s = await startServer();
+  const [a] = await s.upload([['a.wav', 1]]);
+  assert.deepEqual(await (await s.call('GET', '/api/backup/auto')).json(), []); // 아직 없음
+
+  // 그제와 어제의 자동 백업이 있다고 치고 파일을 둔다 (어제 것은 가사가 있음)
+  await s.call('PUT', `/api/tracks/${a.id}/lyrics`, { lyrics: '[00:00.10]어제 가사' });
+  const yesterday = await (await s.call('GET', '/api/backup')).json();
+  const userDir = path.join(s.dir, 'backups', 'user-1');
+  fs.mkdirSync(userDir, { recursive: true });
+  fs.writeFileSync(path.join(userDir, 'my-music-backup-2026-11-18.json'), JSON.stringify({ ...yesterday, tracks: [] }));
+  fs.writeFileSync(path.join(userDir, 'my-music-backup-2026-11-19.json'), JSON.stringify(yesterday));
+  fs.writeFileSync(path.join(userDir, 'notes.txt'), '목록에 안 나와야 함');
+  fs.writeFileSync(path.join(s.dir, 'secret.json'), JSON.stringify(yesterday));
+
+  const list = await (await s.call('GET', '/api/backup/auto')).json();
+  assert.deepEqual(list.map((b) => b.date), ['2026-11-19', '2026-11-18']); // 최신순
+  assert.ok(list.every((b) => b.size > 0 && b.name.startsWith('my-music-backup-')));
+
+  // 가사를 잃은 뒤 어제 자동 백업으로 복원
+  await s.call('PUT', `/api/tracks/${a.id}/lyrics`, { lyrics: null });
+  const res = await s.call('POST', '/api/backup/auto/my-music-backup-2026-11-19.json/restore');
+  assert.equal(res.status, 200);
+  assert.deepEqual((await res.json()).tracks, { restored: 1, missing: 0 });
+  assert.equal((await (await s.call('GET', `/api/tracks/${a.id}/lyrics`)).json()).lyrics, '[00:00.10]어제 가사');
+
+  assert.equal((await s.call('POST', '/api/backup/auto/my-music-backup-2026-01-01.json/restore')).status, 404);
+  for (const name of ['notes.txt', '..%2F..%2Fsecret.json', '..%2Fsecret.json', 'my-music-backup-2026-11-19.json%00']) {
+    assert.equal((await s.call('POST', `/api/backup/auto/${name}/restore`)).status, 400, name);
+  }
+  fs.writeFileSync(path.join(userDir, 'my-music-backup-2026-11-17.json'), '{broken');
+  assert.equal((await s.call('POST', '/api/backup/auto/my-music-backup-2026-11-17.json/restore')).status, 400);
+
+  s.logout();
+  assert.equal((await s.call('GET', '/api/backup/auto')).status, 401);
 });

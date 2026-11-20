@@ -66,7 +66,54 @@ export async function runAutoBackup(db, backupDir, { keep, now = Date.now() } = 
   return written;
 }
 
-export function createBackupRouter(db) {
+// 백업을 지금 라이브러리에 적용한다. 형식이 맞지 않으면 { error }를 돌려준다.
+export function applyBackup(db, userId, backup) {
+  if (backup?.format !== BACKUP_FORMAT || !Array.isArray(backup.tracks) || !Array.isArray(backup.playlists)) {
+    return { error: '이 앱의 백업 파일이 아닙니다' };
+  }
+  if (backup.version > BACKUP_VERSION) {
+    return { error: '더 새로운 버전에서 만든 백업이라 복원할 수 없습니다' };
+  }
+
+  const idByHash = new Map(db.prepare('SELECT id, hash FROM tracks WHERE hash IS NOT NULL').all().map((r) => [r.hash, r.id]));
+  const updateTrack = db.prepare(`
+    UPDATE tracks SET title = ?, artist = COALESCE(?, artist), album = COALESCE(?, album), lyrics = COALESCE(?, lyrics),
+      play_count = MAX(play_count, ?), last_played_at = MAX(COALESCE(last_played_at, 0), ?)
+    WHERE id = ?
+  `);
+  const existingNames = new Set(db.prepare('SELECT name FROM playlists WHERE user_id = ?').all(userId).map((p) => p.name));
+  const insertPlaylist = db.prepare('INSERT INTO playlists (user_id, name, created_at) VALUES (?, ?, ?)');
+  const insertEntry = db.prepare('INSERT INTO playlist_tracks (playlist_id, track_id, position) VALUES (?, ?, ?)');
+
+  const result = {
+    tracks: { restored: 0, missing: 0 },
+    playlists: { created: [], skipped: [] },
+  };
+  transaction(db, () => {
+    for (const t of backup.tracks) {
+      const id = idByHash.get(t?.hash);
+      const title = textOrNull(t?.title, 200);
+      if (!id || !title) { result.tracks.missing++; continue; }
+      const lastPlayed = Number.isFinite(t.lastPlayedAt) ? t.lastPlayedAt : 0;
+      updateTrack.run(title, textOrNull(t.artist, 200), textOrNull(t.album, 200), textOrNull(t.lyrics, 100_000),
+        Math.max(0, Math.floor(Number(t.playCount) || 0)), lastPlayed, id);
+      result.tracks.restored++;
+    }
+    for (const p of backup.playlists) {
+      const name = textOrNull(p?.name, 100);
+      if (!name) continue;
+      if (existingNames.has(name)) { result.playlists.skipped.push(name); continue; }
+      const ids = (Array.isArray(p.tracks) ? p.tracks : []).map((h) => idByHash.get(h)).filter(Boolean);
+      const { lastInsertRowid } = insertPlaylist.run(userId, name, Date.now());
+      ids.forEach((id, i) => insertEntry.run(lastInsertRowid, id, i));
+      existingNames.add(name);
+      result.playlists.created.push({ name, trackCount: ids.length, missing: (p.tracks?.length ?? 0) - ids.length });
+    }
+  });
+  return result;
+}
+
+export function createBackupRouter(db, { backupDir }) {
   const router = Router();
 
   router.get('/', (req, res) => {
@@ -77,49 +124,36 @@ export function createBackupRouter(db) {
   // 복원: 지금 라이브러리에 있는 곡에만 적용한다. 백업에 비어 있는 값(가사 등)은 지금 값을 지우지 않고,
 // 들은 횟수는 더 큰 쪽을 남긴다. 같은 이름의 플레이리스트가 이미 있으면 건너뛴다.
   router.post('/restore', express.json({ limit: MAX_BACKUP }), (req, res) => {
-    const backup = req.body;
-    if (backup?.format !== BACKUP_FORMAT || !Array.isArray(backup.tracks) || !Array.isArray(backup.playlists)) {
-      return res.status(400).json({ error: '이 앱의 백업 파일이 아닙니다' });
-    }
-    if (backup.version > BACKUP_VERSION) {
-      return res.status(400).json({ error: '더 새로운 버전에서 만든 백업이라 복원할 수 없습니다' });
-    }
+    const result = applyBackup(db, req.user.id, req.body);
+    if (result.error) return res.status(400).json(result);
+    res.json(result);
+  });
 
-    const idByHash = new Map(db.prepare('SELECT id, hash FROM tracks WHERE hash IS NOT NULL').all().map((r) => [r.hash, r.id]));
-    const updateTrack = db.prepare(`
-      UPDATE tracks SET title = ?, artist = COALESCE(?, artist), album = COALESCE(?, album), lyrics = COALESCE(?, lyrics),
-        play_count = MAX(play_count, ?), last_played_at = MAX(COALESCE(last_played_at, 0), ?)
-      WHERE id = ?
-    `);
-    const existingNames = new Set(db.prepare('SELECT name FROM playlists WHERE user_id = ?').all(req.user.id).map((p) => p.name));
-    const insertPlaylist = db.prepare('INSERT INTO playlists (user_id, name, created_at) VALUES (?, ?, ?)');
-    const insertEntry = db.prepare('INSERT INTO playlist_tracks (playlist_id, track_id, position) VALUES (?, ?, ?)');
+  // 서버의 자동 백업 목록 (최신순)
+  router.get('/auto', async (req, res) => {
+    const dir = path.join(backupDir, `user-${req.user.id}`);
+    const names = await fs.readdir(dir).catch(() => []);
+    const list = await Promise.all(names.filter((n) => BACKUP_FILE.test(n)).sort().reverse().map(async (name) => ({
+      name,
+      date: name.match(BACKUP_FILE)[1],
+      size: (await fs.stat(path.join(dir, name))).size,
+    })));
+    res.json(list);
+  });
 
-    const result = {
-      tracks: { restored: 0, missing: 0 },
-      playlists: { created: [], skipped: [] },
-    };
-    transaction(db, () => {
-      for (const t of backup.tracks) {
-        const id = idByHash.get(t?.hash);
-        const title = textOrNull(t?.title, 200);
-        if (!id || !title) { result.tracks.missing++; continue; }
-        const lastPlayed = Number.isFinite(t.lastPlayedAt) ? t.lastPlayedAt : 0;
-        updateTrack.run(title, textOrNull(t.artist, 200), textOrNull(t.album, 200), textOrNull(t.lyrics, 100_000),
-          Math.max(0, Math.floor(Number(t.playCount) || 0)), lastPlayed, id);
-        result.tracks.restored++;
-      }
-      for (const p of backup.playlists) {
-        const name = textOrNull(p?.name, 100);
-        if (!name) continue;
-        if (existingNames.has(name)) { result.playlists.skipped.push(name); continue; }
-        const ids = (Array.isArray(p.tracks) ? p.tracks : []).map((h) => idByHash.get(h)).filter(Boolean);
-        const { lastInsertRowid } = insertPlaylist.run(req.user.id, name, Date.now());
-        ids.forEach((id, i) => insertEntry.run(lastInsertRowid, id, i));
-        existingNames.add(name);
-        result.playlists.created.push({ name, trackCount: ids.length, missing: (p.tracks?.length ?? 0) - ids.length });
-      }
-    });
+  // 자동 백업 하나로 복원. 이름은 정해진 형식만 받아 다른 경로를 읽을 수 없게 한다.
+  router.post('/auto/:name/restore', async (req, res) => {
+    if (!BACKUP_FILE.test(req.params.name)) return res.status(400).json({ error: '잘못된 백업 이름입니다' });
+    const file = path.join(backupDir, `user-${req.user.id}`, req.params.name);
+    let backup;
+    try {
+      backup = JSON.parse(await fs.readFile(file, 'utf8'));
+    } catch (err) {
+      if (err.code === 'ENOENT') return res.status(404).json({ error: '그 날짜의 자동 백업이 없습니다' });
+      return res.status(400).json({ error: '자동 백업 파일을 읽을 수 없습니다' });
+    }
+    const result = applyBackup(db, req.user.id, backup);
+    if (result.error) return res.status(400).json(result);
     res.json(result);
   });
 
