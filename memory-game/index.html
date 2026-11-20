@@ -1455,6 +1455,8 @@ function act(I, raw, cost, meText, meKind) {
   const fn = R[id + S.level] || R[id];
   const [en, ko, ok] = fn(I, raw);
   npcSay(id, en, ko);
+  // Greeting or thanking grandma again brings the next missed word's example, if any are left.
+  if (id === 'grandma' && (I.has('greet') || I.has('thanks'))) setTimeout(() => { if (S && !S.done) grandmaExample(); }, 0);
   if (ok && meKind === 'me') {
     const t = raw.toLowerCase();
     for (const [w] of VOCAB) if (new RegExp('\\b' + w + '\\b').test(t)) {
