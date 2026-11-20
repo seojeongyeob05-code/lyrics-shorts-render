@@ -88,6 +88,11 @@ python3 -m shorts render song.lrc --style my-theme.json
 }
 ```
 
+### 줄 바뀜 효과
+
+스타일의 `transition`: `"fade"`(기본, 사라졌다 나타남) 또는 `"slide"`(다음 줄 미리보기 자리에서
+위로 올라옴). 시간은 `fade`(초).
+
 ### 음악 반응 막대
 
 스타일에 `"visualizer": true`를 넣고 `--audio`와 함께 렌더하면 진행 바 위에 저음→고음 막대가

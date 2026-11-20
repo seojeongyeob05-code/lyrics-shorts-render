@@ -28,6 +28,12 @@ def _ink(img):
     return {(x, y) for y in range(img.height) for x in range(img.width) if px[x, y] != (0, 0, 0)}
 
 
+def _ink_points(img):
+    """배경(검정)이 아닌 픽셀 (y, x) 목록."""
+    px = img.load()
+    return [(y, x) for y in range(img.height) for x in range(img.width) if px[x, y] != (0, 0, 0)]
+
+
 def _colors(img):
     return {c for _, c in img.getcolors(img.width * img.height)}
 
@@ -355,6 +361,65 @@ class ScaledStyleTest(unittest.TestCase):
         s = Style(width=1081, height=1919, stroke_width=0).scaled(0.5)
         self.assertEqual((s.width % 2, s.height % 2), (0, 0))
         self.assertEqual(s.stroke_width, 0)
+
+
+class SlideTest(unittest.TestCase):
+    BASE = dict(width=200, height=400, font_size=30, next_font_size=20, line_gap=20, fade=0.5,
+                transition="slide", bg_color=(0, 0, 0), text_color=(255, 255, 255),
+                next_color=(255, 255, 255), progress_bar=False)
+    LRC = "[00:01.00]AAA\n[00:03.00]BBB\n[00:05.00]CCC"
+
+    def test_layers_move_up_and_crossfade(self):
+        r = FrameRenderer(Style(**self.BASE))
+        d = 45
+        steps = [r._transition("prev", "cur", a, d) for a in (0.0, 0.3, 0.7, 1.0)]
+        prev_dy = [p[0][2] for p in steps]
+        cur_dy = [p[1][2] for p in steps]
+        self.assertEqual((prev_dy[0], cur_dy[0]), (0, d))  # 새 줄은 다음 줄 자리에서 시작
+        self.assertEqual((prev_dy[-1], cur_dy[-1]), (-d, 0))  # 끝나면 제자리, 이전 줄은 한 줄 위
+        self.assertTrue(all(a > b for a, b in zip(cur_dy, cur_dy[1:])))  # 계속 올라간다
+        self.assertTrue(all(c - p == d for p, c in zip(prev_dy, cur_dy)))  # 항상 한 줄 간격
+        self.assertEqual([(p[0][1], p[1][1]) for p in (steps[0], steps[-1])], [(1, 0), (0, 1)])
+        self.assertEqual(steps[2][0][1], 0)  # 이전 화면은 절반쯤에서 이미 사라짐
+
+    def test_slide_distance_follows_layout(self):
+        # 두 줄로 감기는 긴 가사 다음에는 다음 줄 자리가 더 아래 → 더 멀리서 올라온다
+        r = FrameRenderer(Style(**{**self.BASE, "max_text_width": 0.5}))
+        ly = lrc.parse("[00:01.00]A\n[00:03.00]B\n[00:05.00]WWWWWWWWWW\n[00:07.00]C", duration=9)
+        short = r._slide_distance(ly, r.state_key(ly, 2), r.state_key(ly, 3.5))
+        long_ = r._slide_distance(ly, r.state_key(ly, 6), r.state_key(ly, 7.5))
+        self.assertEqual(short, 30 // 2 + 20 + 20 // 2)
+        self.assertGreater(long_, short)
+
+    def test_mid_slide_shows_both_lines(self):
+        r = FrameRenderer(Style(**self.BASE))
+        ly = lrc.parse(self.LRC, duration=7)
+        mid, settled = r.render(ly, 3.03), r.render(ly, 3.9)  # 막 시작: 이전 줄이 아직 보임
+        top = lambda img: min(y for y, _ in _ink_points(img))
+        self.assertLess(top(mid), top(settled))  # 밀려 올라가는 이전 줄이 위에 보인다
+
+    def test_ends_exactly_like_static_frame(self):
+        slide = FrameRenderer(Style(**self.BASE))
+        still = FrameRenderer(Style(**{**self.BASE, "fade": 0}))
+        ly = lrc.parse(self.LRC, duration=7)
+        self.assertEqual(slide.render(ly, 3.6).tobytes(), still.render(ly, 3.6).tobytes())
+
+    def test_old_text_leaves_upward_and_offscreen_is_safe(self):
+        # 위로 밀려나는 레이어가 화면 위로 넘어가도 오류 없이 잘린다
+        style = Style(**{**self.BASE, "center_y": 0.02})
+        img = FrameRenderer(style).render(lrc.parse(self.LRC, duration=7), 3.2)
+        self.assertEqual(img.size, (200, 400))
+
+    def test_render_bytes_matches(self):
+        style = Style(**{**self.BASE, "progress_bar": True})
+        ly = lrc.parse(self.LRC, duration=7)
+        a, b = FrameRenderer(style), FrameRenderer(style)
+        for t in [0.5, 1.1, 1.6, 3.02, 3.3, 4.0]:
+            self.assertEqual(a.render_bytes(ly, t, t / 7), b.render(ly, t, t / 7).tobytes())
+
+    def test_unknown_transition(self):
+        with self.assertRaises(ValueError):
+            FrameRenderer(Style(transition="spin"))
 
 
 class VisualizerTest(unittest.TestCase):

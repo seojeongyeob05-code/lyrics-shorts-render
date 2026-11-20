@@ -52,7 +52,8 @@ class Style:
     line_spacing: float = 1.25  # 한 가사가 여러 줄로 나뉠 때 줄 높이(글자 크기 배수)
     max_text_width: float = 0.68  # 화면 폭 대비 최대 글줄 폭. 가운데 정렬이라 오른쪽 끝이 0.84 — 쇼츠 오른쪽 버튼 줄(0.85~)에 안 걸리게
     center_y: float = 0.5  # 현재 줄의 세로 위치(0=위, 1=아래)
-    fade: float = 0.24  # 화면이 바뀔 때 페이드 아웃→인 전체 시간(초). 0이면 끔
+    fade: float = 0.24  # 화면이 바뀔 때 전환 시간(초). 0이면 끔
+    transition: str = "fade"  # fade(사라졌다 나타남) / slide(위로 밀려 올라감)
     progress_bar: bool = True  # render(..., progress=)를 받으면 하단 진행 바를 그림
     progress_color: Color = (255, 255, 255)
     progress_track: Color = (70, 70, 84)
@@ -137,6 +138,7 @@ def make_background(s: Style, image: Image.Image | None = None) -> Image.Image:
 
 
 COVER_SHAPES = ("rounded", "circle", "square")
+TRANSITIONS = ("fade", "slide")
 
 
 def make_cover_layer(s: Style, cover: Image.Image) -> Image.Image:
@@ -172,6 +174,8 @@ class FrameRenderer:
     def __init__(self, style: Style | None = None, background: Image.Image | None = None,
                  cover: Image.Image | None = None):
         self.style = s = style or Style()
+        if s.transition not in TRANSITIONS:
+            raise ValueError(f"transition은 {', '.join(TRANSITIONS)} 중 하나여야 합니다: {s.transition!r}")
         self._cover = make_cover_layer(s, cover) if cover is not None else None
         self._bg = make_background(s, background)
         self._font = load_font(s.font_path, s.font_size)
@@ -289,40 +293,52 @@ class FrameRenderer:
         """진행 바를 뺀 시각 t의 화면과, 그 이미지가 캐시와 공유되는지(고치면 안 되는지)."""
         s = self.style
         layer = self._text_layer(lyrics, self.state_key(lyrics, t), t)
-        alpha = 1.0
         tc = self._last_change(lyrics, t)
         if s.fade > 0 and tc is not None and t - tc < s.fade:
-            # 같은 자리에 글자가 겹쳐 보이지 않도록 앞 절반은 이전 가사가 사라지고,
-            # 뒤 절반은 새 가사가 나타난다.
             a = (t - tc) / s.fade
-            if a < 0.5:
-                layer = self._text_layer(lyrics, self.state_key(lyrics, tc - 1e-6), tc - 1e-6)
-                alpha = 1 - a * 2
-            else:
-                alpha = a * 2 - 1
-        if alpha == 1.0 and s.bg_zoom <= 0 and self._is_cached(layer):
+            prev_key = self.state_key(lyrics, tc - 1e-6)
+            prev = self._text_layer(lyrics, prev_key, tc - 1e-6)
+            d = self._slide_distance(lyrics, prev_key, self.state_key(lyrics, t))
+            return self._composite(self.background_at(t), self._transition(prev, layer, a, d)), False
+        if s.bg_zoom <= 0 and self._is_cached(layer):
             if self._static is None or self._static[0] is not layer:
-                self._static = (layer, self._composite(self._bg, layer, 1.0))
+                self._static = (layer, self._composite(self._bg, [(layer, 1.0, 0)]))
             return self._static[1], True
-        return self._composite(self.background_at(t), layer, alpha), False
+        return self._composite(self.background_at(t), [(layer, 1.0, 0)]), False
 
-    def _composite(self, bg: Image.Image, layer: Image.Image, alpha: float) -> Image.Image:
-        """배경 위에 가사 레이어를 alpha(0~1) 불투명도로, 앨범 아트·곡 정보는 그대로 얹은 새 이미지."""
+    def _transition(self, prev: Image.Image, cur: Image.Image, a: float, d: int) -> list[tuple]:
+        """전환 a(0~1) 시점에 얹을 (레이어, 불투명도, 세로 이동) 목록. d는 slide 이동 거리."""
+        s = self.style
+        if s.transition == "slide":
+            # 새 현재 줄은 이전 화면의 다음 줄 자리에서 제자리로 올라오고, 이전 화면은 같은
+            # 거리만큼 위로 밀려난다. 겹쳐 보이지 않게 이전 화면은 절반 시간 안에 사라진다.
+            e = 1 - (1 - a) ** 3  # 처음엔 빠르게, 끝에선 천천히
+            return [(prev, max(0.0, 1 - 2 * e), -round(d * e)), (cur, e, round(d * (1 - e)))]
+        # fade: 같은 자리에 글자가 겹쳐 보이지 않도록 앞 절반은 이전 가사가 사라지고,
+        # 뒤 절반은 새 가사가 나타난다.
+        if a < 0.5:
+            return [(prev, 1 - a * 2, 0)]
+        return [(cur, a * 2 - 1, 0)]
+
+    def _composite(self, bg: Image.Image, parts: list[tuple]) -> Image.Image:
+        """배경 위에 가사 레이어들을 (레이어, 불투명도 0~1, 세로 이동 px)대로, 앨범 아트·곡
+        정보는 그대로 얹은 새 이미지."""
         out = bg.copy()
-        self._paste(out, layer, alpha)
+        for layer, alpha, dy in parts:
+            self._paste(out, layer, alpha, dy)
         if self._overlay is not None:
             self._paste(out, self._overlay, 1.0)
         return out
 
     @staticmethod
-    def _paste(out: Image.Image, layer: Image.Image, alpha: float) -> None:
+    def _paste(out: Image.Image, layer: Image.Image, alpha: float, dy: int = 0) -> None:
         bbox = layer.getbbox()  # 글자가 있는 영역만 합성
         if bbox and alpha > 0:
             part = layer.crop(bbox)
             mask = part.getchannel("A")
             if alpha < 1:
                 mask = mask.point(lambda v: round(v * alpha))
-            out.paste(part, bbox[:2], mask)
+            out.paste(part, (bbox[0], bbox[1] + dy), mask)
 
     def _draw_info(self, meta: dict[str, str]) -> Image.Image | None:
         """곡 제목(굵게)과 가수를 info_y 근처에 가운데 정렬로 그린 레이어. 둘 다 없으면 None."""
@@ -427,6 +443,23 @@ class FrameRenderer:
         k = bisect_right(self._bounds, t) - 1
         return self._bounds[k] if k >= 0 else None
 
+    def _next_top(self, lyrics: Lyrics, i: int | None) -> float:
+        """현재 줄이 i일 때 다음 줄 미리보기 첫 글줄의 가운데 y."""
+        s = self.style
+        bottom = s.height * s.center_y + s.font_size / 2
+        if i is not None:
+            bottom = self._current_rows(lyrics.lines[i].text)[-1][3] + s.font_size / 2
+        return bottom + s.line_gap + s.next_font_size / 2
+
+    def _slide_distance(self, lyrics: Lyrics, prev_key, cur_key) -> int:
+        """slide 전환에서 새 현재 줄이 올라오는 거리: 이전 화면의 다음 줄 자리 → 현재 줄 자리."""
+        s = self.style
+        i = cur_key[0]
+        if i is None:
+            return round(s.font_size / 2 + s.line_gap + s.next_font_size / 2)
+        return round(self._next_top(lyrics, prev_key[0])
+                     - self._current_rows(lyrics.lines[i].text)[0][3])
+
     def _draw_lyrics(self, lyrics: Lyrics, i: int | None, nxt: int | None,
                      color: Color) -> Image.Image:
         s = self.style
@@ -436,17 +469,14 @@ class FrameRenderer:
         stroke = {"stroke_width": s.stroke_width, "stroke_fill": s.stroke_color}
 
         # 현재 줄 블록은 center_y에 가운데 맞춤, 다음 줄 블록은 그 아래에 붙인다.
-        bottom = s.height * s.center_y + s.font_size / 2
         if i is not None:
-            rows = self._current_rows(lyrics.lines[i].text)
-            for row, _, _, y in rows:
+            for row, _, _, y in self._current_rows(lyrics.lines[i].text):
                 draw.text((s.width / 2, y), row, font=self._font, fill=color, anchor="mm",
                           **stroke)
-            bottom = rows[-1][3] + s.font_size / 2
         if nxt is not None:
             rows = wrap(lyrics.lines[nxt].text, self._next_font, s.width * s.max_text_width)
             step = s.next_font_size * s.line_spacing
-            top = bottom + s.line_gap + s.next_font_size / 2
+            top = self._next_top(lyrics, i)
             for k, row in enumerate(rows):
                 draw.text((s.width / 2, top + step * k), row, font=self._next_font,
                           fill=s.next_color, anchor="mm", **stroke)
