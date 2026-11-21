@@ -62,3 +62,22 @@ test('최근 추가한 곡: 새로 올린 순, 개수 제한', () => {
 test('많이 들은 곡: 들은 횟수 순, 같으면 최근에 들은 순, 안 들은 곡 제외', () => {
   assert.deepEqual(topTracks(tracks).map((t) => t.id), [4, 3, 1]);
 });
+
+test('최근 들은 곡: 마지막으로 들은 때 순, 안 들은 곡 제외', async () => {
+  const { recentlyPlayed } = await import('../public/listening.js');
+  assert.deepEqual(recentlyPlayed(tracks).map((t) => t.id), [3, 1, 4]);
+  assert.deepEqual(recentlyPlayed(tracks, 1).map((t) => t.id), [3]);
+});
+
+test('들은 때를 사람이 읽기 쉽게 보여 준다', async () => {
+  const { timeAgo } = await import('../public/listening.js');
+  const now = new Date(2026, 10, 21, 14, 0).getTime(); // 11월 21일 오후 2시 (서버/브라우저 시간)
+  const at = (...args) => new Date(...args).getTime();
+  assert.equal(timeAgo(now - 20_000, now), '방금');
+  assert.equal(timeAgo(now - 5 * 60_000, now), '5분 전');
+  assert.equal(timeAgo(now - 3 * 3600_000, now), '3시간 전');
+  assert.equal(timeAgo(at(2026, 10, 20, 9, 0), now), '어제');
+  assert.equal(timeAgo(at(2026, 10, 18, 23, 0), now), '3일 전');
+  assert.equal(timeAgo(at(2026, 9, 3, 12, 0), now), '2026. 10. 3.');
+  assert.equal(timeAgo(null, now), '');
+});

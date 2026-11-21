@@ -5,7 +5,7 @@ import { groupTracks, UNKNOWN_ARTIST } from './groups.js';
 import { planUploads, mergeResults } from './upload-plan.js';
 import { clickSelection, pruneSelection } from './selection.js';
 import { planPlaylistAdd } from './playlist-add.js';
-import { createListenTracker, recentTracks, topTracks } from './listening.js';
+import { createListenTracker, recentTracks, topTracks, recentlyPlayed, timeAgo } from './listening.js';
 import { createSync, stamp, undo, jumpTo, missingCount, toLrc, lrcTime, hasChanges } from './lyric-sync.js';
 import { SHORTCUTS, OTHER_SHORTCUTS, findShortcut } from './shortcuts.js';
 import { parseM3u, matchEntries, decodeText } from './m3u.js';
@@ -125,6 +125,10 @@ const SMART_LISTS = {
     title: '많이 들은 곡', pick: topTracks,
     empty: '아직 들은 곡이 없습니다. 곡을 절반 이상(최대 4분) 들으면 여기에 쌓입니다.',
   },
+  played: {
+    title: '최근 들은 곡', pick: recentlyPlayed,
+    empty: '아직 들은 곡이 없습니다. 곡을 절반 이상(최대 4분) 들으면 여기에 쌓입니다.',
+  },
 };
 
 async function openView(view) {
@@ -215,7 +219,7 @@ function setQuery(value) {
   $('#search').value = value;
 }
 
-const VIEW_KIND = { library: '라이브러리', playlist: '플레이리스트', artist: '아티스트', album: '앨범', recent: '라이브러리', top: '라이브러리' };
+const VIEW_KIND = { library: '라이브러리', playlist: '플레이리스트', artist: '아티스트', album: '앨범', recent: '라이브러리', top: '라이브러리', played: '라이브러리' };
 
 function renderMain() {
   // 선택 막대는 곡 목록을 다 그린 뒤 renderSelection이 다시 보여 준다.
@@ -250,7 +254,7 @@ function renderMain() {
   } else if (view.type === 'artist' || view.type === 'album') {
     actions.push(h('button', { class: 'btn', onclick: safe(() => openView({ type: `${view.type}s` })) },
       view.type === 'artist' ? '← 모든 아티스트' : '← 모든 앨범'));
-  } else if (view.type !== 'top') {
+  } else if (view.type !== 'top' && view.type !== 'played') {
     actions.push(h('button', { class: 'btn', onclick: () => $('#file-input').click() }, '＋ 업로드'));
   }
   $('#view-actions').replaceChildren(...actions);
@@ -281,7 +285,7 @@ function renderMain() {
     h('div', { class: 't-num' },
       h('span', { class: 'num' }, '#'),
       h('input', { type: 'checkbox', class: 't-check', id: 'select-all', 'aria-label': '모두 선택', onclick: (e) => { e.stopPropagation(); toggleSelectAll(); } })),
-    h('div', {}, '제목'), h('div', { class: 't-album' }, view.type === 'top' ? '들은 횟수' : '앨범'),
+    h('div', {}, '제목'), h('div', { class: 't-album' }, { top: '들은 횟수', played: '들은 때' }[view.type] ?? '앨범'),
     h('div', { class: 't-dur' }, '길이'), h('div'));
   list.replaceChildren(head, ...shown.map((t, i) => h('div', {
     class: 'track-row',
@@ -301,7 +305,8 @@ function renderMain() {
     h('div', { class: 't-text' },
       h('div', { class: 't-title' }, t.title),
       h('div', { class: 't-artist' }, artistLink(t)))),
-  h('div', { class: 't-album' }, view.type === 'top' ? `${t.playCount}회` : albumLink(t)),
+  h('div', { class: 't-album', title: view.type === 'played' ? new Date(t.lastPlayedAt).toLocaleString('ko-KR') : null },
+    view.type === 'top' ? `${t.playCount}회` : view.type === 'played' ? timeAgo(t.lastPlayedAt) : albumLink(t)),
   h('div', { class: 't-dur' }, fmt(t.duration)),
   h('button', {
     class: 'icon-btn', title: '더 보기', html: ICON.more,

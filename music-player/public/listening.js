@@ -42,3 +42,23 @@ export const topTracks = (tracks, limit = SMART_LIST_LIMIT) =>
   tracks.filter((t) => t.playCount > 0)
     .sort((a, b) => b.playCount - a.playCount || (b.lastPlayedAt ?? 0) - (a.lastPlayedAt ?? 0))
     .slice(0, limit);
+
+export const recentlyPlayed = (tracks, limit = SMART_LIST_LIMIT) =>
+  tracks.filter((t) => t.lastPlayedAt)
+    .sort((a, b) => b.lastPlayedAt - a.lastPlayedAt)
+    .slice(0, limit);
+
+// "방금", "5분 전", "3시간 전", "어제", "4일 전", 그보다 오래되면 날짜
+export function timeAgo(ts, now = Date.now()) {
+  if (!ts) return '';
+  const min = Math.floor((now - ts) / 60_000);
+  if (min < 1) return '방금';
+  if (min < 60) return `${min}분 전`;
+  if (min < 24 * 60) return `${Math.floor(min / 60)}시간 전`;
+  const day = (t) => { const d = new Date(t); return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86_400_000; };
+  const days = day(now) - day(ts);
+  if (days <= 1) return '어제';
+  if (days < 7) return `${days}일 전`;
+  const d = new Date(ts);
+  return `${d.getFullYear()}. ${d.getMonth() + 1}. ${d.getDate()}.`;
+}
