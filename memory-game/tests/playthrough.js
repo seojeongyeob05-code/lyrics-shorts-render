@@ -95,6 +95,20 @@ const lastNpc = p => p.evaluate(() => [...document.querySelectorAll('.msg.npc .e
     console.log('L4', st, (await p.textContent('#sheet')).replace(/\s+/g, ' ').slice(0, 160), errs);
     console.log('L4 mistakes', await p.evaluate(() => ag520.state().mistakes.map(m => m.cat + ' | ' + m.explain.slice(0, 80))));
     await p.close(); }
+  // Level 5: report the broken thing to the janitor, with one wrong object first
+  { const { p, errs } = await setup(b, 5);
+    const fix = await p.evaluate(() => ag520.state().fix);
+    const OBJ = { leak: 'sink', flicker: 'light', clog: 'toilet' }, WORD = { leak: 'leaking', flicker: 'flickering', clog: 'clogged' };
+    const other = Object.values(OBJ).find(o => o !== OBJ[fix]);
+    await goNear(p, 'janitor'); console.log('L5 greet:', await lastNpc(p));
+    await say(p, 'something is broken'); console.log('L5 broken:', await lastNpc(p));
+    await say(p, 'restroom'); console.log('L5 place:', await lastNpc(p));
+    await say(p, 'the ' + other); console.log('L5 wrong obj:', await lastNpc(p));
+    await say(p, 'the ' + OBJ[fix]); console.log('L5 obj:', await lastNpc(p));
+    await say(p, 'it is ' + WORD[fix]); await p.waitForTimeout(1500);
+    console.log('L5', fix, (await p.textContent('#sheet')).replace(/\s+/g, ' ').slice(0, 140), errs);
+    console.log('L5 mistakes', await p.evaluate(() => ag520.state().mistakes.map(m => m.cat + ' | ' + m.explain.slice(0, 60))));
+    await p.close(); }
   // Phone layout + start screen
   { const { p, errs } = await setup(b, 1, { width: 390, height: 844 });
     for (const k of ['ArrowUp', 'ArrowUp', 'ArrowRight']) await p.keyboard.press(k);

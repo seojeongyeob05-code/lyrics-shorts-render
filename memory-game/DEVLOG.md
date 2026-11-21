@@ -2,6 +2,23 @@
 
 배포 링크(비공개): https://claude.ai/artifact/JwYf98yBEL1xhmtUwnTyhv (매일 같은 링크에 재배포)
 
+## 2026-11-21 (22일차)
+
+### 한 일
+- **다섯 번째 상황 "고장 신고"**를 추가했다. 문제를 *묘사하는* 말하기 연습이다.
+  - 화장실이 고장 나 있다. 목표 칸에 한국어로 무엇이 고장인지 나온다(세면대에서 물이 샘 / 전등이 깜빡거림 / 변기가 막힘, 매 회차 바뀜). 이걸 청소부에게 영어로 알려야 한다.
+  - 청소부가 빠진 정보를 되묻는다: "Where is the problem?" → "What's broken? The sink? The light? The toilet?" → "What's wrong with it?" 한 문장에 다 말하면 한 번에 받아준다("The sink in the restroom is leaking").
+  - "broken"이라고만 하면 "어떻게 고장 났어? Is it leaking? Flickering? Clogged?"로 힌트를 준다. 새 몸짓 "고장 났다는 시늉"도 있다.
+  - 엉뚱한 물건을 말하면 청소부가 확인하러 갔다가 3분 뒤 "멀쩡하던데!" 하고 돌아온다(`거의 맞음`).
+  - 청소부의 일과표(5:40 화장실로 이동)가 그대로 적용되고, 6시 퇴근이 마감이다.
+  - 도감·할머니 사전·예문에 sink, leaking, light, flickering, toilet, clogged, broken을 추가했다.
+- `tests/playthrough.js`와 `run.sh`에 상황 5를 추가했다. 회귀 테스트 9개 모두 통과.
+
+### 다음 할 일
+- GPT로 만든 NPC 흉상 초상화가 오면 대화창 얼굴 자리에 연결
+- 실제 휴대폰에서 키보드 동작 확인(사용자 피드백 필요)
+- 상황 선택 화면이 다섯 개로 길어짐: 휴대폰에서 카드 높이 줄이기
+
 ## 2026-11-20 (21일차)
 
 ### 한 일
