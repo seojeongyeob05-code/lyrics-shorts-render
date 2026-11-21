@@ -37,7 +37,7 @@
 
 ## 4단계: 다듬기
 
-- [ ] 22. 자막 내보내기: LRC → SRT/ASS (다른 편집기·유튜브 자막용) `python -m shorts export song.lrc --srt`
+- [x] 22. 자막 내보내기: LRC → SRT/ASS (다른 편집기·유튜브 자막용) `python -m shorts export song.lrc --format ass`
 - [ ] 23. 긴 곡 점검: 3~4분 전체 렌더 속도·메모리 측정, 필요하면 개선
 - [ ] 24. 글자별 등장 효과(타자기처럼 한 글자씩)
 - [ ] 25. 처음 쓰는 사람용 사용 가이드(README 정리: 설치 → LRC 만들기 → 렌더까지 한 흐름)

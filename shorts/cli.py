@@ -15,8 +15,8 @@ import time
 
 from PIL import Image
 
-from . import audio, guide, lrc
-from .frame import FrameRenderer
+from . import audio, guide, lrc, subtitles
+from .frame import FrameRenderer, Style
 from .project import load_project, parse_time, parse_times
 from .styles import PRESET_DIR, list_presets, load_style, style_from_dict
 from .video import VideoOptions, render_video
@@ -40,7 +40,7 @@ def _apply_info(args, lyrics: lrc.Lyrics) -> lrc.Lyrics:
     return lyrics
 
 
-def _renderer(args) -> FrameRenderer:
+def _style(args) -> Style:
     try:
         if isinstance(args.style, dict):  # 곡 설정 파일에 직접 적은 스타일
             style = style_from_dict(args.style, args.project_dir, "곡 설정 파일의 style")
@@ -52,6 +52,11 @@ def _renderer(args) -> FrameRenderer:
         style.font_path = args.font
     if getattr(args, "preview", False):
         style = style.scaled(0.5)
+    return style
+
+
+def _renderer(args) -> FrameRenderer:
+    style = _style(args)
     bg = Image.open(args.bg) if args.bg else None
     cover = Image.open(args.cover) if args.cover else None
     return FrameRenderer(style, background=bg, cover=cover)
@@ -88,7 +93,8 @@ def segment_paths(base: str, n: int) -> list[str]:
     return [f"{root}-{k}{ext}" for k in range(1, n + 1)]
 
 
-def cmd_render(args) -> None:
+def _load_segments(args) -> tuple[lrc.Lyrics, list[tuple[float, float]]]:
+    """가사를 읽고 --start/--duration 구간 [(시작, 길이), ...]을 검사해 돌려준다."""
     song_len = probe_duration(args.audio) if args.audio else None
     lyrics = _apply_info(args, lrc.load(args.lrc, duration=song_len))
     if not lyrics.lines:
@@ -106,7 +112,11 @@ def cmd_render(args) -> None:
         if start >= end_of_song:
             raise SystemExit(f"--start({start:g}s)가 곡 길이({end_of_song:g}s)를 넘습니다")
         segments.append((start, min(duration or end_of_song - start, end_of_song - start)))
+    return lyrics, segments
 
+
+def cmd_render(args) -> None:
+    lyrics, segments = _load_segments(args)
     if args.preview:
         opts = VideoOptions(fps=min(args.fps, 15), preset="ultrafast", crf=28)
         base = args.out or args.stem + ".preview.mp4"
@@ -160,6 +170,37 @@ def cmd_frame(args) -> None:
     warn_overlaps(renderer, lyrics, [args.at])
 
 
+def cmd_export(args) -> None:
+    lyrics, segments = _load_segments(args)
+    whole = len(segments) == 1 and segments[0][0] == 0 and not args.duration
+    base = args.out or args.stem + "." + args.format
+    for (start, duration), out in zip(segments, segment_paths(base, len(segments))):
+        # 구간을 주면 렌더한 쇼츠와 맞도록 0초부터 시작하게 옮긴다
+        part = lyrics if whole else lyrics.clip(start, start + duration)
+        if args.format == "srt":
+            text = subtitles.to_srt(part)
+        else:
+            style = _style(args)
+            text = subtitles.to_ass(part, style, font_family(style.font_path))
+        with open(out, "w", encoding="utf-8") as f:
+            f.write(text)
+        print(f"{out}  ({len(part.lines)}줄)")
+
+
+def font_family(path: str | None) -> str:
+    """ASS에 적을 글꼴 이름. 파일에서 읽고, 없으면 흔한 한글 글꼴 이름."""
+    from .text import find_korean_font
+    from PIL import ImageFont
+
+    path = path or find_korean_font()
+    if path:
+        try:
+            return ImageFont.truetype(path, 10).getname()[0]
+        except OSError:
+            pass
+    return "Noto Sans CJK KR"
+
+
 def cmd_styles(args) -> None:
     for name in list_presets():
         with open(os.path.join(PRESET_DIR, f"{name}.json"), encoding="utf-8") as f:
@@ -198,6 +239,14 @@ def build_parser() -> argparse.ArgumentParser:
     f.add_argument("--guide", action="store_true",
                    help="쇼츠 앱 UI(메뉴·버튼·제목)가 덮는 자리를 반투명 빨강으로 표시")
     f.set_defaults(func=cmd_frame)
+
+    e = sub.add_parser("export", parents=[common], help="SRT/ASS 자막 파일로 내보내기")
+    e.add_argument("--format", choices=["srt", "ass"], default="srt",
+                   help="srt(어디서나 읽힘) 또는 ass(글꼴·색·위치·노래방 효과 포함)")
+    e.add_argument("--audio", help="음원 파일(마지막 줄 끝 시각을 곡 길이에 맞춤)")
+    e.add_argument("--start", type=parse_times, help="구간 시작(렌더한 쇼츠와 시각을 맞출 때)")
+    e.add_argument("--duration", type=parse_times, help="구간 길이")
+    e.set_defaults(func=cmd_export)
 
     sub.add_parser("styles", help="내장 스타일 프리셋 목록").set_defaults(func=cmd_styles)
     return p

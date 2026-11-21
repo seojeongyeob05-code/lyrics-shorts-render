@@ -23,6 +23,17 @@ python3 -m shorts frame song.lrc --bg bg.jpg --at 0:50
 - `--duration`을 빼면 곡 끝까지(음원이 없으면 마지막 가사 줄까지)
 - 폰트는 한글 폰트를 자동으로 찾음. 직접 지정: `--font 경로` 또는 환경변수 `SHORTS_FONT`
 
+### 자막 파일로 내보내기
+
+```
+python3 -m shorts export 노래.lrc                    # 노래.srt (유튜브·대부분의 편집기)
+python3 -m shorts export 노래.json --format ass      # 노래.ass (글꼴·색·위치, 노래방 채우기 효과)
+python3 -m shorts export 노래.lrc --start 0:45 --duration 20   # 렌더한 쇼츠 구간과 시각 맞추기
+```
+
+ASS는 스타일(`--style`)의 화면 크기·글자 크기·색·테두리·가사 위치를 따르고, 단어 타이밍이 있는 줄은
+`\kf` 태그로 왼쪽부터 채워집니다(VLC, Aegisub, ffmpeg `ass` 필터 등에서 보임).
+
 ### 쇼츠 앱에 가려지는 자리 확인
 
 ```
