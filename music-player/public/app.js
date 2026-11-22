@@ -7,7 +7,7 @@ import { clickSelection, pruneSelection } from './selection.js';
 import { planPlaylistAdd } from './playlist-add.js';
 import { createListenTracker, recentTracks, topTracks, recentlyPlayed, timeAgo } from './listening.js';
 import { createSync, stamp, undo, jumpTo, missingCount, toLrc, lrcTime, hasChanges } from './lyric-sync.js';
-import { SHORTCUTS, OTHER_SHORTCUTS, findShortcut } from './shortcuts.js';
+import { SHORTCUTS, OTHER_SHORTCUTS, findShortcut, stepVolume } from './shortcuts.js';
 import { parseM3u, matchEntries, decodeText } from './m3u.js';
 
 // ───────────── 유틸 ─────────────
@@ -1472,7 +1472,16 @@ const seekBy = (sec) => {
   audio.currentTime = Math.min(Math.max(audio.currentTime + sec, 0), audio.duration || 0);
 };
 
+// 볼륨 한 칸 조절 (키보드·마우스 휠). 음소거 중이면 풀고 조절한다.
+function changeVolume(direction) {
+  audio.muted = false;
+  audio.volume = stepVolume(audio.volume, direction);
+  toast(`볼륨 ${Math.round(audio.volume * 100)}%`, 1200);
+}
+
 const SHORTCUT_ACTIONS = {
+  volumeUp: () => changeVolume(1),
+  volumeDown: () => changeVolume(-1),
   togglePlay,
   seekBack: () => seekBy(-5),
   seekForward: () => seekBy(5),
@@ -1497,6 +1506,15 @@ function showShortcuts() {
 }
 
 $('#shortcut-help').addEventListener('click', showShortcuts);
+
+// 볼륨 슬라이더나 스피커 아이콘 위에서 마우스 휠을 굴리면 볼륨 조절
+for (const el of [$('#volume'), $('#btn-mute')]) {
+  el.addEventListener('wheel', (e) => {
+    if (!e.deltaY) return;
+    e.preventDefault();
+    changeVolume(e.deltaY < 0 ? 1 : -1);
+  }, { passive: false });
+}
 
 // ───────────── 백업 ─────────────
 // 음원 파일은 빼고 곡 정보 수정·가사·들은 횟수·플레이리스트를 JSON 한 파일로 받고 되살린다.

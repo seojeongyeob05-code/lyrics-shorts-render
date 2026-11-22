@@ -35,3 +35,22 @@ test('안내에 쓸 이름과 키가 모두 있고, 동작 이름이 겹치지 �
   for (const s of SHORTCUTS) assert.ok(s.label && s.keys.length, s.action);
   assert.equal(new Set(SHORTCUTS.map((s) => s.action)).size, SHORTCUTS.length);
 });
+
+test('Shift+↑/↓는 볼륨, 그냥 ↑/↓는 목록 스크롤을 위해 비워 둔다', () => {
+  assert.equal(findShortcut(key('ArrowUp', 'ArrowUp', { shiftKey: true })), 'volumeUp');
+  assert.equal(findShortcut(key('ArrowDown', 'ArrowDown', { shiftKey: true })), 'volumeDown');
+  assert.equal(findShortcut(key('ArrowUp', 'ArrowUp')), null);
+  assert.equal(findShortcut(key('ArrowDown', 'ArrowDown')), null);
+});
+
+test('볼륨 한 칸 조절: 0~100% 안에서, 5% 단위로 맞춘다', async () => {
+  const { stepVolume } = await import('../public/shortcuts.js');
+  assert.equal(stepVolume(0.5, 1), 0.55);
+  assert.equal(stepVolume(0.5, -1), 0.45);
+  assert.equal(stepVolume(0.98, 1), 1);
+  assert.equal(stepVolume(0.02, -1), 0);
+  assert.equal(stepVolume(0.63, 1), 0.7); // 어중간한 값은 다음 칸으로 맞춤 (0.63+0.05=0.68 → 0.70)
+  let v = 0;
+  for (let i = 0; i < 20; i++) v = stepVolume(v, 1);
+  assert.equal(v, 1); // 0.05씩 20번 = 정확히 100%
+});

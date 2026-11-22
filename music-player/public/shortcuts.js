@@ -9,6 +9,8 @@ export const SHORTCUTS = [
   { action: 'seekForward', keys: ['→'], label: '5초 앞으로', match: (e) => !withModifier(e) && !e.shiftKey && e.key === 'ArrowRight' },
   { action: 'prev', keys: ['Shift', '←'], label: '이전 곡', match: (e) => !withModifier(e) && e.shiftKey && e.key === 'ArrowLeft' },
   { action: 'next', keys: ['Shift', '→'], label: '다음 곡', match: (e) => !withModifier(e) && e.shiftKey && e.key === 'ArrowRight' },
+  { action: 'volumeUp', keys: ['Shift', '↑'], label: '볼륨 올리기 (5%)', match: (e) => !withModifier(e) && e.shiftKey && e.key === 'ArrowUp' },
+  { action: 'volumeDown', keys: ['Shift', '↓'], label: '볼륨 내리기 (5%)', match: (e) => !withModifier(e) && e.shiftKey && e.key === 'ArrowDown' },
   { action: 'mute', keys: ['M'], label: '음소거 켜기/끄기', match: plainKey('KeyM') },
   { action: 'shuffle', keys: ['S'], label: '셔플 켜기/끄기', match: plainKey('KeyS') },
   { action: 'repeat', keys: ['R'], label: '반복 바꾸기 (안 함 → 전체 → 한 곡)', match: plainKey('KeyR') },
@@ -27,4 +29,10 @@ export const OTHER_SHORTCUTS = [
 
 export function findShortcut(event) {
   return SHORTCUTS.find((s) => s.match(event))?.action ?? null;
+}
+
+// 볼륨을 한 칸(기본 5%) 올리거나 내린다. 0~1 사이로 자르고, 0.05 단위로 맞춰 오차가 쌓이지 않게 한다.
+export function stepVolume(volume, direction, step = 0.05) {
+  const next = Math.round((volume + direction * step) / step) * step;
+  return Math.min(1, Math.max(0, Math.round(next * 100) / 100));
 }
