@@ -99,6 +99,12 @@ main.play { display: grid; gap: 22px; grid-template-columns: minmax(0, 1.1fr) mi
   main.play { gap: 10px; }
   .mapwrap { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-bottom: 6px; display: block; }
   /* While typing, the on-screen keyboard takes half the screen: let the map scroll away so the dialogue has room. */
+  /* Situation cards: drop the story paragraph and tighten spacing so all five fit with little scrolling. */
+  #sheet .lvl { padding: 6px 10px; gap: 0; }
+  #sheet .lvl small { display: none; }
+  #sheet .lvl b { font-size: 16px; }
+  #sheet .lvl .skills { margin: 1px 0; }
+  #sheet .levels { gap: 6px; }
   body.typing .mapwrap { position: static; }
   body.typing .talk { height: max(260px, calc(var(--vvh, 100dvh) - 20px)); }
   .pad { position: absolute; right: 6px; bottom: 12px; grid-template-columns: repeat(3, 30px); grid-template-rows: repeat(2, 28px); gap: 3px; z-index: 2; }
