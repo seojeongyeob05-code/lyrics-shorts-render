@@ -137,6 +137,16 @@ def make_background(s: Style, image: Image.Image | None = None) -> Image.Image:
     return bg
 
 
+def _bbox(layer: Image.Image):
+    """RGBA 레이어에서 글자가 있는 영역. 캐시된 레이어는 바뀌지 않으므로 한 번만 계산한다
+    (1080x1920 전체를 훑는 getbbox가 프레임마다 ~2ms)."""
+    bbox = getattr(layer, "_shorts_bbox", False)
+    if bbox is False:
+        bbox = layer.getbbox()
+        layer._shorts_bbox = bbox
+    return bbox
+
+
 COVER_SHAPES = ("rounded", "circle", "square")
 TRANSITIONS = ("fade", "slide")
 
@@ -178,6 +188,13 @@ class FrameRenderer:
             raise ValueError(f"transition은 {', '.join(TRANSITIONS)} 중 하나여야 합니다: {s.transition!r}")
         self._cover = make_cover_layer(s, cover) if cover is not None else None
         self._bg = make_background(s, background)
+        # 많이 흐린 배경은 절반 크기에서 확대해도 눈으로 차이가 없다(최대 1/255). 줌 배경을
+        # 매번 다시 계산하는 비용이 약 30% 준다.
+        self._zoom_src, self._zoom_k = self._bg, 1.0
+        if s.bg_zoom > 0 and s.bg_blur >= 8:
+            self._zoom_k = 0.5
+            self._zoom_src = self._bg.resize(
+                (round(self._bg.width / 2), round(self._bg.height / 2)), Image.BILINEAR)
         self._font = load_font(s.font_path, s.font_size)
         self._next_font = load_font(s.font_path, s.next_font_size)
         self._title_font = load_font(s.font_path, s.title_size)
@@ -259,12 +276,12 @@ class FrameRenderer:
         # 0 → 1 → 0으로 부드럽게 오가는 위상: 확대했다가 원래 크기로 돌아온다
         phase = 0.5 - 0.5 * math.cos(2 * math.pi * t / s.bg_zoom_period)
         scale = 1 + s.bg_zoom * phase
-        bw, bh = self._bg.size
+        bw, bh = self._zoom_src.size
         w, h = bw / scale, bh / scale
         cx = bw / 2 + max(-1.0, min(1.0, s.bg_pan)) * (bw - w) / 2
         cy = bh / 2
-        bg = self._bg.resize((s.width, s.height), Image.BILINEAR,
-                             box=(cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2))
+        bg = self._zoom_src.resize((s.width, s.height), Image.BILINEAR,
+                                   box=(cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2))
         self._zoomed = (t, bg)
         return bg
 
@@ -272,9 +289,9 @@ class FrameRenderer:
         """시각 t에 그려지는 것들의 영역: [(이름, (x0, y0, x1, y1)), ...]."""
         boxes = []
         layer = self._text_layer(lyrics, self.state_key(lyrics, t), t)
-        if bbox := layer.getbbox():
+        if bbox := _bbox(layer):
             boxes.append(("가사", bbox))
-        if self._overlay is not None and (bbox := self._overlay.getbbox()):
+        if self._overlay is not None and (bbox := _bbox(self._overlay)):
             boxes.append(("곡 정보·앨범 아트", bbox))
         if self.style.progress_bar:
             x0, y0, w, h, _ = self._progress_geometry(0)
@@ -332,7 +349,7 @@ class FrameRenderer:
 
     @staticmethod
     def _paste(out: Image.Image, layer: Image.Image, alpha: float, dy: int = 0) -> None:
-        bbox = layer.getbbox()  # 글자가 있는 영역만 합성
+        bbox = _bbox(layer)  # 글자가 있는 영역만 합성
         if bbox and alpha > 0:
             part = layer.crop(bbox)
             mask = part.getchannel("A")
@@ -405,6 +422,7 @@ class FrameRenderer:
                 px += (n - whole) * self._font.getlength(row[whole])
             draw.rectangle((0, y - h - band[1], x0 + px, y + h - band[1]), fill=255)
         img = unsung.copy()
+        img._shorts_bbox = _bbox(unsung)  # 노래방 합성은 글자 자리가 안 부른 레이어와 같다
         img.paste(sung.crop(band), band[:2], mask)
         return img
 

@@ -13,6 +13,7 @@ SAMPLE_RATE = 22050
 WINDOW = 2048  # FFT 창 크기(약 93ms)
 LOW_HZ, HIGH_HZ = 50.0, 8000.0
 RANGE_DB = 45.0  # 가장 큰 소리에서 이만큼 아래까지를 0~1로 보여준다
+CHUNK = 256  # 한 번에 FFT할 프레임 수(메모리 상한)
 
 
 def read_pcm(path: str, start: float, duration: float, ffmpeg: str = "ffmpeg") -> np.ndarray:
@@ -43,10 +44,16 @@ def levels_from_pcm(pcm: np.ndarray, n_frames: int, fps: float, bands: int = 32,
     padded = np.concatenate([np.zeros(WINDOW // 2, np.float32), pcm,
                              np.zeros(WINDOW, np.float32)])
     starts = (np.arange(n_frames) * hop).astype(int)
-    frames = np.stack([padded[s:s + WINDOW] for s in starts]) if n_frames else np.zeros((0, WINDOW))
-    mag = np.abs(np.fft.rfft(frames * np.hanning(WINDOW), axis=1))
     edges = band_edges(bands)
-    energy = np.stack([mag[:, a:b].mean(axis=1) for a, b in zip(edges[:-1], edges[1:])], axis=1)
+    window = np.hanning(WINDOW).astype(np.float32)
+    energy = np.zeros((n_frames, bands))
+    # 프레임마다 2048칸 창을 한꺼번에 만들면 3분 반 곡에서 수백 MB가 되므로 나눠서 계산
+    for c in range(0, n_frames, CHUNK):
+        idx = starts[c:c + CHUNK]
+        frames = padded[idx[:, None] + np.arange(WINDOW)] * window
+        mag = np.abs(np.fft.rfft(frames, axis=1))
+        energy[c:c + len(idx)] = np.stack(
+            [mag[:, a:b].mean(axis=1) for a, b in zip(edges[:-1], edges[1:])], axis=1)
     db = 20 * np.log10(energy + 1e-9)
     loud = db[db > -150]
     ref = np.percentile(loud, 98) if loud.size else 0.0

@@ -252,6 +252,20 @@ class ZoomTest(unittest.TestCase):
         r = FrameRenderer(Style(**self.base, bg_pan=-1), self.img)
         self.assertGreater(r.background_at(5).getpixel((0, 100))[0], 200)  # 왼쪽으로 흘러 띠가 보임
 
+    def test_blurred_zoom_uses_half_size_source_without_visible_change(self):
+        photo = Image.effect_noise((300, 500), 60).convert("RGB")
+        base = dict(width=150, height=250, bg_zoom=0.1, bg_zoom_period=4)
+        fast = FrameRenderer(Style(**base, bg_blur=10), photo)
+        self.assertEqual(fast._zoom_k, 0.5)
+        sharp = FrameRenderer(Style(**base, bg_blur=2), photo)
+        self.assertEqual(sharp._zoom_k, 1.0)  # 선명한 배경은 원래 크기로
+        exact = FrameRenderer(Style(**base, bg_blur=10), photo)
+        exact._zoom_src = exact._bg  # 비교용: 절반 크기 지름길을 끈 것
+        for t in (0.3, 1.7):
+            a = np.asarray(fast.background_at(t), int)
+            b = np.asarray(exact.background_at(t), int)
+            self.assertLessEqual(np.abs(a - b).max(), 3)
+
     def test_updates_are_throttled(self):
         r = FrameRenderer(Style(**self.base), self.img)
         self.assertIs(r.background_at(1.0), r.background_at(1.0 + 1 / 60))
@@ -416,6 +430,16 @@ class SlideTest(unittest.TestCase):
         a, b = FrameRenderer(style), FrameRenderer(style)
         for t in [0.5, 1.1, 1.6, 3.02, 3.3, 4.0]:
             self.assertEqual(a.render_bytes(ly, t, t / 7), b.render(ly, t, t / 7).tobytes())
+
+    def test_bbox_is_computed_once_per_layer(self):
+        r = FrameRenderer(Style(**self.BASE))
+        ly = lrc.parse(self.LRC, duration=7)
+        r.render(ly, 1.5)
+        layer = r._text_layer(ly, r.state_key(ly, 1.5), 1.5)
+        self.assertEqual(layer._shorts_bbox, layer.getbbox())
+        layer._shorts_bbox = (0, 0, 1, 1)  # 저장된 값을 다시 쓰는지 확인
+        from shorts.frame import _bbox
+        self.assertEqual(_bbox(layer), (0, 0, 1, 1))
 
     def test_unknown_transition(self):
         with self.assertRaises(ValueError):

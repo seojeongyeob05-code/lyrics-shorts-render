@@ -44,6 +44,19 @@ class LevelsTest(unittest.TestCase):
         band = a[15].argmax()
         self.assertAlmostEqual(a[40, band], b[80, band], delta=0.05)  # 같은 1.33초 시점
 
+    def test_chunked_matches_single_pass(self):
+        rng = np.random.default_rng(1)
+        pcm = (rng.standard_normal(SR * 12) * 0.1).astype(np.float32)
+        n = 12 * 30  # CHUNK(256)보다 많아서 여러 번 나눠 계산된다
+        chunked = audio.levels_from_pcm(pcm, n, 30, bands=16)
+        old = audio.CHUNK
+        audio.CHUNK = 10 ** 6
+        try:
+            single = audio.levels_from_pcm(pcm, n, 30, bands=16)
+        finally:
+            audio.CHUNK = old
+        np.testing.assert_allclose(chunked, single, atol=1e-5)
+
     def test_band_edges_strictly_increase(self):
         e = audio.band_edges(48)
         self.assertEqual(len(e), 49)
