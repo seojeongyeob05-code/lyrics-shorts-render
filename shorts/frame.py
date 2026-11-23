@@ -54,6 +54,8 @@ class Style:
     center_y: float = 0.5  # 현재 줄의 세로 위치(0=위, 1=아래)
     fade: float = 0.24  # 화면이 바뀔 때 전환 시간(초). 0이면 끔
     transition: str = "fade"  # fade(사라졌다 나타남) / slide(위로 밀려 올라감)
+    reveal: str = "none"  # none / typewriter(현재 줄이 한 글자씩 나타남)
+    reveal_cps: float = 14  # typewriter 속도(초당 글자). 줄 길이의 60% 안에는 다 나오게 줄인다
     progress_bar: bool = True  # render(..., progress=)를 받으면 하단 진행 바를 그림
     progress_color: Color = (255, 255, 255)
     progress_track: Color = (70, 70, 84)
@@ -149,6 +151,8 @@ def _bbox(layer: Image.Image):
 
 COVER_SHAPES = ("rounded", "circle", "square")
 TRANSITIONS = ("fade", "slide")
+REVEALS = ("none", "typewriter")
+_HIDDEN = (0, 0, 0, 0)  # _layer 색으로 주면 현재 줄을 그리지 않는다(다음 줄 자리는 그대로)
 
 
 def make_cover_layer(s: Style, cover: Image.Image) -> Image.Image:
@@ -184,6 +188,8 @@ class FrameRenderer:
     def __init__(self, style: Style | None = None, background: Image.Image | None = None,
                  cover: Image.Image | None = None):
         self.style = s = style or Style()
+        if s.reveal not in REVEALS:
+            raise ValueError(f"reveal은 {', '.join(REVEALS)} 중 하나여야 합니다: {s.reveal!r}")
         if s.transition not in TRANSITIONS:
             raise ValueError(f"transition은 {', '.join(TRANSITIONS)} 중 하나여야 합니다: {s.transition!r}")
         self._cover = make_cover_layer(s, cover) if cover is not None else None
@@ -395,6 +401,32 @@ class FrameRenderer:
     def _text_layer(self, lyrics: Lyrics, key: tuple[int | None, int | None],
                     t: float) -> Image.Image:
         """시각 t에 보일 가사 레이어(RGBA, 투명 배경). 돌려받은 이미지를 고치지 말 것."""
+        img = self._sung_layer(lyrics, key, t)
+        i = key[0]
+        if self.style.reveal == "typewriter" and i is not None:
+            shown = self.revealed_chars(lyrics.lines[i], t)
+            if shown < len(lyrics.lines[i].text):
+                # 아직 안 나온 글자를 가린다: 현재 줄 없는 레이어 위에 나온 글자만 덮어쓴다
+                rows = self._current_rows(lyrics.lines[i].text)
+                band, mask = self._chars_mask(rows, shown, soft=True)
+                base = self._layer(lyrics, key, color=_HIDDEN)
+                out = base.copy()
+                out._shorts_bbox = _bbox(img)
+                out.paste(img.crop(band), band[:2], mask)
+                return out
+        return img
+
+    def revealed_chars(self, line, t: float) -> float:
+        """typewriter에서 시각 t까지 나온 글자 수(소수 = 다음 글자가 나타나는 중)."""
+        n = len(line.text)
+        if n == 0:
+            return 0.0
+        interval = min(1 / self.style.reveal_cps, 0.6 * (line.end - line.start) / n)
+        return n if interval <= 0 else min(float(n), max(0.0, (t - line.start) / interval))
+
+    def _sung_layer(self, lyrics: Lyrics, key: tuple[int | None, int | None],
+                    t: float) -> Image.Image:
+        """현재 줄이 다 보이는 가사 레이어. 노래방 줄이면 부른 만큼 채운다."""
         i = key[0]
         if i is None or not lyrics.lines[i].marks:
             return self._layer(lyrics, key, color=self.style.text_color)
@@ -405,26 +437,40 @@ class FrameRenderer:
         done = line.sung_chars(t)
         if done >= len(line.text):
             return sung
-        rows = self._current_rows(line.text)
-        h = self.style.font_size * 0.75
-        # 글자가 있는 띠만 합성한다(전체 화면을 섞으면 느리다)
-        band = (0, max(0, int(rows[0][3] - h)), unsung.width,
-                min(unsung.height, int(rows[-1][3] + h) + 1))
-        mask = Image.new("L", (band[2], band[3] - band[1]), 0)
-        draw = ImageDraw.Draw(mask)
-        for row, offset, x0, y in rows:
-            n = min(max(done - offset, 0.0), len(row))
-            if n <= 0:
-                break
-            whole = int(n)
-            px = self._font.getlength(row[:whole])
-            if whole < len(row):
-                px += (n - whole) * self._font.getlength(row[whole])
-            draw.rectangle((0, y - h - band[1], x0 + px, y + h - band[1]), fill=255)
+        band, mask = self._chars_mask(self._current_rows(line.text), done, soft=False)
         img = unsung.copy()
         img._shorts_bbox = _bbox(unsung)  # 노래방 합성은 글자 자리가 안 부른 레이어와 같다
         img.paste(sung.crop(band), band[:2], mask)
         return img
+
+    def _chars_mask(self, rows, chars: float, soft: bool) -> tuple[tuple, Image.Image]:
+        """현재 줄 앞에서부터 chars 글자까지를 덮는 마스크와, 그 마스크가 놓일 띠 영역.
+
+        글자가 있는 띠만 만든다(전체 화면 크기로 섞으면 느리다). soft=False면 걸친 글자를
+        진행만큼 잘라 채우고(노래방), True면 걸친 글자 전체를 진행만큼 반투명하게(타자기).
+        """
+        s = self.style
+        h = s.font_size * 0.75 + s.stroke_width
+        band = (0, max(0, int(rows[0][3] - h)), s.width, min(s.height, int(rows[-1][3] + h) + 1))
+        mask = Image.new("L", (band[2], band[3] - band[1]), 0)
+        draw = ImageDraw.Draw(mask)
+        for row, offset, x0, y in rows:
+            n = min(max(chars - offset, 0.0), len(row))
+            if n <= 0:
+                break
+            whole = int(n)
+            px = x0 + self._font.getlength(row[:whole])
+            top, bottom = y - h - band[1], y + h - band[1]
+            char_w = self._font.getlength(row[whole]) if whole < len(row) else 0.0
+            if soft:
+                if whole:
+                    draw.rectangle((0, top, px, bottom), fill=255)
+                if n > whole:  # 나타나는 중인 글자
+                    draw.rectangle((px, top, px + char_w + s.stroke_width, bottom),
+                                   fill=round(255 * (n - whole)))
+            else:
+                draw.rectangle((0, top, px + (n - whole) * char_w, bottom), fill=255)
+        return band, mask
 
     def _is_cached(self, img: Image.Image) -> bool:
         return any(img is v for v in self._cache.values())
@@ -487,7 +533,7 @@ class FrameRenderer:
         stroke = {"stroke_width": s.stroke_width, "stroke_fill": s.stroke_color}
 
         # 현재 줄 블록은 center_y에 가운데 맞춤, 다음 줄 블록은 그 아래에 붙인다.
-        if i is not None:
+        if i is not None and color != _HIDDEN:
             for row, _, _, y in self._current_rows(lyrics.lines[i].text):
                 draw.text((s.width / 2, y), row, font=self._font, fill=color, anchor="mm",
                           **stroke)

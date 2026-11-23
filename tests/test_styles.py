@@ -59,6 +59,7 @@ class StylesTest(unittest.TestCase):
             "list.json": ([1, 2], "객체"),
             "shape.json": ({"cover_shape": "star"}, "rounded"),
             "transition.json": ({"transition": "spin"}, "slide"),
+            "reveal.json": ({"reveal": "fast"}, "typewriter"),
         }
         for name, (data, needle) in cases.items():
             with self.subTest(name=name):

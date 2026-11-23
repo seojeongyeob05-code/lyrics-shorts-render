@@ -15,7 +15,7 @@ import json
 import os
 import typing
 
-from .frame import COVER_SHAPES, TRANSITIONS, Style
+from .frame import COVER_SHAPES, REVEALS, TRANSITIONS, Style
 
 PRESET_DIR = os.path.join(os.path.dirname(__file__), "presets")
 _FIELDS = {f.name: f for f in dataclasses.fields(Style)}
@@ -54,6 +54,10 @@ def _convert(key: str, value, base_dir: str):
         return None
     if key.endswith("_color") or key in ("progress_track", "bg_gradient"):
         return _color(key, value)
+    if key == "reveal":
+        if value not in REVEALS:
+            raise ValueError(f"{key}: {', '.join(REVEALS)} 중 하나여야 합니다 (받은 값: {value!r})")
+        return value
     if key == "transition":
         if value not in TRANSITIONS:
             raise ValueError(f"{key}: {', '.join(TRANSITIONS)} 중 하나여야 합니다 (받은 값: {value!r})")

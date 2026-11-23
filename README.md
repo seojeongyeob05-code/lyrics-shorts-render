@@ -103,6 +103,7 @@ python3 -m shorts render song.lrc --style my-theme.json
 
 스타일의 `transition`: `"fade"`(기본, 사라졌다 나타남) 또는 `"slide"`(다음 줄 미리보기 자리에서
 위로 올라옴). 시간은 `fade`(초).
+`"reveal": "typewriter"`를 함께 쓰면 현재 줄이 한 글자씩 나타납니다(속도 `reveal_cps`, 줄 길이의 60% 안에 다 나옴).
 
 ### 음악 반응 막대
 

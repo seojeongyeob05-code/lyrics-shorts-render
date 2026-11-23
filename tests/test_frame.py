@@ -446,6 +446,54 @@ class SlideTest(unittest.TestCase):
             FrameRenderer(Style(transition="spin"))
 
 
+class RevealTest(unittest.TestCase):
+    BASE = dict(width=300, height=300, font_size=30, next_font_size=20, fade=0, reveal="typewriter",
+                reveal_cps=10, bg_color=(0, 0, 0), text_color=(255, 255, 255),
+                next_color=(255, 0, 0), unsung_color=(0, 0, 255), progress_bar=False)
+    LRC = "[00:01.00]ABCDEFGH\n[00:05.00]NEXT"
+
+    def white_xs(self, img):
+        return [x for y, x in _ink_points(img) if img.getpixel((x, y))[1] > 200]
+
+    def test_revealed_chars_timing(self):
+        r = FrameRenderer(Style(**self.BASE))
+        line = lrc.parse(self.LRC, duration=9).lines[0]  # 8글자, 4초
+        self.assertEqual(r.revealed_chars(line, 1.0), 0)
+        self.assertAlmostEqual(r.revealed_chars(line, 1.35), 3.5)  # 초당 10글자
+        self.assertEqual(r.revealed_chars(line, 3.0), 8)
+        short = lrc.parse("[00:00.00]ABCDEFGHIJ\n[00:01.00]X", duration=3).lines[0]
+        self.assertAlmostEqual(r.revealed_chars(short, 0.3), 5)  # 1초 줄 → 0.6초 안에 10글자
+
+    def test_letters_appear_left_to_right(self):
+        r = FrameRenderer(Style(**self.BASE))
+        ly = lrc.parse(self.LRC, duration=9)
+        start, part, full = r.render(ly, 1.0), r.render(ly, 1.4), r.render(ly, 3)
+        self.assertEqual(self.white_xs(start), [])
+        self.assertIn((255, 0, 0), _colors(start))  # 다음 줄은 처음부터 제자리에
+        self.assertTrue(self.white_xs(part))
+        self.assertLess(max(self.white_xs(part)), max(self.white_xs(full)) - 30)
+        still = FrameRenderer(Style(**{**self.BASE, "reveal": "none"}))
+        self.assertEqual(full.tobytes(), still.render(ly, 3).tobytes())
+
+    def test_works_with_karaoke_and_fast_path(self):
+        style = Style(**{**self.BASE, "progress_bar": True})
+        ly = lrc.parse("[00:01.00]<00:01.00>AB <00:01.20>CD <00:01.40>EF\n[00:04.00]G", duration=6)
+        a, b = FrameRenderer(style), FrameRenderer(style)
+        mid = b.render(ly, 1.25)
+        self.assertIn((255, 255, 255), _colors(mid))  # 부른 글자
+        for t in [1.0, 1.15, 1.3, 1.9, 3.0]:
+            self.assertEqual(a.render_bytes(ly, t, t / 6), b.render(ly, t, t / 6).tobytes())
+
+    def test_stroke_is_hidden_too(self):
+        style = Style(**{**self.BASE, "stroke_width": 3, "stroke_color": (0, 255, 0), "show_next": False})
+        img = FrameRenderer(style).render(lrc.parse(self.LRC, duration=9), 1.0)
+        self.assertNotIn((0, 255, 0), _colors(img))
+
+    def test_unknown_reveal(self):
+        with self.assertRaises(ValueError):
+            FrameRenderer(Style(reveal="spin"))
+
+
 class VisualizerTest(unittest.TestCase):
     BASE = dict(width=200, height=400, font_size=16, next_font_size=12, fade=0,
                 visualizer=True, viz_height=50, viz_bottom=100, viz_width=0.8, viz_gap=0.5,
