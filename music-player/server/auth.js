@@ -50,11 +50,9 @@ function createLoginLimiter({ max = 10, windowMs = 15 * 60 * 1000 } = {}) {
 export function createAuth(db, config) {
   const limiter = createLoginLimiter();
 
-  function startSession(res, userId) {
-    const token = crypto.randomBytes(32).toString('hex');
-    const maxAge = config.sessionDays * DAY;
-    db.prepare('INSERT INTO sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)')
-      .run(sha256(token), userId, Date.now() + maxAge);
+  const maxAge = config.sessionDays * DAY;
+
+  function setCookie(res, token) {
     res.cookie(COOKIE, token, {
       httpOnly: true,
       sameSite: 'lax',
@@ -64,14 +62,30 @@ export function createAuth(db, config) {
     });
   }
 
+  function startSession(res, userId) {
+    const token = crypto.randomBytes(32).toString('hex');
+    db.prepare('INSERT INTO sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)')
+      .run(sha256(token), userId, Date.now() + maxAge);
+    setCookie(res, token);
+  }
+
   // 모든 요청에서 세션 쿠키를 확인해 req.user를 채운다.
-  function loadUser(req, _res, next) {
+  // 계속 쓰는 동안에는 로그아웃되지 않도록, 남은 기간이 절반 아래로 줄면 다시 꽉 채워 늘린다.
+  function loadUser(req, res, next) {
     const token = readCookie(req, COOKIE);
     if (token) {
-      req.user = db.prepare(`
-        SELECT u.id, u.username FROM sessions s JOIN users u ON u.id = s.user_id
+      const now = Date.now();
+      const row = db.prepare(`
+        SELECT u.id, u.username, s.token_hash, s.expires_at FROM sessions s JOIN users u ON u.id = s.user_id
         WHERE s.token_hash = ? AND s.expires_at > ?
-      `).get(sha256(token), Date.now());
+      `).get(sha256(token), now);
+      if (row) {
+        req.user = { id: row.id, username: row.username };
+        if (row.expires_at - now < maxAge / 2) {
+          db.prepare('UPDATE sessions SET expires_at = ? WHERE token_hash = ?').run(now + maxAge, row.token_hash);
+          setCookie(res, token);
+        }
+      }
     }
     next();
   }
