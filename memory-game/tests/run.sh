@@ -15,6 +15,7 @@ check "L3 \\{ locker.*택배를 찾았다" "상황 3: 보관함"
 check "L3big  택배를 찾았다" "상황 3: 너무 큰 택배"
 check "방문객이 무사히 길을 찾았다" "상황 4: 길 안내"
 check "청소부가 바로 고치러 갔다" "상황 5: 고장 신고"
+check "L5rooms mistakes: 0 " "상황 5: 방 구경은 실수가 아님"
 check "phone hscroll false" "휴대폰 폭 가로 넘침 없음"
 if grep -E "pageerror|errors \[ ['\"]" out/playthrough.log >/dev/null; then echo "FAIL  페이지 오류가 기록됨"; status=1; else echo "ok    페이지 오류 없음"; fi
 if [ "${1:-}" = "--monkey" ]; then

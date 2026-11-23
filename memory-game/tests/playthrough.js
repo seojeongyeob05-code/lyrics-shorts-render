@@ -109,6 +109,21 @@ const lastNpc = p => p.evaluate(() => [...document.querySelectorAll('.msg.npc .e
     console.log('L5', fix, (await p.textContent('#sheet')).replace(/\s+/g, ' ').slice(0, 140), errs);
     console.log('L5 mistakes', await p.evaluate(() => ag520.state().mistakes.map(m => m.cat + ' | ' + m.explain.slice(0, 60))));
     await p.close(); }
+  // Level 5: exploring rooms is not a mistake
+  { const { p, errs } = await setup(b, 5);
+    for (const target of ['a', 'b', 'c', 'd', 'e']) {
+      for (let st = 0; st < 40; st++) {
+        const k = await p.evaluate(t => { const S = ag520.state(), M = ag520.map; if (M[S.y][S.x] === t) return null;
+          const occ = new Set(Object.values(S.npcs).map(([x, y]) => x + ',' + y)); const prev = { [S.x + ',' + S.y]: null }, q = [[S.x, S.y]]; let end;
+          while (q.length) { const [x, y] = q.shift(); if (M[y][x] === t) { end = x + ',' + y; break; }
+            for (const [dx, dy, k] of [[0, -1, 'ArrowUp'], [1, 0, 'ArrowRight'], [0, 1, 'ArrowDown'], [-1, 0, 'ArrowLeft']]) { const nx = x + dx, ny = y + dy, key = nx + ',' + ny;
+              if (nx < 0 || ny < 0 || nx >= 15 || ny >= 12 || M[ny][nx] === '#' || occ.has(key) || ag520.blocked(nx, ny) || key in prev) continue; prev[key] = [x + ',' + y, k]; q.push([nx, ny]); } }
+          if (!end) return null; let cur = end, first = null; while (prev[cur]) { first = prev[cur][1]; cur = prev[cur][0]; } return first; }, target);
+        if (!k) break; await p.evaluate(() => document.activeElement.blur()); await p.keyboard.press(k);
+      }
+    }
+    console.log('L5rooms mistakes: ' + (await p.evaluate(() => ag520.state().mistakes.length)), errs);
+    await p.close(); }
   // Phone layout + start screen
   { const { p, errs } = await setup(b, 1, { width: 390, height: 844 });
     for (const k of ['ArrowUp', 'ArrowUp', 'ArrowRight']) await p.keyboard.press(k);
