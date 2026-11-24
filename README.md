@@ -1,53 +1,64 @@
 # lyrics-shorts-render
 쇼츠메이커(수동)
 
-가사(LRC) + 음원 + 배경으로 세로형 가사 쇼츠를 렌더링하는 도구. 진행 계획은 [ROADMAP.md](ROADMAP.md), 일지는 [DEVLOG.md](DEVLOG.md).
+가사 파일(LRC) + 음원 + 배경 사진으로 **세로형(1080x1920) 가사 쇼츠 영상**을 만드는 도구입니다.
+노래방처럼 부르는 만큼 글자가 채워지고, 곡 제목·앨범 아트·음악 반응 막대를 넣을 수 있으며,
+쇼츠 앱 버튼에 가사가 가려지지 않는지 확인해 줍니다.
 
-## 사용법
+진행 계획은 [ROADMAP.md](ROADMAP.md), 날마다 한 일은 [DEVLOG.md](DEVLOG.md)에 있습니다.
 
-필요한 것: Python 3.10+, Pillow, numpy, ffmpeg
+---
 
-```
-# 0:45부터 30초짜리 쇼츠 만들기
-python3 -m shorts render song.lrc --audio song.mp3 --bg bg.jpg --start 0:45 --duration 30 -o out.mp4
+## 1. 설치
 
-# 0:50 장면을 PNG로 미리보기
-python3 -m shorts frame song.lrc --bg bg.jpg --at 0:50
-```
-
-- 곡 제목·가수는 LRC의 `[ti:]`/`[ar:]`를 화면 위쪽에 표시. `--title`/`--artist`로 바꾸고, 빈 문자열(`--title ""`)이면 숨김
-- `--cover 앨범아트.jpg`: 곡 정보와 가사 사이에 앨범 아트. 모양은 스타일의 `cover_shape`(`rounded`/`circle`/`square`), 크기 `cover_size`, 위치 `cover_y`
-- `--preview`: 절반 해상도·15fps로 5배쯤 빠르게 뽑아 보기(`노래.preview.mp4`). 확인 후 옵션을 빼고 다시 렌더
-- 시간은 `45`, `0:45`, `1:02.5` 모두 가능
-- 여러 구간 한 번에: `--start 0:45,1:30 --duration 20` → `노래-1.mp4`, `노래-2.mp4` (길이도 `20,15`처럼 구간마다 줄 수 있음)
-- `--duration`을 빼면 곡 끝까지(음원이 없으면 마지막 가사 줄까지)
-- 폰트는 한글 폰트를 자동으로 찾음. 직접 지정: `--font 경로` 또는 환경변수 `SHORTS_FONT`
-
-### 자막 파일로 내보내기
+필요한 것: **Python 3.10 이상**, **ffmpeg**, 그리고 파이썬 패키지 두 개(Pillow, numpy).
 
 ```
-python3 -m shorts export 노래.lrc                    # 노래.srt (유튜브·대부분의 편집기)
-python3 -m shorts export 노래.json --format ass      # 노래.ass (글꼴·색·위치, 노래방 채우기 효과)
-python3 -m shorts export 노래.lrc --start 0:45 --duration 20   # 렌더한 쇼츠 구간과 시각 맞추기
+# ffmpeg — macOS: brew install ffmpeg / Ubuntu: sudo apt install ffmpeg / Windows: winget install ffmpeg
+pip install -r requirements.txt
 ```
 
-ASS는 스타일(`--style`)의 화면 크기·글자 크기·색·테두리·가사 위치를 따르고, 단어 타이밍이 있는 줄은
-`\kf` 태그로 왼쪽부터 채워집니다(VLC, Aegisub, ffmpeg `ass` 필터 등에서 보임).
+한글 폰트는 컴퓨터에 깔린 것(나눔·Noto CJK·맑은 고딕·Apple SD 고딕 등)을 자동으로 찾습니다.
+원하는 폰트가 있으면 `--font 폰트.ttf` 또는 환경변수 `SHORTS_FONT=폰트.ttf`.
 
-### 쇼츠 앱에 가려지는 자리 확인
+## 2. 바로 해보기 (예시 곡)
+
+저장소에 들어 있는 예시(`examples/demo/`)로 장면 하나와 영상을 만들어 봅니다.
 
 ```
-python3 -m shorts frame 노래.json --at 0:50 --guide
+python3 -m shorts frame examples/demo/demo.json --at 0:04       # examples/demo/demo.png
+python3 -m shorts render examples/demo/demo.json --preview      # demo-1.preview.mp4, demo-2.preview.mp4
 ```
 
-위쪽 메뉴, 오른쪽 버튼 줄(좋아요·댓글·공유), 아래쪽 제목·설명 자리를 반투명 빨강으로 표시합니다
-(1080x1920 기준 대략적인 위치). `render`/`frame`은 가사·곡 정보·앨범 아트·진행 바가 그 자리에 걸리면
-`주의:` 메시지로 알려줍니다.
+## 3. 내 노래로 만들기
 
-### 곡 설정 파일 하나로
+### ① 가사 타이밍 파일(LRC) 준비
 
-옵션이 길어지면 JSON 하나에 적어 두고 그 파일로 렌더합니다. 경로는 JSON 파일 위치 기준이고,
-명령줄 옵션을 함께 주면 그쪽이 우선입니다. 예시: `examples/demo/demo.json`
+이미 LRC 파일이 있으면 건너뜁니다. 없으면 **`tools/lrc-sync.html`** 을 브라우저(폰도 됨)로 엽니다.
+
+1. 음원 파일을 고르고, 가사를 한 줄에 한 줄씩 붙여넣기
+2. 노래를 틀고 각 줄이 시작될 때 **다음 줄 시작** 탭 (`쉼` = 앞 줄을 여기서 끝냄, `취소` = 마지막 탭 되돌리기)
+3. 노래방 효과를 원하면 **탭 단위 → 단어마다(노래방)** 로 바꾸고 단어마다 탭
+4. **LRC 파일 저장**
+
+탭은 소리를 듣고 조금 늦게 누르게 돼서 0.15초 앞당겨 기록합니다(바꿀 수 있음). 파일은 브라우저 밖으로
+나가지 않고, 작업 중인 내용은 브라우저에 남아 있어 다시 열어도 이어서 할 수 있습니다.
+
+LRC는 이런 모양의 글자 파일입니다. 메모장으로 고쳐도 됩니다.
+
+```
+[ti:곡 제목]
+[ar:가수]
+[00:12.00]일반 줄은 이렇게
+[00:15.50]<00:15.50>노래방 <00:16.10>줄은 <00:16.60>단어마다 <00:17.40>시각을
+[00:19.00]
+```
+
+빈 줄(`[00:19.00]`)은 앞 줄이 거기서 끝난다는 뜻입니다.
+
+### ② 곡 설정 파일 만들기
+
+옵션을 매번 치지 않도록 JSON 하나에 적어 둡니다(LRC와 같은 폴더에 `노래.json`). 경로는 이 파일 위치 기준.
 
 ```json
 {
@@ -56,74 +67,121 @@ python3 -m shorts frame 노래.json --at 0:50 --guide
   "bg": "배경.jpg",
   "cover": "앨범.jpg",
   "style": "photo",
-  "title": "제목", "artist": "가수",
   "start": ["0:45", "1:30"],
   "duration": 20
 }
 ```
 
-```
-python3 -m shorts render 노래.json             # 노래-1.mp4, 노래-2.mp4
-python3 -m shorts render 노래.json --preview   # 빠른 확인
-python3 -m shorts frame 노래.json --at 0:50    # 한 장면
-```
+- `start` 여러 개 = 쇼츠 여러 개(`노래-1.mp4`, `노래-2.mp4`). 하나만 쓰면 `"start": "0:45"`
+- 시간은 `45`, `"0:45"`, `"1:02.5"` 모두 됩니다
+- `title`/`artist`를 적으면 LRC의 `[ti:]`/`[ar:]` 대신 그 글자를 화면 위쪽에 씁니다(빈 문자열이면 숨김)
+- 쓸 수 있는 항목: `lyrics audio bg cover font style title artist start duration fps preview out`
 
-`style`에는 프리셋 이름, 스타일 파일, 또는 `{"extends": "neon", "font_size": 80}`처럼 직접 적을 수 있습니다.
-
-### 가사 타이밍 만들기 (LRC가 없을 때)
-
-`tools/lrc-sync.html`을 브라우저로 엽니다(폰도 됨). 음원을 고르고 가사를 붙여넣은 뒤,
-노래를 들으며 각 줄이 시작될 때 **다음 줄 시작**을 탭하면 LRC가 만들어집니다.
-`쉼`은 앞 줄을 끝내는 표시, 반응 지연 보정(기본 0.15초)만큼 앞당겨 기록합니다.
-**탭 단위 → 단어마다(노래방)**로 바꾸면 단어마다 탭해서 노래방 하이라이트용 LRC(`<시각>단어`)를 만듭니다.
-파일은 브라우저 밖으로 나가지 않고, 작업 중인 내용은 브라우저에 저장돼 다시 열어도 남아 있습니다.
-
-### 스타일
+### ③ 장면 확인 — 쇼츠 앱에 가려지지 않는지
 
 ```
-python3 -m shorts styles                       # 내장 프리셋 목록
-python3 -m shorts render song.lrc --bg photo.jpg --style photo   # 사진 배경: 흐리게·어둡게 + 천천히 확대 + 글자 테두리
-python3 -m shorts render song.lrc --style neon
-python3 -m shorts render song.lrc --style my-theme.json
+python3 -m shorts frame 노래.json --at 0:50 --guide
 ```
 
-내 테마는 바꾸고 싶은 값만 JSON으로 적으면 됩니다. 항목 이름은 `shorts/frame.py`의 `Style` 참고.
+`노래.png`에 쇼츠 앱의 위쪽 메뉴·오른쪽 버튼·아래쪽 제목 자리가 반투명 빨강으로 표시됩니다.
+가사·앨범 아트·진행 바가 그 자리에 걸리면 `주의:` 메시지가 나옵니다(`render`도 같은 검사를 합니다).
+
+### ④ 빠른 미리보기 → 최종 렌더
+
+```
+python3 -m shorts render 노래.json --preview    # 절반 해상도·15fps, 몇 초면 끝 (노래-1.preview.mp4 ...)
+python3 -m shorts render 노래.json              # 최종본 (노래-1.mp4 ...)
+```
+
+렌더 중에는 `렌더 중 42% · 남은 시간 약 3초`가 보입니다. 명령줄 옵션은 설정 파일보다 우선합니다:
+
+```
+python3 -m shorts render 노래.json --start 1:10 --duration 15 --style neon -o 시험.mp4
+```
+
+### ⑤ (선택) 자막 파일로 내보내기
+
+```
+python3 -m shorts export 노래.json                 # 노래.srt — 유튜브 자막·대부분의 편집기
+python3 -m shorts export 노래.json --format ass    # 노래.ass — 글꼴·색·위치·노래방 채우기까지
+```
+
+설정 파일에 구간(`start`)이 있으면 쇼츠마다 0초 기준으로 맞춘 자막이 나옵니다(`노래-1.srt` ...).
+
+## 4. 꾸미기
+
+### 내장 스타일
+
+```
+python3 -m shorts styles
+```
+
+| 이름 | 느낌 |
+|---|---|
+| `default` | 어두운 남색 배경, 흰 글자 |
+| `minimal` | 흰 배경 검은 글자, 다음 줄·진행 바 없이 깔끔하게 |
+| `neon` | 검은 배경에 형광 분홍·하늘색, 노래방 하이라이트가 잘 보임 |
+| `photo` | 배경 사진용(`bg`와 함께): 흐리고 어둡게 + 천천히 확대 + 글자 테두리 |
+| `sunset` | 보라→주황 노을 그라데이션 배경 |
+| `warm` | 따뜻한 갈색 배경, 가사를 화면 아래쪽에 |
+
+### 내 스타일
+
+바꾸고 싶은 값만 적습니다. 설정 파일의 `"style"`에 바로 적거나, 따로 `내스타일.json`으로 저장해
+`"style": "내스타일.json"` / `--style 내스타일.json`으로 씁니다.
 
 ```json
 {
   "extends": "neon",
   "text_color": "#FFE066",
   "font_size": 84,
-  "center_y": 0.62,
-  "font_path": "fonts/NanumSquareRoundEB.ttf"
+  "transition": "slide",
+  "reveal": "typewriter",
+  "visualizer": true
 }
 ```
 
-### 줄 바뀜 효과
+자주 쓰는 항목(전체 목록은 `shorts/frame.py`의 `Style`):
 
-스타일의 `transition`: `"fade"`(기본, 사라졌다 나타남) 또는 `"slide"`(다음 줄 미리보기 자리에서
-위로 올라옴). 시간은 `fade`(초).
-`"reveal": "typewriter"`를 함께 쓰면 현재 줄이 한 글자씩 나타납니다(속도 `reveal_cps`, 줄 길이의 60% 안에 다 나옴).
+| 항목 | 뜻 | 예 |
+|---|---|---|
+| `text_color` / `next_color` / `unsung_color` | 지금 줄 / 다음 줄 / 노래방에서 아직 안 부른 글자 색 | `"#FFFFFF"` |
+| `font_size` / `next_font_size` | 글자 크기(px) | `72` / `52` |
+| `font_path` | 폰트 파일(스타일 파일 위치 기준) | `"fonts/나눔.ttf"` |
+| `center_y` | 가사 세로 위치(0 위 ~ 1 아래) | `0.5` |
+| `bg_color` / `bg_gradient` | 배경색 / 아래쪽 색(주면 그라데이션) | `"#2A1B4A"` / `"#E8794A"` |
+| `bg_blur` / `bg_dim` / `bg_zoom` | 배경 사진 흐림(px) / 어둡게(0~1) / 천천히 확대 정도 | `22` / `0.5` / `0.08` |
+| `stroke_width` / `stroke_color` | 글자 테두리 | `3` / `"#000000"` |
+| `transition` / `fade` | 줄 바뀜 효과 `fade`·`slide` / 걸리는 시간(초) | `"slide"` / `0.3` |
+| `reveal` | `typewriter`면 한 글자씩 나타남 | `"typewriter"` |
+| `visualizer` | 음악 반응 막대(음원 있을 때) | `true` |
+| `cover_shape` / `cover_size` | 앨범 아트 모양 `rounded`·`circle`·`square` / 크기 | `"circle"` / `420` |
+| `show_next` / `show_info` / `progress_bar` | 다음 줄 / 곡 정보 / 진행 바 보이기 | `false` |
 
-### 음악 반응 막대
+## 5. 명령 한눈에
 
-스타일에 `"visualizer": true`를 넣고 `--audio`와 함께 렌더하면 진행 바 위에 저음→고음 막대가
-음악에 맞춰 움직입니다. 막대 수 `viz_bands`, 높이 `viz_height`, 색 `viz_color`.
+| 명령 | 하는 일 |
+|---|---|
+| `python3 -m shorts render 노래.json` | 영상(mp4) 만들기. `--preview` 빠른 미리보기 |
+| `python3 -m shorts frame 노래.json --at 0:50` | 한 장면 PNG. `--guide` 쇼츠 가림 영역 표시 |
+| `python3 -m shorts export 노래.json` | 자막(SRT/ASS) |
+| `python3 -m shorts styles` | 내장 스타일 목록 |
 
-```json
-{"extends": "sunset", "visualizer": true, "viz_color": "#FFF6E8"}
+설정 파일 대신 LRC를 직접 줘도 됩니다: `python3 -m shorts render 노래.lrc --audio 노래.mp3 --bg 배경.jpg --style photo`.
+모든 옵션은 `python3 -m shorts render --help`.
+
+## 6. 문제 해결
+
+- **글자가 네모(□)로 나와요** → 한글 폰트를 못 찾은 것. `--font 나눔고딕.ttf`처럼 지정하세요
+- **`ffmpeg`를 찾을 수 없어요** → ffmpeg를 설치하고 터미널을 다시 여세요(1. 설치 참고)
+- **`주의: 가사이(가) 쇼츠 앱의 '오른쪽 버튼' 자리에 걸려요`** → `frame --guide`로 보고, 스타일의
+  `font_size`를 줄이거나 `max_text_width`(기본 0.68)를 줄이세요
+- **음악 막대가 안 보여요** → 스타일에 `"visualizer": true`와 함께 음원(`audio`)이 있어야 합니다
+- **노래방 효과가 안 나와요** → LRC 줄에 단어 시각(`<00:15.50>단어`)이 있어야 합니다. 싱크 도구의 "단어마다" 모드로 만드세요
+
+## 개발
+
 ```
-
-### 노래방식 하이라이트
-
-Enhanced LRC처럼 단어 앞에 `<분:초.소수>`를 붙이면 부르는 만큼 글자가 채워집니다.
-
-```
-[00:12.00]<00:12.00>바람이 <00:12.80>불어오는 <00:13.90>곳<00:14.60>
-```
-
-## 테스트
-
-```
-python3 -m unittest discover -s tests -t .
+python3 -m unittest discover -s tests -t .   # 테스트
+python3 tools/bench.py                        # 3분 반 곡 렌더 속도·메모리 측정
 ```

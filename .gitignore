@@ -3,3 +3,5 @@ __pycache__/
 out/
 examples/**/*.mp4
 examples/**/*.png
+examples/**/*.srt
+examples/**/*.ass

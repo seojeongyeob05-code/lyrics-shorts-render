@@ -119,15 +119,16 @@ def cmd_render(args) -> None:
     lyrics, segments = _load_segments(args)
     if args.preview:
         opts = VideoOptions(fps=min(args.fps, 15), preset="ultrafast", crf=28)
-        base = args.out or args.stem + ".preview.mp4"
     else:
         opts = VideoOptions(fps=args.fps)
-        base = args.out or args.stem + ".mp4"
+    paths = segment_paths(args.out or args.stem + ".mp4", len(segments))
+    if args.preview and not args.out:  # 노래-1.preview.mp4 (최종본 노래-1.mp4 옆에 나란히)
+        paths = [os.path.splitext(p)[0] + ".preview.mp4" for p in paths]
     renderer = _renderer(args)
     if renderer.style.visualizer and not args.audio:
         print("주의: 스타일에 visualizer가 켜져 있지만 --audio가 없어서 음악 막대를 그리지 않아요",
               file=sys.stderr)
-    for (start, duration), out in zip(segments, segment_paths(base, len(segments))):
+    for (start, duration), out in zip(segments, paths):
         clip = lyrics.clip(start, start + duration)
         drawn_before = renderer.layers_drawn  # 아래 겹침 검사도 가사를 미리 그려 캐시한다
         # 줄마다 한 번씩(페이드가 끝난 뒤) 가림 영역에 걸리는지 확인

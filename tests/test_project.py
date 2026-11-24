@@ -89,6 +89,19 @@ class ResolveArgsTest(unittest.TestCase):
 
 
 class DemoProjectTest(unittest.TestCase):
+    @unittest.skipUnless(HAVE_FFMPEG, "ffmpeg 없음")
+    def test_preview_names_sit_next_to_final(self):
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d)
+        proj = os.path.join(d, "song.json")
+        shutil.copy(os.path.join(ROOT, "examples", "demo", "demo.lrc"), os.path.join(d, "demo.lrc"))
+        with open(DEMO) as f, open(proj, "w") as g:
+            g.write(f.read())
+        with contextlib.redirect_stdout(io.StringIO()):
+            cli.main(["render", proj, "--preview", "--fps", "5", "--duration", "1"])
+        self.assertEqual(sorted(n for n in os.listdir(d) if n.endswith(".mp4")),
+                         ["song-1.preview.mp4", "song-2.preview.mp4"])
+
     def setUp(self):
         self.dir = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, self.dir)
