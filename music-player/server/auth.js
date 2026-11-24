@@ -140,6 +140,26 @@ export function createAuth(db, config) {
     res.json({ user: { id: user.id, username: user.username } });
   });
 
+  // 비밀번호 바꾸기: 지금 비밀번호를 확인하고, 바꾼 뒤에는 이 브라우저를 뺀 다른 로그인을 모두 끊는다.
+  router.post('/password', (req, res) => {
+    if (!req.user) return res.status(401).json({ error: '로그인이 필요합니다' });
+    if (limiter.blocked(req.ip)) return res.status(429).json({ error: '시도가 너무 많습니다. 잠시 후 다시 시도하세요' });
+    const current = String(req.body?.currentPassword ?? '');
+    const next = typeof req.body?.newPassword === 'string' ? req.body.newPassword : '';
+    const { password_hash: stored } = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(req.user.id);
+    if (!verifyPassword(current, stored)) {
+      limiter.fail(req.ip);
+      return res.status(400).json({ error: '지금 비밀번호가 올바르지 않습니다' });
+    }
+    limiter.reset(req.ip);
+    if (next.length < 8) return res.status(400).json({ error: '새 비밀번호는 8자 이상이어야 합니다' });
+    if (next === current) return res.status(400).json({ error: '새 비밀번호가 지금 비밀번호와 같습니다' });
+    db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hashPassword(next), req.user.id);
+    const { changes } = db.prepare('DELETE FROM sessions WHERE user_id = ? AND token_hash != ?')
+      .run(req.user.id, sha256(readCookie(req, COOKIE)));
+    res.json({ signedOutSessions: changes });
+  });
+
   router.post('/logout', (req, res) => {
     const token = readCookie(req, COOKIE);
     if (token) db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(sha256(token));

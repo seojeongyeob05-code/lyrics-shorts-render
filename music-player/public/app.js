@@ -1507,6 +1507,22 @@ function showShortcuts() {
 
 $('#shortcut-help').addEventListener('click', showShortcuts);
 
+// 비밀번호 바꾸기 (사이드바 아래 아이디를 누르면 열림)
+$('#username').addEventListener('click', safe(async () => {
+  const field = (label, name, autocomplete) => h('label', {}, label,
+    h('input', { type: 'password', name, autocomplete, required: true, minlength: name === 'current' ? null : 8 }));
+  const fields = [
+    field('지금 비밀번호', 'current', 'current-password'),
+    field('새 비밀번호 (8자 이상)', 'next', 'new-password'),
+    field('새 비밀번호 확인', 'confirm', 'new-password'),
+  ];
+  const value = (name) => fields.map((f) => f.querySelector('input')).find((i) => i.name === name).value;
+  if (await openDialog(`비밀번호 바꾸기 · ${state.user.username}`, [h('div', { class: 'field-list' }, fields)]) !== 'ok') return;
+  if (value('next') !== value('confirm')) return toast('새 비밀번호와 확인이 서로 다릅니다');
+  const { signedOutSessions } = await api('POST', '/api/auth/password', { currentPassword: value('current'), newPassword: value('next') });
+  toast(`비밀번호를 바꿨습니다${signedOutSessions ? ` (다른 곳의 로그인 ${signedOutSessions}개를 끊었습니다)` : ''}`, 5000);
+}));
+
 // 볼륨 슬라이더나 스피커 아이콘 위에서 마우스 휠을 굴리면 볼륨 조절
 for (const el of [$('#volume'), $('#btn-mute')]) {
   el.addEventListener('wheel', (e) => {
