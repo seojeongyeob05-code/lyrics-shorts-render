@@ -13,6 +13,7 @@ check "L2 good  할머니가 활짝 웃었다" "상황 2: 올바른 주문"
 check "L2 mug  할머니가 고개를 갸웃했다" "상황 2: for here 실패 처리"
 check "L3 \\{ locker.*택배를 찾았다" "상황 3: 보관함"
 check "L3big  택배를 찾았다" "상황 3: 너무 큰 택배"
+if grep -q "L3big mistakes.*MAIL ROOM에 들어감" out/playthrough.log; then echo "FAIL  상황 3 변형: 우편물실 중복 기록"; status=1; else echo "ok    상황 3 변형: 같은 원인을 한 번만 기록"; fi
 check "방문객이 무사히 길을 찾았다" "상황 4: 길 안내"
 check "청소부가 바로 고치러 갔다" "상황 5: 고장 신고"
 check "L5rooms mistakes: 0 " "상황 5: 방 구경은 실수가 아님"

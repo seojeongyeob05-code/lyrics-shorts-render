@@ -1054,6 +1054,8 @@ function enterRoom(slot) {
   else place(room.place[0], room.place[1]);
   // Situations 4 and 5 are about talking, not finding one door: walking into rooms is exploring, not a mistake.
   if (S.level === 4 || S.level === 5) { S.visited.add(key); return; }
+  // Too-big parcel: heading to the mail room means the note was misread; the locker and the recap explain that once.
+  if (S.level === 3 && S.bigParcel && key === 'mail') { S.visited.add(key); return; }
   const target = S.level === 3 && S.bigParcel ? 'security' : LEVELS[S.level].target, T = ROOMS[target];
   if (key === target || S.visited.has(key)) { S.visited.add(key); return; }
   S.visited.add(key);
