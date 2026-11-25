@@ -35,6 +35,20 @@ class SrtTest(unittest.TestCase):
         self.assertEqual(subtitles._srt_time(3723.004), "01:02:03,004")
 
 
+class SubLinesExportTest(unittest.TestCase):
+    LY = "[00:01.00]原文\n[00:01.00]겐분\n[00:01.00]원문\n[00:03.00]次"
+
+    def test_srt_puts_subs_on_following_lines(self):
+        first = subtitles.to_srt(lrc.parse(self.LY, duration=5)).split("\n\n")[0]
+        self.assertEqual(first.splitlines()[2:], ["原文", "겐분", "원문"])
+
+    def test_ass_puts_subs_after_line_break_in_small_font(self):
+        ass = subtitles.to_ass(lrc.parse(self.LY, duration=5), Style(sub_font_size=30))
+        line = next(l for l in ass.splitlines() if l.startswith("Dialogue") and "原文" in l)
+        self.assertIn("\\N{\\fs30", line)
+        self.assertTrue(line.endswith("원문"))
+
+
 class AssTest(unittest.TestCase):
     def test_time_and_color(self):
         self.assertEqual(subtitles._ass_time(62.256), "0:01:02.26")

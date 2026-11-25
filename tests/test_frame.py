@@ -494,6 +494,39 @@ class RevealTest(unittest.TestCase):
             FrameRenderer(Style(reveal="spin"))
 
 
+class SubLinesRenderTest(unittest.TestCase):
+    BASE = dict(width=300, height=400, font_size=30, sub_font_size=16, next_font_size=14, fade=0.2,
+                bg_color=(0, 0, 0), text_color=(255, 255, 255), next_color=(255, 0, 0),
+                sub_colors=((0, 255, 0), (0, 0, 255)), unsung_color=(90, 90, 90), progress_bar=False)
+    LRC = "[00:01.00]MAIN\n[00:01.00]sub one\n[00:01.00]sub two\n[00:04.00]NEXT"
+
+    def rows_of(self, img, color):
+        return _rows_with(img, color, tol=40)
+
+    def test_subs_stack_under_main_and_block_is_centered(self):
+        img = FrameRenderer(Style(**self.BASE)).render(lrc.parse(self.LRC, duration=6), 2)
+        main, one, two = (self.rows_of(img, c) for c in ((255, 255, 255), (0, 255, 0), (0, 0, 255)))
+        nxt = self.rows_of(img, (255, 0, 0))
+        self.assertTrue(main and one and two and nxt)
+        self.assertLess(max(main), min(one))
+        self.assertLess(max(one), min(two))
+        self.assertLess(max(two), min(nxt))  # 다음 줄은 보조 줄 아래
+        self.assertAlmostEqual((min(main) + max(two)) / 2, 200, delta=8)  # 블록 전체가 가운데
+
+    def test_typewriter_keeps_subs_visible(self):
+        style = Style(**{**self.BASE, "reveal": "typewriter", "fade": 0})
+        img = FrameRenderer(style).render(lrc.parse(self.LRC, duration=6), 1.0)
+        self.assertFalse(self.rows_of(img, (255, 255, 255)))  # 본문은 아직
+        self.assertTrue(self.rows_of(img, (0, 255, 0)))  # 발음·뜻은 바로 보임
+
+    def test_render_bytes_matches(self):
+        style = Style(**{**self.BASE, "progress_bar": True})
+        ly = lrc.parse("[00:01.00]<00:01.00>MA<00:01.50>IN\n[00:01.00]sub\n[00:04.00]NEXT", duration=6)
+        a, b = FrameRenderer(style), FrameRenderer(style)
+        for t in [0.5, 1.1, 1.4, 2.5, 4.1]:
+            self.assertEqual(a.render_bytes(ly, t, t / 6), b.render(ly, t, t / 6).tobytes())
+
+
 class VisualizerTest(unittest.TestCase):
     BASE = dict(width=200, height=400, font_size=16, next_font_size=12, fade=0,
                 visualizer=True, viz_height=50, viz_bottom=100, viz_width=0.8, viz_gap=0.5,

@@ -44,6 +44,14 @@ python3 -m shorts render examples/demo/demo.json --preview      # demo-1.preview
 탭은 소리를 듣고 조금 늦게 누르게 돼서 0.15초 앞당겨 기록합니다(바꿀 수 있음). 파일은 브라우저 밖으로
 나가지 않고, 작업 중인 내용은 브라우저에 남아 있어 다시 열어도 이어서 할 수 있습니다.
 
+**자동으로 맞추기:** 가사 텍스트만 있으면 음성 인식으로 타이밍을 자동으로 잡을 수도 있습니다
+(`pip install faster-whisper` 필요, 처음 한 번 모델을 내려받음). 인식이 틀린 글자는 무시하고 가사 텍스트에
+맞추므로 가사만 정확하면 됩니다. 발음·뜻 파일을 주면 가사 아래 작은 줄로 같이 나옵니다(줄 수가 같아야 함).
+
+```
+python3 tools/autosync.py 노래.mp3 가사.txt --sub 발음.txt --sub 뜻.txt --language ja -o 노래.lrc
+```
+
 LRC는 이런 모양의 글자 파일입니다. 메모장으로 고쳐도 됩니다.
 
 ```
@@ -54,7 +62,8 @@ LRC는 이런 모양의 글자 파일입니다. 메모장으로 고쳐도 됩니
 [00:19.00]
 ```
 
-빈 줄(`[00:19.00]`)은 앞 줄이 거기서 끝난다는 뜻입니다.
+빈 줄(`[00:19.00]`)은 앞 줄이 거기서 끝난다는 뜻입니다. 같은 시각의 줄이 여러 개면 첫 줄이 가사, 나머지는 그 아래
+작게 보이는 보조 줄(발음·번역)입니다 — 색은 스타일의 `sub_colors`, 크기는 `sub_font_size`.
 
 ### ② 곡 설정 파일 만들기
 
@@ -156,6 +165,7 @@ python3 -m shorts styles
 | `reveal` | `typewriter`면 한 글자씩 나타남 | `"typewriter"` |
 | `visualizer` | 음악 반응 막대(음원 있을 때) | `true` |
 | `cover_shape` / `cover_size` | 앨범 아트 모양 `rounded`·`circle`·`square` / 크기 | `"circle"` / `420` |
+| `sub_font_size` / `sub_colors` | 보조 줄(발음·번역) 크기 / 색 목록(줄마다 차례로) | `38` / `["#FFD27F", "#FFFFFF"]` |
 | `show_next` / `show_info` / `progress_bar` | 다음 줄 / 곡 정보 / 진행 바 보이기 | `false` |
 
 ## 5. 명령 한눈에

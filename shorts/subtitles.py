@@ -19,7 +19,8 @@ def _srt_time(sec: float) -> str:
 
 
 def to_srt(lyrics: Lyrics) -> str:
-    blocks = [f"{n}\n{_srt_time(ln.start)} --> {_srt_time(ln.end)}\n{ln.text}\n"
+    blocks = [f"{n}\n{_srt_time(ln.start)} --> {_srt_time(ln.end)}\n"
+              + "\n".join((ln.text,) + ln.subs) + "\n"
               for n, ln in enumerate(lyrics.lines, 1)]
     return "\n".join(blocks)
 
@@ -86,6 +87,14 @@ def to_ass(lyrics: Lyrics, style: Style | None = None, font_name: str = "Noto Sa
         "[Events]",
         "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
     ]
+    def subs_text(ln) -> str:
+        # 보조 줄은 작은 글씨·자기 색으로 아래에(\N = 줄바꿈)
+        out = ""
+        for n, sub in enumerate(ln.subs):
+            color = s.sub_colors[n % len(s.sub_colors)] if s.sub_colors else s.next_color
+            out += f"\\N{{\\fs{s.sub_font_size}\\1c{_ass_color(color)}&\\kf0}}{_ass_escape(sub)}"
+        return out
+
     events = [f"Dialogue: 0,{_ass_time(ln.start)},{_ass_time(ln.end)},Default,,0,0,0,,"
-              f"{karaoke_text(ln)}" for ln in lyrics.lines]
+              f"{karaoke_text(ln)}{subs_text(ln)}" for ln in lyrics.lines]
     return "\n".join(head + events) + "\n"

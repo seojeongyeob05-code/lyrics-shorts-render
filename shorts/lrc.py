@@ -7,6 +7,8 @@
     [offset:+200]           (밀리초, 양수면 가사가 앞당겨짐)
     [00:12.00]<00:12.00>단어 <00:12.60>단위 <00:13.10>타이밍 <00:14.00>
                             (Enhanced LRC: 노래방식 하이라이트용 글자 진행 시각)
+    [00:12.00]원문          같은 시각에 줄이 여러 개면 첫 줄이 가사,
+    [00:12.00]발음/번역      나머지는 그 아래 작게 보이는 보조 줄(발음·번역 등)
 """
 
 from __future__ import annotations
@@ -27,6 +29,7 @@ class LyricLine:
     text: str
     # 노래방식 진행 지점: (시각, 그 시각까지 불린 글자 수). 비어 있으면 줄 단위 가사.
     marks: tuple[tuple[float, int], ...] = ()
+    subs: tuple[str, ...] = ()  # 가사 아래 작게 보이는 줄(발음·번역 등)
 
     def sung_chars(self, t: float) -> float:
         """시각 t까지 불린 글자 수(소수 = 글자 안에서의 진행). marks가 없으면 줄 전체."""
@@ -66,7 +69,7 @@ class Lyrics:
             s, e = max(ln.start, start), min(ln.end, end)
             if s < e:
                 marks = tuple((mt - start, c) for mt, c in ln.marks)
-                out.append(LyricLine(s - start, e - start, ln.text, marks))
+                out.append(LyricLine(s - start, e - start, ln.text, marks, ln.subs))
         return Lyrics(out, dict(self.meta))
 
 
@@ -116,21 +119,33 @@ def parse(text: str, duration: float | None = None, max_line: float = 8.0) -> Ly
             meta[m.group(1).lower()] = m.group(2).strip()
 
     offset = float(meta.get("offset", "0") or 0) / 1000
-    stamped.sort(key=lambda x: x[0])
+    stamped.sort(key=lambda x: x[0])  # 안정 정렬: 같은 시각끼리는 파일 순서 유지
+
+    # 같은 시각의 줄들을 하나로: 첫 가사가 본문, 나머지는 보조 줄
+    groups: list[tuple[float, list[str]]] = []
+    for t, body in stamped:
+        if groups and groups[-1][0] == t:
+            groups[-1][1].append(body)
+        else:
+            groups.append((t, [body]))
 
     lines = []
-    for i, (t, body) in enumerate(stamped):
+    for i, (t, bodies) in enumerate(groups):
         start = max(0.0, t - offset)
-        if i + 1 < len(stamped):
-            nxt = max(0.0, stamped[i + 1][0] - offset)
+        if i + 1 < len(groups):
+            nxt = max(0.0, groups[i + 1][0] - offset)
         else:
             nxt = duration if duration is not None else start + max_line
         end = min(nxt, start + max_line)
         # 빈 가사 줄은 "여기서 앞 줄이 끝난다"는 표시로만 쓴다.
-        text, marks = _split_words(body)
-        if text and end > start:
+        texts = [b for b in bodies if b]
+        if not texts or end <= start:
+            continue
+        text, marks = _split_words(texts[0])
+        subs = tuple(_split_words(b)[0] for b in texts[1:])
+        if text:
             marks = tuple((max(0.0, mt - offset), c) for mt, c in marks)
-            lines.append(LyricLine(start, end, text, marks))
+            lines.append(LyricLine(start, end, text, marks, subs))
     return Lyrics(lines, meta)
 
 

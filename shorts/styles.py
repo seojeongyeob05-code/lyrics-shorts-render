@@ -54,6 +54,10 @@ def _convert(key: str, value, base_dir: str):
         return None
     if key.endswith("_color") or key in ("progress_track", "bg_gradient"):
         return _color(key, value)
+    if key == "sub_colors":
+        if not isinstance(value, list) or not value:
+            raise ValueError(f"{key}: 색 목록이어야 합니다. 예: [\"#FFE066\", \"#FFFFFF\"]")
+        return tuple(_color(key, v) for v in value)
     if key == "reveal":
         if value not in REVEALS:
             raise ValueError(f"{key}: {', '.join(REVEALS)} 중 하나여야 합니다 (받은 값: {value!r})")

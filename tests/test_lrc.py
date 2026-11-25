@@ -64,6 +64,20 @@ class QueryTest(unittest.TestCase):
         )
 
 
+class SubLinesTest(unittest.TestCase):
+    def test_same_time_lines_become_subs(self):
+        ly = lrc.parse("[00:01.00]원문\n[00:01.00]발음\n[00:01.00]뜻\n[00:03.00]다음\n[00:05.00]", duration=6)
+        self.assertEqual([(ln.text, ln.subs) for ln in ly.lines],
+                         [("원문", ("발음", "뜻")), ("다음", ())])
+        self.assertEqual(ly.lines[0].end, 3.0)
+        self.assertEqual(ly.clip(0, 2).lines[0].subs, ("발음", "뜻"))
+
+    def test_karaoke_main_with_plain_subs(self):
+        ly = lrc.parse("[00:01.00]<00:01.00>あ<00:01.50>い\n[00:01.00]a i", duration=3)
+        self.assertEqual(ly.lines[0].marks, ((1.0, 0), (1.5, 1)))
+        self.assertEqual(ly.lines[0].subs, ("a i",))
+
+
 class WordTimingTest(unittest.TestCase):
     KARAOKE = "[00:01.00]<00:01.00>Hello  <00:01.50>big <00:02.00>world<00:03.00>\n[00:04.00]plain"
 

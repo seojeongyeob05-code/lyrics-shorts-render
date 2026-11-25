@@ -48,6 +48,9 @@ class Style:
     font_path: str | None = None  # None이면 한글 폰트 자동 탐색(text.find_korean_font)
     font_size: int = 72
     next_font_size: int = 52
+    sub_font_size: int = 40  # 보조 줄(발음·번역) 글자 크기
+    sub_gap: int = 14  # 가사와 보조 줄, 보조 줄끼리 사이 간격(px)
+    sub_colors: tuple[Color, ...] = ((205, 205, 220),)  # 보조 줄 색(여러 개면 줄마다 차례로)
     line_gap: int = 48  # 현재 줄과 다음 줄 사이 간격(px)
     line_spacing: float = 1.25  # 한 가사가 여러 줄로 나뉠 때 줄 높이(글자 크기 배수)
     max_text_width: float = 0.68  # 화면 폭 대비 최대 글줄 폭. 가운데 정렬이라 오른쪽 끝이 0.84 — 쇼츠 오른쪽 버튼 줄(0.85~)에 안 걸리게
@@ -93,6 +96,7 @@ class Style:
             self, width=even(self.width), height=even(self.height),
             font_size=px(self.font_size), next_font_size=px(self.next_font_size),
             line_gap=px(self.line_gap), stroke_width=px(self.stroke_width),
+            sub_font_size=px(self.sub_font_size), sub_gap=px(self.sub_gap),
             title_size=px(self.title_size), artist_size=px(self.artist_size),
             cover_size=px(self.cover_size),
             progress_height=px(self.progress_height), progress_bottom=px(self.progress_bottom),
@@ -203,6 +207,7 @@ class FrameRenderer:
                 (round(self._bg.width / 2), round(self._bg.height / 2)), Image.BILINEAR)
         self._font = load_font(s.font_path, s.font_size)
         self._next_font = load_font(s.font_path, s.next_font_size)
+        self._sub_font = load_font(s.font_path, s.sub_font_size)
         self._title_font = load_font(s.font_path, s.title_size)
         self._artist_font = load_font(s.font_path, s.artist_size)
         # 앨범 아트 + 곡 정보 레이어(RGBA). 가사와 따로, 페이드 없이 얹는다
@@ -407,7 +412,7 @@ class FrameRenderer:
             shown = self.revealed_chars(lyrics.lines[i], t)
             if shown < len(lyrics.lines[i].text):
                 # 아직 안 나온 글자를 가린다: 현재 줄 없는 레이어 위에 나온 글자만 덮어쓴다
-                rows = self._current_rows(lyrics.lines[i].text)
+                rows = self._current_rows(lyrics.lines[i])
                 band, mask = self._chars_mask(rows, shown, soft=True)
                 base = self._layer(lyrics, key, color=_HIDDEN)
                 out = base.copy()
@@ -437,7 +442,7 @@ class FrameRenderer:
         done = line.sung_chars(t)
         if done >= len(line.text):
             return sung
-        band, mask = self._chars_mask(self._current_rows(line.text), done, soft=False)
+        band, mask = self._chars_mask(self._current_rows(line), done, soft=False)
         img = unsung.copy()
         img._shorts_bbox = _bbox(unsung)  # 노래방 합성은 글자 자리가 안 부른 레이어와 같다
         img.paste(sung.crop(band), band[:2], mask)
@@ -487,19 +492,41 @@ class FrameRenderer:
             self.layers_drawn += 1
         return self._cache[ck]
 
-    def _current_rows(self, text: str) -> list[tuple[str, int, float, float]]:
-        """현재 줄을 줄바꿈한 결과: (글줄, text 안 시작 위치, 왼쪽 x, 가운데 y)."""
+    def _current_rows(self, line) -> list[tuple[str, int, float, float]]:
+        """현재 줄 본문을 줄바꿈한 결과: (글줄, text 안 시작 위치, 왼쪽 x, 가운데 y).
+
+        보조 줄이 있으면 본문 + 보조 줄 블록 전체가 center_y에 가운데 오도록 본문을 올린다.
+        """
+        return self._block(line)[0]
+
+    def _block(self, line):
+        """현재 줄 블록 배치: (본문 글줄들, 보조 글줄들 [(글자, 색, 가운데 y)], 블록 아래 끝 y)."""
         s = self.style
-        rows = wrap(text, self._font, s.width * s.max_text_width)
+        max_w = s.width * s.max_text_width
+        rows = wrap(line.text, self._font, max_w)
         step = s.font_size * s.line_spacing
-        top = s.height * s.center_y - step * (len(rows) - 1) / 2
+        main_h = step * (len(rows) - 1) + s.font_size
+        sub_step = s.sub_font_size * s.line_spacing
+        sub_blocks = [wrap(sub, self._sub_font, max_w) for sub in line.subs]
+        sub_blocks = [b for b in sub_blocks if b]
+        total = main_h + sum(s.sub_gap + sub_step * (len(b) - 1) + s.sub_font_size
+                             for b in sub_blocks)
+        top = s.height * s.center_y - total / 2 + s.font_size / 2
         out = []
         offset = 0
         for k, row in enumerate(rows):
-            offset = text.index(row, offset)
+            offset = line.text.index(row, offset)
             out.append((row, offset, (s.width - self._font.getlength(row)) / 2, top + step * k))
             offset += len(row)
-        return out
+        bottom = top - s.font_size / 2 + main_h
+        subs = []
+        for n, block in enumerate(sub_blocks):
+            color = s.sub_colors[n % len(s.sub_colors)] if s.sub_colors else s.next_color
+            y = bottom + s.sub_gap + s.sub_font_size / 2
+            for k, row in enumerate(block):
+                subs.append((row, color, y + sub_step * k))
+            bottom = y + sub_step * (len(block) - 1) + s.sub_font_size / 2
+        return out, subs, bottom
 
     def _last_change(self, lyrics: Lyrics, t: float) -> float | None:
         """t 이전에 화면 내용이 마지막으로 바뀐 시각(줄 시작/끝)."""
@@ -512,7 +539,7 @@ class FrameRenderer:
         s = self.style
         bottom = s.height * s.center_y + s.font_size / 2
         if i is not None:
-            bottom = self._current_rows(lyrics.lines[i].text)[-1][3] + s.font_size / 2
+            bottom = self._block(lyrics.lines[i])[2]
         return bottom + s.line_gap + s.next_font_size / 2
 
     def _slide_distance(self, lyrics: Lyrics, prev_key, cur_key) -> int:
@@ -522,7 +549,7 @@ class FrameRenderer:
         if i is None:
             return round(s.font_size / 2 + s.line_gap + s.next_font_size / 2)
         return round(self._next_top(lyrics, prev_key[0])
-                     - self._current_rows(lyrics.lines[i].text)[0][3])
+                     - self._current_rows(lyrics.lines[i])[0][3])
 
     def _draw_lyrics(self, lyrics: Lyrics, i: int | None, nxt: int | None,
                      color: Color) -> Image.Image:
@@ -533,10 +560,15 @@ class FrameRenderer:
         stroke = {"stroke_width": s.stroke_width, "stroke_fill": s.stroke_color}
 
         # 현재 줄 블록은 center_y에 가운데 맞춤, 다음 줄 블록은 그 아래에 붙인다.
-        if i is not None and color != _HIDDEN:
-            for row, _, _, y in self._current_rows(lyrics.lines[i].text):
-                draw.text((s.width / 2, y), row, font=self._font, fill=color, anchor="mm",
-                          **stroke)
+        if i is not None:
+            rows, subs, _ = self._block(lyrics.lines[i])
+            if color != _HIDDEN:  # 타자기 효과의 "현재 줄 숨김" 레이어에도 보조 줄은 그린다
+                for row, _, _, y in rows:
+                    draw.text((s.width / 2, y), row, font=self._font, fill=color, anchor="mm",
+                              **stroke)
+            for row, sub_color, y in subs:
+                draw.text((s.width / 2, y), row, font=self._sub_font, fill=sub_color,
+                          anchor="mm", **stroke)
         if nxt is not None:
             rows = wrap(lyrics.lines[nxt].text, self._next_font, s.width * s.max_text_width)
             step = s.next_font_size * s.line_spacing

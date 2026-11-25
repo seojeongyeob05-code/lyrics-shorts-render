@@ -43,6 +43,10 @@ class StylesTest(unittest.TestCase):
                          (16, 32, 48))
         self.assertIsNone(styles.load_style(self.write("n.json", {"bg_gradient": None})).bg_gradient)
 
+    def test_sub_colors(self):
+        st = styles.load_style(self.write("sc.json", {"sub_colors": ["#FF0000", [0, 0, 255]]}))
+        self.assertEqual(st.sub_colors, ((255, 0, 0), (0, 0, 255)))
+
     def test_extends(self):
         path = self.write("child.json", {"extends": "neon", "font_size": 90})
         s = styles.load_style(path)
@@ -60,6 +64,7 @@ class StylesTest(unittest.TestCase):
             "shape.json": ({"cover_shape": "star"}, "rounded"),
             "transition.json": ({"transition": "spin"}, "slide"),
             "reveal.json": ({"reveal": "fast"}, "typewriter"),
+            "subcolors.json": ({"sub_colors": "#FFFFFF"}, "색 목록"),
         }
         for name, (data, needle) in cases.items():
             with self.subTest(name=name):
