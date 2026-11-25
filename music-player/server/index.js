@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import express from 'express';
 import multer from 'multer';
@@ -69,8 +70,14 @@ export function createApp(config) {
   return { app, db, purgeExpired: auth.purgeExpired };
 }
 
-if (process.argv[1] === import.meta.filename) {
-  const config = loadConfig();
+// 같은 와이파이(공유기)에 있는 휴대폰 등에서 접속할 주소들
+export function lanUrls(port, interfaces = os.networkInterfaces()) {
+  return Object.values(interfaces).flat()
+    .filter((a) => a && (a.family === 'IPv4' || a.family === 4) && !a.internal)
+    .map((a) => `http://${a.address}:${port}`);
+}
+
+export function startServer(config = loadConfig()) {
   const { app, db, purgeExpired } = createApp(config);
   backfillHashes(db, config.musicDir).then((n) => n && console.log(`기존 곡 ${n}개의 중복 검사용 해시를 계산했습니다`));
   setInterval(purgeExpired, 60 * 60 * 1000).unref();
@@ -80,7 +87,22 @@ if (process.argv[1] === import.meta.filename) {
     .catch((err) => console.error('자동 백업 실패:', err));
   autoBackup();
   setInterval(autoBackup, 60 * 60 * 1000).unref();
-  app.listen(config.port, () => {
+  // Express 5는 포트 오류 때도 이 콜백을 부르므로 err가 있으면 아래 'error' 처리에 맡긴다.
+  const server = app.listen(config.port, (err) => {
+    if (err) return;
     console.log(`음악 서버 실행 중: http://localhost:${config.port}  (데이터: ${config.dataDir})`);
+    const lan = lanUrls(config.port);
+    if (lan.length) console.log(`같은 와이파이의 휴대폰·다른 PC에서는: ${lan.join('  ')}`);
+    console.log('끄려면 이 창에서 Ctrl+C를 누르세요.');
   });
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`${config.port}번 포트를 이미 다른 프로그램이 쓰고 있습니다. 음악 서버가 이미 켜져 있는지 확인하거나, PORT=3001 처럼 다른 번호로 실행하세요.`);
+      process.exit(1);
+    }
+    throw err;
+  });
+  return server;
 }
+
+if (process.argv[1] === import.meta.filename) startServer();
