@@ -163,6 +163,20 @@ def make_background(s: Style, image: Image.Image | None = None) -> Image.Image:
     return bg
 
 
+def darken_mask(s: Style, size: tuple[int, int]) -> Image.Image | None:
+    """bg_dim(전체)과 bg_shade(위·아래 그라데이션)를 합친 '검게 덮을 정도' L 마스크. 둘 다 없으면 None.
+    배경 영상처럼 매 프레임 바뀌는 배경에 쓴다(사진은 make_background가 직접 입힌다)."""
+    if s.bg_dim <= 0 and s.bg_shade <= 0:
+        return None
+    strip = Image.new("L", (1, size[1]))
+    h, dim = size[1], min(1.0, s.bg_dim)
+    for y in range(h):
+        a = y / max(1, h - 1)
+        shade = 0.6 * s.bg_shade * max(0.0, 1 - a / 0.2) + s.bg_shade * max(0.0, (a - 0.35) / 0.65)
+        strip.putpixel((0, y), round(255 * (1 - (1 - dim) * (1 - min(1.0, shade)))))
+    return strip.resize(size)
+
+
 def _ellipsize(text: str, font, max_w: float) -> str:
     """max_w(px)를 넘으면 뒤를 잘라 …을 붙인다."""
     if font.getlength(text) <= max_w:
@@ -248,8 +262,15 @@ def make_cover_layer(s: Style, cover: Image.Image) -> Image.Image:
 
 class FrameRenderer:
     def __init__(self, style: Style | None = None, background: Image.Image | None = None,
-                 cover: Image.Image | None = None):
+                 cover: Image.Image | None = None, bg_video: str | None = None):
+        """bg_video: 배경으로 반복 재생할 영상 파일(주면 background·bg_zoom은 쓰지 않음).
+        영상을 쓰면 다 쓴 뒤 close()로 ffmpeg를 정리한다."""
         self.style = s = style or Style()
+        self._video = None
+        if bg_video:
+            from .bgvideo import BackgroundVideo
+            size = (s.width, s.height)
+            self._video = BackgroundVideo(bg_video, size, s.bg_blur, darken_mask(s, size))
         if s.reveal not in REVEALS:
             raise ValueError(f"reveal은 {', '.join(REVEALS)} 중 하나여야 합니다: {s.reveal!r}")
         if s.transition not in TRANSITIONS:
@@ -344,9 +365,22 @@ class FrameRenderer:
             return None
         return min(a for a, _ in spans), max(b for _, b in spans)
 
+    def close(self) -> None:
+        """배경 영상을 읽는 ffmpeg를 끝낸다(영상이 없으면 할 일 없음)."""
+        if self._video is not None:
+            self._video.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc) -> None:
+        self.close()
+
     def background_at(self, t: float) -> Image.Image:
         """시각 t의 배경(돌려받은 이미지를 고치지 말 것)."""
         s = self.style
+        if self._video is not None:
+            return self._video.frame_at(t)
         if s.bg_zoom <= 0:
             return self._bg
         t = round(t * ZOOM_UPDATES_PER_SEC) / ZOOM_UPDATES_PER_SEC
@@ -397,7 +431,7 @@ class FrameRenderer:
             prev = self._text_layer(lyrics, prev_key, tc - 1e-6)
             d = self._slide_distance(lyrics, prev_key, self.state_key(lyrics, t))
             return self._composite(self.background_at(t), self._transition(prev, layer, a, d)), False
-        if s.bg_zoom <= 0 and self._is_cached(layer):
+        if s.bg_zoom <= 0 and self._video is None and self._is_cached(layer):
             if self._static is None or self._static[0] is not layer:
                 self._static = (layer, self._composite(self._bg, [(layer, 1.0, 0)]))
             return self._static[1], True

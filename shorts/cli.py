@@ -15,7 +15,7 @@ import time
 
 from PIL import Image
 
-from . import audio, guide, lrc, subtitles
+from . import audio, bgvideo, guide, lrc, subtitles
 from .frame import FrameRenderer, Style
 from .project import load_project, parse_time, parse_times
 from .styles import PRESET_DIR, list_presets, load_style, style_from_dict
@@ -57,8 +57,13 @@ def _style(args) -> Style:
 
 def _renderer(args) -> FrameRenderer:
     style = _style(args)
-    bg = Image.open(args.bg) if args.bg else None
     cover = Image.open(args.cover) if args.cover else None
+    if bgvideo.is_video(args.bg):  # 배경 영상은 반복 재생
+        try:
+            return FrameRenderer(style, cover=cover, bg_video=args.bg)
+        except ValueError as e:
+            raise SystemExit(str(e)) from None
+    bg = Image.open(args.bg) if args.bg else None
     return FrameRenderer(style, background=bg, cover=cover)
 
 
@@ -124,7 +129,11 @@ def cmd_render(args) -> None:
     paths = segment_paths(args.out or args.stem + ".mp4", len(segments))
     if args.preview and not args.out:  # 노래-1.preview.mp4 (최종본 노래-1.mp4 옆에 나란히)
         paths = [os.path.splitext(p)[0] + ".preview.mp4" for p in paths]
-    renderer = _renderer(args)
+    with _renderer(args) as renderer:
+        _render_segments(args, lyrics, segments, paths, opts, renderer)
+
+
+def _render_segments(args, lyrics, segments, paths, opts, renderer) -> None:
     if renderer.style.visualizer and not args.audio:
         print("주의: 스타일에 visualizer가 켜져 있지만 --audio가 없어서 음악 막대를 그리지 않아요",
               file=sys.stderr)
@@ -161,14 +170,14 @@ def format_time(sec: float) -> str:
 def cmd_frame(args) -> None:
     lyrics = _apply_info(args, lrc.load(args.lrc))
     out = args.out or args.stem + ".png"
-    renderer = _renderer(args)
-    img = renderer.render(lyrics, args.at, progress=args.at / max(lyrics.lines[-1].end, 1e-6)
-                          if lyrics.lines else None)
-    if args.guide:
-        img = guide.draw_guide(img)
-    img.save(out)
-    print(out)
-    warn_overlaps(renderer, lyrics, [args.at])
+    with _renderer(args) as renderer:
+        img = renderer.render(lyrics, args.at, progress=args.at / max(lyrics.lines[-1].end, 1e-6)
+                              if lyrics.lines else None)
+        if args.guide:
+            img = guide.draw_guide(img)
+        img.save(out)
+        print(out)
+        warn_overlaps(renderer, lyrics, [args.at])
 
 
 def cmd_export(args) -> None:
@@ -216,7 +225,7 @@ def build_parser() -> argparse.ArgumentParser:
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument("lrc", help="LRC 가사 파일, 또는 곡 설정 파일(.json)")
     common.add_argument("-o", "--out", help="출력 파일 (기본: 가사·설정 파일 이름)")
-    common.add_argument("--bg", help="배경 이미지")
+    common.add_argument("--bg", help="배경 이미지, 또는 반복 재생할 배경 영상(mp4·mov·webm·gif)")
     common.add_argument("--cover", help="앨범 아트 이미지 (모양·크기·위치는 스타일의 cover_*)")
     common.add_argument("--font", help="폰트 파일 (기본: 스타일 설정 또는 한글 폰트 자동 탐색)")
     common.add_argument("--title", help="화면 위쪽 곡 제목 (기본: LRC [ti:], 빈 문자열이면 숨김)")
