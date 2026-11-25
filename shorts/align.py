@@ -3,8 +3,8 @@
 인식 결과는 틀린 글자가 섞여도 괜찮다. 가사와 인식 글자를 글자 단위로 맞대어(difflib)
 일치하는 글자의 시각만 쓰고, 나머지는 앞뒤에서 채운다.
 
-    words = [{"start": 1.2, "end": 1.6, "word": "壁に"}, ...]   # faster-whisper word_timestamps
-    lines = align_lines(["壁にもたれて一晩中", ...], words)
+    words = [{"start": 1.2, "end": 1.6, "word": "今日"}, ...]   # faster-whisper word_timestamps
+    lines = align_lines(["今日は晴れ", "明日は雨"], words)
 """
 
 from __future__ import annotations
