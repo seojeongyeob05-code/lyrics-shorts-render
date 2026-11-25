@@ -205,6 +205,8 @@ main.play { display: grid; gap: 22px; grid-template-columns: minmax(0, 1.1fr) mi
 mark.focus { background: transparent; color: var(--amber); border-bottom: 2px dotted var(--amber); }
 .msg.place mark.focus { color: #ffe08a; border-color: #ffe08a; }
 .goal .focusline { color: var(--ink); }
+.bridge { border-left: 3px solid var(--amber); padding: 4px 0 4px 12px; display: grid; gap: 10px; }
+.bridge p { color: var(--ink); font-style: normal; }
 .how { display: grid; gap: 6px; margin: 0; padding-left: 18px; font-size: 14px; }
 </style>
 
@@ -694,7 +696,8 @@ function newLoop() {
     $('goalMeta').textContent = '할머니는 오후 5시 50분에 집으로 들어갑니다. 그 전에 전해드려야 해요.';
   }
   showFocus();
-  sys(S.loop === 1 ? { 1: '오후 5시 20분. 방금 전까지 있던 건물 로비로 돌아왔다.', 2: '오후 5시 20분. 벤치에 앉은 옆집 할머니가 이쪽을 보며 손짓한다.', 3: '오후 5시 20분. 집 문에 쪽지가 붙어 있다.', 4: '오후 5시 20분. 로비에서 지도를 든 관광객이 두리번거리고 있다.', 5: '오후 5시 20분. 화장실에서 막 나왔다. 청소부 아주머니께 알려야겠다.' }[S.level] : '…눈을 떠보니 다시 오후 5시 20분, 건물 입구였다. 그런데 어딘가 배치가 달라 보인다.');
+  if (S.loop === 1 && pendingBridge) { sys(pendingBridge); pendingBridge = null; }
+  else sys(S.loop === 1 ? { 1: '오후 5시 20분. 방금 전까지 있던 건물 로비로 돌아왔다.', 2: '오후 5시 20분. 벤치에 앉은 옆집 할머니가 이쪽을 보며 손짓한다.', 3: '오후 5시 20분. 집 문에 쪽지가 붙어 있다.', 4: '오후 5시 20분. 로비에서 지도를 든 관광객이 두리번거리고 있다.', 5: '오후 5시 20분. 화장실에서 막 나왔다. 청소부 아주머니께 알려야겠다.' }[S.level] : '…눈을 떠보니 다시 오후 5시 20분, 건물 입구였다. 그런데 어딘가 배치가 달라 보인다.');
   place('MAPLE COURT — Welcome, residents and guests.', '메이플 코트 — 입주민과 방문객 여러분, 환영합니다.');
   if (S.level === 3 && S.bigParcel) {
     place("Hi! Sorry I missed you. Your package was too big for the parcel lockers, so I left it with the guard at the SECURITY OFFICE. Have a good one! — Dan, Speedy Delivery",
@@ -1657,12 +1660,19 @@ function levelButtons() {
   }).join('')}</div>`;
 }
 function startLevel(n) { if (!played) { played = true; store.set('ag520.played', true); } LEVEL = n; S = null; hide(); newLoop(); $('sayInput').focus(); }
+function goLevel(n) { const due = dueWords(); due.length ? review(due, 0, 0, () => startLevel(n)) : startLevel(n); }
 function bindLevels() {
-  document.querySelectorAll('.lvl').forEach(b => b.addEventListener('click', () => {
-    const due = dueWords();
-    due.length ? review(due, 0, 0, () => startLevel(+b.dataset.level)) : startLevel(+b.dataset.level);
-  }));
+  document.querySelectorAll('.lvl').forEach(b => b.addEventListener('click', () => goLevel(+b.dataset.level)));
 }
+// The five situations read as one afternoon: each win leads into the next with a line of story.
+const BRIDGES = {
+  1: [2, '지갑을 주머니에 넣고 로비로 나오자, 벤치에 앉은 옆집 할머니가 손짓한다.'],
+  2: [3, '할머니를 배웅하고 집에 올라가 보니, 문에 택배 기사의 쪽지가 붙어 있다.'],
+  3: [4, '택배 상자를 들고 로비로 내려오는데, 지도를 든 관광객이 두리번거리고 있다.'],
+  4: [5, '관광객을 배웅하고 손을 씻으러 화장실에 들렀더니… 뭔가 고장 나 있다.'],
+  5: [1, '긴 오후가 끝났다. 내일도 또 다른 5시 20분이 기다리고 있다.'],
+};
+let pendingBridge = null;
 // Before a new afternoon starts, words from earlier recaps come back: pick the meaning from four.
 // One-letter slips count as remembered; the answer is shown either way.
 function editDistance(a, b) {
@@ -1822,8 +1832,14 @@ function win() {
     <p class="lead">${S.loop}회차 · ${used}분 사용 · 실수 ${S.mistakes.length}번${newBest ? ' · <b class="newbest">새 최고 기록!</b>' : ''}</p>
     <p>${S.level === 3 ? '쪽지의 숫자를 제대로 읽었어요.' : '당신의 말은 통했어요. 다음엔 이렇게 말해보세요.'}</p>
     <ul class="phr">${phr || '<li>몸짓만으로 해냈어요! 다음엔 한 단어라도 영어로 말해보세요.</li>'}</ul>
-    <p><b>다른 상황도 해보세요.</b></p>
-    ${levelButtons()}`, bindLevels);
+    <div class="bridge"><p>${BRIDGES[S.level][1]}</p>
+      <button class="primary" id="nextStory" type="button">${S.level === 5 ? '처음 상황부터 다시' : `다음 이야기: ${LEVELS[BRIDGES[S.level][0]].name}`}</button></div>
+    <p><b>또는 원하는 상황을 고르세요.</b></p>
+    ${levelButtons()}`, () => {
+      bindLevels();
+      const [next, line] = BRIDGES[S.level];
+      $('nextStory').addEventListener('click', () => { if (S.level !== 5) pendingBridge = line; goLevel(next); });
+    });
 }
 
 function showJournal() {

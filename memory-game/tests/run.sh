@@ -19,6 +19,8 @@ check "청소부가 바로 고치러 갔다" "상황 5: 고장 신고"
 check "L5rooms mistakes: 0 " "상황 5: 방 구경은 실수가 아님"
 check "phone hscroll false" "휴대폰 폭 가로 넘침 없음"
 if grep -E "pageerror|errors \[ ['\"]" out/playthrough.log >/dev/null; then echo "FAIL  페이지 오류가 기록됨"; status=1; else echo "ok    페이지 오류 없음"; fi
+node story.js > out/story.log 2>&1
+if grep -q "now level 2 | first sys: 지갑을 주머니에" out/story.log && grep -q "errors \[\]" out/story.log; then echo "ok    이야기 잇기: 상황 1 → 2"; else echo "FAIL  이야기 잇기 (out/story.log)"; status=1; fi
 if [ "${1:-}" = "--monkey" ]; then
   node monkey.js "${2:-8}" > out/monkey.log 2>&1
   if sed -n '/UNIQUE ERRORS:/,$p' out/monkey.log | grep -q "x "; then echo "FAIL  몽키 테스트 오류 (out/monkey.log)"; status=1; else echo "ok    몽키 테스트 ${2:-8}판 오류 없음"; fi
