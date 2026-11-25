@@ -527,6 +527,61 @@ class SubLinesRenderTest(unittest.TestCase):
             self.assertEqual(a.render_bytes(ly, t, t / 6), b.render(ly, t, t / 6).tobytes())
 
 
+class ModernLayoutTest(unittest.TestCase):
+    BASE = dict(width=400, height=600, font_size=30, sub_font_size=16, fade=0, show_next=False,
+                bg_color=(0, 0, 0), text_color=(255, 255, 255), progress_height=4, progress_bottom=100,
+                progress_width=0.5, title_size=20, artist_size=14, info_y=0.1)
+    LY = "[ti:Title]\n[ar:Artist]\n[00:01.00]AB\n[00:01.00]sub\n[00:03.00]CD"
+
+    def ink(self, img, box=None):
+        part = img.crop(box) if box else img
+        return part.convert("L").point(lambda v: 255 if v > 128 else 0).getbbox()
+
+    def test_left_align_starts_at_margin_with_bar(self):
+        r = FrameRenderer(Style(**self.BASE, text_align="left", margin_x=0.1, show_info=False))
+        img = r.render(lrc.parse(self.LY, duration=5), 2, progress=1.0)
+        self.assertAlmostEqual(self.ink(img, (0, 200, 400, 400))[0], 40, delta=4)
+        x0, *_ = r._progress_geometry(1.0)
+        self.assertEqual(x0, 40)  # 진행 바도 같은 왼쪽 여백
+        r2 = FrameRenderer(Style(**self.BASE, text_align="left", margin_x=0.1))
+        self.assertEqual(r2.render_bytes(lrc.parse(self.LY, duration=5), 2, 0.5),
+                         r2.render(lrc.parse(self.LY, duration=5), 2, 0.5).tobytes())
+
+    def test_shadow_darkens_around_text_only(self):
+        style = Style(**{**self.BASE, "bg_color": (100, 100, 100)}, shadow=0.8, shadow_blur=4,
+                      shadow_offset=3, show_info=False, progress_bar=False)
+        img = FrameRenderer(style).render(lrc.parse(self.LY, duration=5), 2)
+        plain = FrameRenderer(Style(**{**self.BASE, "bg_color": (100, 100, 100)}, show_info=False,
+                                    progress_bar=False)).render(lrc.parse(self.LY, duration=5), 2)
+        self.assertLess(min(c[0] for _, c in img.getcolors(10**6)), 90)  # 그림자 자리
+        self.assertNotIn((0, 0, 0), _colors(plain))
+        self.assertEqual(img.getpixel((5, 5)), (100, 100, 100))  # 먼 곳은 그대로
+
+    def test_translucent_text_color(self):
+        style = Style(**{**self.BASE, "text_color": (255, 255, 255, 128)}, show_info=False, progress_bar=False)
+        img = FrameRenderer(style).render(lrc.parse("[00:01.00]█", duration=3), 2)
+        self.assertIn(max(c[0] for _, c in img.getcolors(10**6)), range(120, 136))
+
+    def test_card_puts_cover_and_text_top_left(self):
+        art = Image.new("RGB", (50, 50), (255, 0, 0))
+        r = FrameRenderer(Style(**self.BASE, info_layout="card", card_cover_size=40, margin_x=0.1), cover=art)
+        img = r.render(lrc.parse(self.LY, duration=5), 2)
+        self.assertEqual(img.getpixel((60, 60)), (255, 0, 0))  # 왼쪽 위 작은 앨범 아트(가운데 큰 건 없음)
+        self.assertNotEqual(img.getpixel((200, 186)), (255, 0, 0))
+        title = self.ink(img, (90, 40, 400, 80))
+        self.assertIsNotNone(title)  # 앨범 아트 오른쪽에 제목
+
+    def test_bg_shade_darkens_bottom(self):
+        bg = make_background(Style(width=10, height=100, bg_color=(200, 200, 200), bg_shade=0.8))
+        self.assertGreater(bg.getpixel((5, 30))[0], bg.getpixel((5, 99))[0] + 100)
+        self.assertLess(bg.getpixel((5, 0))[0], bg.getpixel((5, 30))[0])  # 위쪽도 살짝
+
+    def test_bad_values(self):
+        for k, v in [("text_align", "right"), ("info_layout", "big")]:
+            with self.assertRaises(ValueError):
+                FrameRenderer(Style(**{k: v}))
+
+
 class VisualizerTest(unittest.TestCase):
     BASE = dict(width=200, height=400, font_size=16, next_font_size=12, fade=0,
                 visualizer=True, viz_height=50, viz_bottom=100, viz_width=0.8, viz_gap=0.5,

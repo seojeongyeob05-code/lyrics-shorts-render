@@ -32,8 +32,9 @@ class GuideTest(unittest.TestCase):
         found = {(c, z) for c, z, _ in guide.find_overlaps(r, LONG, [0.5, 1.5, 2.5])}
         self.assertIn(("가사", "오른쪽 버튼"), found)
         self.assertIn(("진행 바", "아래쪽 제목·설명"), found)
-        times = {c: t for c, _, t in guide.find_overlaps(r, LONG, [0.5, 1.5])}
-        self.assertEqual(times["가사"], 0.5)  # 처음 걸린 시각(줄 시작 전 다음 줄 미리보기도 검사)
+        r = FrameRenderer(Style(max_text_width=0.98, show_next=False))
+        times = {c: t for c, _, t in guide.find_overlaps(r, LONG, [0.5, 1.5, 2.5])}
+        self.assertEqual(times["가사"], 1.5)  # 처음 걸린 시각(줄 시작 전엔 화면이 비어 있음)
 
     def test_draw_guide_tints_zones_only(self):
         img = Image.new("RGB", (1080, 1920), (0, 0, 0))

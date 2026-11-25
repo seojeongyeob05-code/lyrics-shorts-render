@@ -33,9 +33,10 @@ def _ass_time(sec: float) -> str:
     return f"{h}:{m:02}:{s:02}.{cs:02}"
 
 
-def _ass_color(rgb: tuple[int, int, int]) -> str:
-    r, g, b = rgb
-    return f"&H00{b:02X}{g:02X}{r:02X}"  # ASS는 알파·파랑·초록·빨강 순서
+def _ass_color(rgb: tuple[int, ...]) -> str:
+    r, g, b = rgb[:3]
+    a = 255 - rgb[3] if len(rgb) == 4 else 0  # ASS 알파는 0이 불투명
+    return f"&H{a:02X}{b:02X}{g:02X}{r:02X}"  # ASS는 알파·파랑·초록·빨강 순서
 
 
 def _ass_escape(text: str) -> str:

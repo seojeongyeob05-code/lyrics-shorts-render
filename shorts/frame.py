@@ -36,6 +36,7 @@ class Style:
     bg_gradient: Color | None = None  # 아래쪽 색. 주면 bg_color → bg_gradient 세로 그라데이션
     bg_blur: float = 0  # 배경 이미지 흐림 반경(px). 가사가 잘 읽히게
     bg_dim: float = 0  # 배경을 검게 덮는 정도(0~1)
+    bg_shade: float = 0  # 아래쪽(과 위쪽 살짝)을 점점 어둡게 — 글자 자리만 가라앉히는 그라데이션(0~1)
     bg_zoom: float = 0  # 배경을 천천히 확대했다 돌아오는 정도(0.08 = 최대 8%). 0이면 고정
     bg_zoom_period: float = 20  # 확대 → 원래 크기로 돌아오는 한 주기(초)
     bg_pan: float = 0  # 확대될 때 가로로 흘러가는 정도(-1 왼쪽 ~ 1 오른쪽)
@@ -46,6 +47,13 @@ class Style:
     stroke_width: int = 0  # 글자 테두리 두께(px). 사진 배경 위에서 읽기 좋게
     stroke_color: Color = (0, 0, 0)
     font_path: str | None = None  # None이면 한글 폰트 자동 탐색(text.find_korean_font)
+    sub_font_path: str | None = None  # 보조 줄 폰트(예: 원문은 일본어 폰트, 발음·뜻은 한글 폰트). 없으면 font_path
+    info_font_path: str | None = None  # 곡 정보 폰트. 없으면 sub_font_path → font_path
+    text_align: str = "center"  # center / left(왼쪽 정렬, margin_x부터)
+    margin_x: float = 0.08  # left 정렬일 때 왼쪽 여백(화면 폭 대비)
+    shadow: float = 0  # 글자 그림자 진하기(0~1). 테두리보다 부드럽게 읽히게
+    shadow_blur: int = 10  # 그림자 흐림(px)
+    shadow_offset: int = 3  # 그림자를 아래로 내리는 거리(px)
     font_size: int = 72
     next_font_size: int = 52
     sub_font_size: int = 40  # 보조 줄(발음·번역) 글자 크기
@@ -73,6 +81,8 @@ class Style:
     viz_gap: float = 0.35  # 막대 사이 틈(한 칸 대비)
     viz_color: Color = (255, 255, 255)
     show_info: bool = True  # 곡 정보(LRC [ti:] 제목, [ar:] 가수)를 화면 위쪽에 표시
+    info_layout: str = "center"  # center(가운데 큰 글씨) / card(왼쪽 위 작은 앨범 아트 + 제목·가수)
+    card_cover_size: int = 128  # card일 때 앨범 아트 한 변(px)
     info_y: float = 0.14  # 곡 정보 블록의 세로 가운데(0=위, 1=아래)
     title_size: int = 54
     artist_size: int = 38
@@ -98,7 +108,8 @@ class Style:
             line_gap=px(self.line_gap), stroke_width=px(self.stroke_width),
             sub_font_size=px(self.sub_font_size), sub_gap=px(self.sub_gap),
             title_size=px(self.title_size), artist_size=px(self.artist_size),
-            cover_size=px(self.cover_size),
+            cover_size=px(self.cover_size), card_cover_size=px(self.card_cover_size),
+            shadow_blur=px(self.shadow_blur), shadow_offset=px(self.shadow_offset),
             progress_height=px(self.progress_height), progress_bottom=px(self.progress_bottom),
             viz_height=px(self.viz_height), viz_bottom=px(self.viz_bottom),
             bg_blur=self.bg_blur * k)
@@ -140,7 +151,30 @@ def make_background(s: Style, image: Image.Image | None = None) -> Image.Image:
         bg = bg.filter(ImageFilter.GaussianBlur(s.bg_blur * k))
     if s.bg_dim > 0:
         bg = Image.blend(bg, Image.new("RGB", size, (0, 0, 0)), min(1.0, s.bg_dim))
+    if s.bg_shade > 0:
+        # 위 20%는 살짝, 35% 아래부터는 점점 진하게 어두워지는 세로 그라데이션
+        strip = Image.new("L", (1, size[1]))
+        top_amt, h = 0.6 * s.bg_shade, size[1]
+        for y in range(h):
+            a = y / max(1, h - 1)
+            v = top_amt * max(0.0, 1 - a / 0.2) + s.bg_shade * max(0.0, (a - 0.35) / 0.65)
+            strip.putpixel((0, y), round(255 * min(1.0, v)))
+        bg = Image.composite(Image.new("RGB", size, (0, 0, 0)), bg, strip.resize(size))
     return bg
+
+
+def _ellipsize(text: str, font, max_w: float) -> str:
+    """max_w(px)를 넘으면 뒤를 잘라 …을 붙인다."""
+    if font.getlength(text) <= max_w:
+        return text
+    while text and font.getlength(text + "…") > max_w:
+        text = text[:-1]
+    return text.rstrip() + "…"
+
+
+def _solid_bbox(layer: Image.Image):
+    """불투명도 25% 이상인 픽셀만 따진 영역(겹침 검사용)."""
+    return layer.getchannel("A").point(lambda v: 255 if v >= 64 else 0).getbbox()
 
 
 def _bbox(layer: Image.Image):
@@ -154,9 +188,43 @@ def _bbox(layer: Image.Image):
 
 
 COVER_SHAPES = ("rounded", "circle", "square")
+ALIGNS = ("center", "left")
+INFO_LAYOUTS = ("center", "card")
 TRANSITIONS = ("fade", "slide")
 REVEALS = ("none", "typewriter")
 _HIDDEN = (0, 0, 0, 0)  # _layer 색으로 주면 현재 줄을 그리지 않는다(다음 줄 자리는 그대로)
+
+
+def _shape_mask(shape: str, size: int, radius: float) -> Image.Image:
+    """앨범 아트 모양 마스크. 가장자리가 계단지지 않게 4배로 그려 줄인다."""
+    big = Image.new("L", (size * 4, size * 4), 0)
+    d = ImageDraw.Draw(big)
+    if shape == "circle":
+        d.ellipse((0, 0, size * 4 - 1, size * 4 - 1), fill=255)
+    elif shape == "rounded":
+        d.rounded_rectangle((0, 0, size * 4 - 1, size * 4 - 1), radius=round(size * 4 * radius), fill=255)
+    else:
+        d.rectangle((0, 0, size * 4, size * 4), fill=255)
+    return big.resize((size, size), Image.LANCZOS)
+
+
+def add_shadow(layer: Image.Image, opacity: float, blur: int, offset: int) -> Image.Image:
+    """RGBA 레이어 아래에 글자 모양을 흐리게 번진 검은 그림자를 깐 새 레이어."""
+    bbox = _bbox(layer)
+    if not bbox or opacity <= 0:
+        return layer
+    pad = blur * 3 + offset
+    box = (max(0, bbox[0] - pad), max(0, bbox[1] - pad),
+           min(layer.width, bbox[2] + pad), min(layer.height, bbox[3] + pad))
+    part = layer.crop(box)
+    alpha = part.getchannel("A").filter(ImageFilter.GaussianBlur(blur))
+    alpha = alpha.point(lambda v: round(v * min(1.0, opacity)))
+    shadow = Image.new("RGBA", part.size, (0, 0, 0, 0))
+    shadow.paste((0, 0, 0, 255), (0, offset), alpha.crop((0, 0, part.width, part.height - offset)))
+    out = layer.copy()
+    out.paste(Image.alpha_composite(shadow, part), box[:2])
+    out._shorts_bbox = box
+    return out
 
 
 def make_cover_layer(s: Style, cover: Image.Image) -> Image.Image:
@@ -165,17 +233,7 @@ def make_cover_layer(s: Style, cover: Image.Image) -> Image.Image:
         raise ValueError(f"cover_shape는 {', '.join(COVER_SHAPES)} 중 하나여야 합니다: {s.cover_shape!r}")
     size = s.cover_size
     art = cover_fit(cover.convert("RGB"), (size, size))
-    # 가장자리가 계단지지 않게 4배로 그린 마스크를 줄여 쓴다
-    big = Image.new("L", (size * 4, size * 4), 0)
-    d = ImageDraw.Draw(big)
-    if s.cover_shape == "circle":
-        d.ellipse((0, 0, size * 4 - 1, size * 4 - 1), fill=255)
-    elif s.cover_shape == "rounded":
-        d.rounded_rectangle((0, 0, size * 4 - 1, size * 4 - 1),
-                            radius=round(size * 4 * s.cover_radius), fill=255)
-    else:
-        d.rectangle((0, 0, size * 4, size * 4), fill=255)
-    mask = big.resize((size, size), Image.LANCZOS)
+    mask = _shape_mask(s.cover_shape, size, s.cover_radius)
 
     x, y = (s.width - size) // 2, round(s.height * s.cover_y - size / 2)
     layer = Image.new("RGBA", (s.width, s.height), (0, 0, 0, 0))
@@ -196,7 +254,14 @@ class FrameRenderer:
             raise ValueError(f"reveal은 {', '.join(REVEALS)} 중 하나여야 합니다: {s.reveal!r}")
         if s.transition not in TRANSITIONS:
             raise ValueError(f"transition은 {', '.join(TRANSITIONS)} 중 하나여야 합니다: {s.transition!r}")
-        self._cover = make_cover_layer(s, cover) if cover is not None else None
+        if s.text_align not in ALIGNS:
+            raise ValueError(f"text_align은 {', '.join(ALIGNS)} 중 하나여야 합니다: {s.text_align!r}")
+        if s.info_layout not in INFO_LAYOUTS:
+            raise ValueError(f"info_layout은 {', '.join(INFO_LAYOUTS)} 중 하나여야 합니다: {s.info_layout!r}")
+        self._cover_img = cover
+        # card 배치에선 앨범 아트를 곡 정보 카드 안에 작게 그리므로 큰 앨범 아트는 없다
+        self._cover = (make_cover_layer(s, cover)
+                       if cover is not None and s.info_layout == "center" else None)
         self._bg = make_background(s, background)
         # 많이 흐린 배경은 절반 크기에서 확대해도 눈으로 차이가 없다(최대 1/255). 줌 배경을
         # 매번 다시 계산하는 비용이 약 30% 준다.
@@ -207,12 +272,15 @@ class FrameRenderer:
                 (round(self._bg.width / 2), round(self._bg.height / 2)), Image.BILINEAR)
         self._font = load_font(s.font_path, s.font_size)
         self._next_font = load_font(s.font_path, s.next_font_size)
-        self._sub_font = load_font(s.font_path, s.sub_font_size)
-        self._title_font = load_font(s.font_path, s.title_size)
-        self._artist_font = load_font(s.font_path, s.artist_size)
+        sub_path = s.sub_font_path or s.font_path
+        info_path = s.info_font_path or sub_path
+        self._sub_font = load_font(sub_path, s.sub_font_size)
+        self._title_font = load_font(info_path, s.title_size)
+        self._artist_font = load_font(info_path, s.artist_size)
         # 앨범 아트 + 곡 정보 레이어(RGBA). 가사와 따로, 페이드 없이 얹는다
         self._overlay: Image.Image | None = self._cover
         self._cache: dict[tuple, Image.Image] = {}  # 가사 레이어(RGBA)
+        self._blocks: dict = {}  # 줄 → 배치 결과
         self._cache_owner: Lyrics | None = None
         self._bounds: list[float] = []
         self._static: tuple[Image.Image, Image.Image] | None = None  # (레이어, 배경과 합성)
@@ -300,9 +368,10 @@ class FrameRenderer:
         """시각 t에 그려지는 것들의 영역: [(이름, (x0, y0, x1, y1)), ...]."""
         boxes = []
         layer = self._text_layer(lyrics, self.state_key(lyrics, t), t)
-        if bbox := _bbox(layer):
+        # 그림자의 옅은 가장자리는 빼고 실제로 보이는 부분만
+        if bbox := _solid_bbox(layer):
             boxes.append(("가사", bbox))
-        if self._overlay is not None and (bbox := _bbox(self._overlay)):
+        if self._overlay is not None and (bbox := _solid_bbox(self._overlay)):
             boxes.append(("곡 정보·앨범 아트", bbox))
         if self.style.progress_bar:
             x0, y0, w, h, _ = self._progress_geometry(0)
@@ -369,26 +438,43 @@ class FrameRenderer:
             out.paste(part, (bbox[0], bbox[1] + dy), mask)
 
     def _draw_info(self, meta: dict[str, str]) -> Image.Image | None:
-        """곡 제목(굵게)과 가수를 info_y 근처에 가운데 정렬로 그린 레이어. 둘 다 없으면 None."""
+        """곡 제목(굵게)과 가수 레이어. center는 info_y에 가운데로, card는 왼쪽 위에 작은 앨범 아트와
+        함께. 그릴 게 없으면 None."""
         s = self.style
         blocks = [(text, font, size, color) for text, font, size, color in (
             (meta.get("ti", "").strip(), self._title_font, s.title_size, s.title_color),
             (meta.get("ar", "").strip(), self._artist_font, s.artist_size, s.artist_color),
         ) if text]
-        if not s.show_info or not blocks:
+        card = s.info_layout == "card"
+        art = self._cover_img if card else None
+        if not s.show_info or not (blocks or art is not None):
             return None
-        rows = [(row, font, size, color)
-                for text, font, size, color in blocks
-                for row in wrap(text, font, s.width * s.max_text_width)]
-        heights = [size * s.line_spacing for _, _, size, _ in rows]
-        y = s.height * s.info_y - sum(heights) / 2
         img = Image.new("RGBA", (s.width, s.height), (0, 0, 0, 0))
         draw = ImageDraw.Draw(img)
+        cy = s.height * s.info_y
+        if card:
+            x = round(s.width * s.margin_x)
+            if art is not None:
+                size = s.card_cover_size
+                img.paste(cover_fit(art.convert("RGB"), (size, size)), (x, round(cy - size / 2)),
+                          _shape_mask("rounded", size, 0.12))
+                x += size + round(size * 0.22)
+            # 카드 글자는 한 줄씩: 길면 말줄임
+            max_w = s.width * (1 - s.margin_x) - x - s.width * 0.15
+            rows = [(_ellipsize(text, font, max_w), font, size, color)
+                    for text, font, size, color in blocks]
+        else:
+            x = s.width / 2
+            rows = [(row, font, size, color)
+                    for text, font, size, color in blocks
+                    for row in wrap(text, font, s.width * s.max_text_width)]
+        heights = [size * s.line_spacing for _, _, size, _ in rows]
+        y = cy - sum(heights) / 2
         for (row, font, size, color), h in zip(rows, heights):
-            draw.text((s.width / 2, y + h / 2), row, font=font, fill=color, anchor="mm",
+            draw.text((x, y + h / 2), row, font=font, fill=color, anchor="lm" if card else "mm",
                       stroke_width=s.stroke_width, stroke_fill=s.stroke_color)
             y += h
-        return img
+        return add_shadow(img, s.shadow, s.shadow_blur, s.shadow_offset)
 
     def _use(self, lyrics: Lyrics) -> None:
         """다른 가사가 들어오면 캐시를 비운다."""
@@ -483,12 +569,14 @@ class FrameRenderer:
     def _layer(self, lyrics: Lyrics, key: tuple[int | None, int | None],
                color: Color) -> Image.Image:
         """현재 줄을 color로 그린 가사 레이어. 같은 키는 다시 그리지 않는다."""
+        s = self.style
         self._use(lyrics)
         ck = (key, color)
         if ck not in self._cache:
             if len(self._cache) >= 8:
                 self._cache.pop(next(iter(self._cache)))
-            self._cache[ck] = self._draw_lyrics(lyrics, *key, color)
+            self._cache[ck] = add_shadow(self._draw_lyrics(lyrics, *key, color),
+                                         s.shadow, s.shadow_blur, s.shadow_offset)
             self.layers_drawn += 1
         return self._cache[ck]
 
@@ -500,7 +588,13 @@ class FrameRenderer:
         return self._block(line)[0]
 
     def _block(self, line):
-        """현재 줄 블록 배치: (본문 글줄들, 보조 글줄들 [(글자, 색, 가운데 y)], 블록 아래 끝 y)."""
+        """현재 줄 블록 배치: (본문 글줄들, 보조 글줄들 [(글자, 색, 가운데 y)], 블록 아래 끝 y).
+        줄바꿈 계산이 가볍지 않아(균형 맞추기) 줄마다 한 번만 한다."""
+        if line not in self._blocks:
+            self._blocks[line] = self._layout_block(line)
+        return self._blocks[line]
+
+    def _layout_block(self, line):
         s = self.style
         max_w = s.width * s.max_text_width
         rows = wrap(line.text, self._font, max_w)
@@ -516,7 +610,7 @@ class FrameRenderer:
         offset = 0
         for k, row in enumerate(rows):
             offset = line.text.index(row, offset)
-            out.append((row, offset, (s.width - self._font.getlength(row)) / 2, top + step * k))
+            out.append((row, offset, self._row_x(row, self._font), top + step * k))
             offset += len(row)
         bottom = top - s.font_size / 2 + main_h
         subs = []
@@ -527,6 +621,21 @@ class FrameRenderer:
                 subs.append((row, color, y + sub_step * k))
             bottom = y + sub_step * (len(block) - 1) + s.sub_font_size / 2
         return out, subs, bottom
+
+    def _row_x(self, row: str, font) -> float:
+        """글줄 왼쪽 끝 x."""
+        s = self.style
+        if s.text_align == "left":
+            return s.width * s.margin_x
+        return (s.width - font.getlength(row)) / 2
+
+    def _put(self, draw, row: str, y: float, font, fill, stroke) -> None:
+        """정렬에 맞춰 한 글줄을 그린다."""
+        s = self.style
+        if s.text_align == "left":
+            draw.text((s.width * s.margin_x, y), row, font=font, fill=fill, anchor="lm", **stroke)
+        else:
+            draw.text((s.width / 2, y), row, font=font, fill=fill, anchor="mm", **stroke)
 
     def _last_change(self, lyrics: Lyrics, t: float) -> float | None:
         """t 이전에 화면 내용이 마지막으로 바뀐 시각(줄 시작/끝)."""
@@ -564,18 +673,15 @@ class FrameRenderer:
             rows, subs, _ = self._block(lyrics.lines[i])
             if color != _HIDDEN:  # 타자기 효과의 "현재 줄 숨김" 레이어에도 보조 줄은 그린다
                 for row, _, _, y in rows:
-                    draw.text((s.width / 2, y), row, font=self._font, fill=color, anchor="mm",
-                              **stroke)
+                    self._put(draw, row, y, self._font, color, stroke)
             for row, sub_color, y in subs:
-                draw.text((s.width / 2, y), row, font=self._sub_font, fill=sub_color,
-                          anchor="mm", **stroke)
+                self._put(draw, row, y, self._sub_font, sub_color, stroke)
         if nxt is not None:
             rows = wrap(lyrics.lines[nxt].text, self._next_font, s.width * s.max_text_width)
             step = s.next_font_size * s.line_spacing
             top = self._next_top(lyrics, i)
             for k, row in enumerate(rows):
-                draw.text((s.width / 2, top + step * k), row, font=self._next_font,
-                          fill=s.next_color, anchor="mm", **stroke)
+                self._put(draw, row, top + step * k, self._next_font, s.next_color, stroke)
         return img
 
     def _progress_geometry(self, progress: float) -> tuple[int, int, int, int, int]:
@@ -585,7 +691,7 @@ class FrameRenderer:
         filled = round(w * min(1.0, max(0.0, progress)))
         h = min(s.progress_height, s.height)
         y0 = min(max(0, s.height - s.progress_bottom - h), s.height - h)  # 화면 밖으로 안 나가게
-        return (s.width - w) // 2, y0, w, h, filled
+        return self._bar_x(w), y0, w, h, filled
 
     def _draw_progress(self, img: Image.Image, progress: float, dy: int = 0) -> None:
         s = self.style
@@ -602,7 +708,12 @@ class FrameRenderer:
         w = round(s.width * s.viz_width)
         h = max(1, min(s.viz_height, s.height))
         y0 = min(max(0, s.height - s.viz_bottom - h), s.height - h)
-        return (s.width - w) // 2, y0, w, h
+        return self._bar_x(w), y0, w, h
+
+    def _bar_x(self, w: int) -> int:
+        """진행 바·음악 막대 왼쪽 x: 가운데 정렬이면 가운데, left면 가사와 같은 왼쪽 여백."""
+        s = self.style
+        return round(s.width * s.margin_x) if s.text_align == "left" else (s.width - w) // 2
 
     def _draw_viz(self, img: Image.Image, levels, dy: int = 0) -> None:
         """막대를 바닥에서 위로. 소리가 없어도 2px짜리 바닥 막대는 남겨 자리를 보여준다."""

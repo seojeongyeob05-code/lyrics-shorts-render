@@ -127,6 +127,7 @@ python3 -m shorts styles
 
 | 이름 | 느낌 |
 |---|---|
+| `modern` | 요즘 음악 쇼츠 느낌: 왼쪽 정렬 굵은 가사, 부드러운 그림자, 왼쪽 위 Now Playing 카드(`bg`·`cover`와 함께) |
 | `default` | 어두운 남색 배경, 흰 글자 |
 | `minimal` | 흰 배경 검은 글자, 다음 줄·진행 바 없이 깔끔하게 |
 | `neon` | 검은 배경에 형광 분홍·하늘색, 노래방 하이라이트가 잘 보임 |
@@ -154,7 +155,7 @@ python3 -m shorts styles
 
 | 항목 | 뜻 | 예 |
 |---|---|---|
-| `text_color` / `next_color` / `unsung_color` | 지금 줄 / 다음 줄 / 노래방에서 아직 안 부른 글자 색 | `"#FFFFFF"` |
+| `text_color` / `next_color` / `unsung_color` | 지금 줄 / 다음 줄 / 노래방에서 아직 안 부른 글자 색(`#RRGGBBAA`로 투명도) | `"#FFFFFF"` / `"#FFFFFF59"` |
 | `font_size` / `next_font_size` | 글자 크기(px) | `72` / `52` |
 | `font_path` | 폰트 파일(스타일 파일 위치 기준) | `"fonts/나눔.ttf"` |
 | `center_y` | 가사 세로 위치(0 위 ~ 1 아래) | `0.5` |
@@ -165,6 +166,11 @@ python3 -m shorts styles
 | `reveal` | `typewriter`면 한 글자씩 나타남 | `"typewriter"` |
 | `visualizer` | 음악 반응 막대(음원 있을 때) | `true` |
 | `cover_shape` / `cover_size` | 앨범 아트 모양 `rounded`·`circle`·`square` / 크기 | `"circle"` / `420` |
+| `text_align` / `margin_x` | `center`·`left`(왼쪽 정렬) / 왼쪽 여백 | `"left"` / `0.08` |
+| `shadow` / `shadow_blur` | 글자 그림자 진하기(0~1) / 번짐(px) — 테두리보다 부드러움 | `0.6` / `12` |
+| `sub_font_path` / `info_font_path` | 보조 줄 / 곡 정보 폰트(원문은 일본어 폰트, 발음·뜻은 한글 폰트처럼) | `"fonts/Pretendard-Medium.ttf"` |
+| `info_layout` | `center`(가운데 큰 제목) / `card`(왼쪽 위 작은 앨범 아트 + 제목·가수) | `"card"` |
+| `bg_shade` | 배경 아래쪽을 점점 어둡게(글자 자리만 가라앉힘) | `0.7` |
 | `sub_font_size` / `sub_colors` | 보조 줄(발음·번역) 크기 / 색 목록(줄마다 차례로) | `38` / `["#FFD27F", "#FFFFFF"]` |
 | `show_next` / `show_info` / `progress_bar` | 다음 줄 / 곡 정보 / 진행 바 보이기 | `false` |
 

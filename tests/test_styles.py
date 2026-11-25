@@ -43,6 +43,14 @@ class StylesTest(unittest.TestCase):
                          (16, 32, 48))
         self.assertIsNone(styles.load_style(self.write("n.json", {"bg_gradient": None})).bg_gradient)
 
+    def test_alpha_text_colors_and_font_paths(self):
+        st = styles.load_style(self.write("a.json", {"unsung_color": "#FFFFFF59",
+                                                     "sub_colors": ["#FFFFFFA6", [1, 2, 3, 4]],
+                                                     "sub_font_path": "f/k.ttf"}))
+        self.assertEqual(st.unsung_color, (255, 255, 255, 0x59))
+        self.assertEqual(st.sub_colors[1], (1, 2, 3, 4))
+        self.assertEqual(st.sub_font_path, os.path.join(self.dir, "f", "k.ttf"))
+
     def test_sub_colors(self):
         st = styles.load_style(self.write("sc.json", {"sub_colors": ["#FF0000", [0, 0, 255]]}))
         self.assertEqual(st.sub_colors, ((255, 0, 0), (0, 0, 255)))
@@ -65,6 +73,8 @@ class StylesTest(unittest.TestCase):
             "transition.json": ({"transition": "spin"}, "slide"),
             "reveal.json": ({"reveal": "fast"}, "typewriter"),
             "subcolors.json": ({"sub_colors": "#FFFFFF"}, "색 목록"),
+            "alpha_bg.json": ({"bg_color": "#00000080"}, "#RRGGBB"),
+            "align.json": ({"text_align": "right"}, "left"),
         }
         for name, (data, needle) in cases.items():
             with self.subTest(name=name):

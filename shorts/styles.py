@@ -15,7 +15,7 @@ import json
 import os
 import typing
 
-from .frame import COVER_SHAPES, REVEALS, TRANSITIONS, Style
+from .frame import ALIGNS, COVER_SHAPES, INFO_LAYOUTS, REVEALS, TRANSITIONS, Style
 
 PRESET_DIR = os.path.join(os.path.dirname(__file__), "presets")
 _FIELDS = {f.name: f for f in dataclasses.fields(Style)}
@@ -36,16 +36,25 @@ def _resolve(name_or_path: str) -> str:
                      f"(내장 프리셋: {', '.join(list_presets())} 또는 JSON 파일 경로)")
 
 
-def _color(key: str, value) -> tuple[int, int, int]:
-    if isinstance(value, str) and len(value) == 7 and value.startswith("#"):
+# 투명도(#RRGGBBAA)를 쓸 수 있는 색: 투명 레이어에 그리는 글자 색만
+ALPHA_OK = {"text_color", "next_color", "unsung_color", "stroke_color", "title_color",
+            "artist_color", "sub_colors"}
+
+
+def _color(key: str, value) -> tuple[int, ...]:
+    alpha_ok = key in ALPHA_OK
+    if isinstance(value, str) and value.startswith("#") and len(value) in (7, 9):
         try:
-            return tuple(int(value[i:i + 2], 16) for i in (1, 3, 5))
+            rgb = tuple(int(value[i:i + 2], 16) for i in range(1, len(value), 2))
+            if len(rgb) == 3 or alpha_ok:
+                return rgb
         except ValueError:
             pass
-    elif (isinstance(value, list) and len(value) == 3
+    elif (isinstance(value, list) and (len(value) == 3 or (alpha_ok and len(value) == 4))
           and all(isinstance(c, int) and 0 <= c <= 255 for c in value)):
         return tuple(value)
-    raise ValueError(f"{key}: 색은 \"#RRGGBB\" 또는 [r, g, b] 형식이어야 합니다 (받은 값: {value!r})")
+    form = "\"#RRGGBB\", \"#RRGGBBAA\"(투명도), [r, g, b]" if alpha_ok else "\"#RRGGBB\" 또는 [r, g, b]"
+    raise ValueError(f"{key}: 색은 {form} 형식이어야 합니다 (받은 값: {value!r})")
 
 
 def _convert(key: str, value, base_dir: str):
@@ -70,7 +79,12 @@ def _convert(key: str, value, base_dir: str):
         if value not in COVER_SHAPES:
             raise ValueError(f"{key}: {', '.join(COVER_SHAPES)} 중 하나여야 합니다 (받은 값: {value!r})")
         return value
-    if key == "font_path":
+    if key in ("text_align", "info_layout"):
+        allowed = ALIGNS if key == "text_align" else INFO_LAYOUTS
+        if value not in allowed:
+            raise ValueError(f"{key}: {', '.join(allowed)} 중 하나여야 합니다 (받은 값: {value!r})")
+        return value
+    if key.endswith("font_path"):
         if value is None:
             return None
         return os.path.normpath(os.path.join(base_dir, os.path.expanduser(value)))
