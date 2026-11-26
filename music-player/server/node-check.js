@@ -19,6 +19,16 @@ export function checkNode(version = process.versions.node) {
   };
 }
 
+// 내장 SQLite의 "실험 기능" 경고는 사용자에게 의미가 없어 숨긴다.
+export function hideSqliteWarning() {
+  const emitWarning = process.emitWarning;
+  process.emitWarning = (warning, ...args) => {
+    const type = typeof args[0] === 'string' ? args[0] : args[0] && args[0].type;
+    if (type === 'ExperimentalWarning' && String(warning).includes('SQLite')) return;
+    return emitWarning.call(process, warning, ...args);
+  };
+}
+
 // start.sh / 시작하기.bat 에서 "node server/node-check.js"로 바로 실행할 때
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const result = checkNode();

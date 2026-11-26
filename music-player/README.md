@@ -62,6 +62,16 @@ npm start          # http://localhost:3000
 npm test           # API 테스트
 ```
 
+## 비밀번호를 잊었을 때
+
+서버를 켜 둔 컴퓨터에서 `music-player` 폴더를 열고 다음을 실행한 뒤, 새 비밀번호를 두 번 입력합니다. 입력한 내용은 화면에 보이지 않습니다.
+
+```bash
+npm run reset-password
+```
+
+Docker로 실행 중이면 `docker compose exec music npm run reset-password`를 씁니다. 바꾸고 나면 모든 기기의 로그인이 끊기니 새 비밀번호로 다시 로그인하세요. 서버를 켜 둔 상태에서 실행해도 됩니다.
+
 ## 설정 (환경 변수)
 
 | 변수 | 기본값 | 설명 |
