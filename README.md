@@ -122,6 +122,8 @@ python3 -m shorts export 노래.json --format ass    # 노래.ass — 글꼴·�
 
 ### 내장 스타일
 
+![내장 스타일 미리보기](docs/gallery.jpg)
+
 ```
 python3 -m shorts styles
 ```
@@ -201,4 +203,5 @@ python3 -m shorts styles
 ```
 python3 -m unittest discover -s tests -t .   # 테스트
 python3 tools/bench.py                        # 3분 반 곡 렌더 속도·메모리 측정
+python3 tools/gallery.py                      # 스타일 미리보기 그림(docs/gallery.jpg) 다시 만들기
 ```
