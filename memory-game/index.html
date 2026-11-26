@@ -973,6 +973,7 @@ function finishTyping() {
   $('log').scrollTop = $('log').scrollHeight;
 }
 function npcSay(id, en, ko) {
+  if (greetPrefix && greetPrefix.id === id) { en = greetPrefix.en + en; ko = greetPrefix.ko + ko; greetPrefix = null; S.cbDone = true; }
   scanSeen(en);
   finishTyping();
   $('log').querySelectorAll('.next').forEach(n => n.remove());
@@ -1141,6 +1142,8 @@ function grandmaExample() {
   npcSay('grandma', `Oh, and here's a word for you, dear: "${EXAMPLES[w][0]}"`, `아, 그리고 이 말 한번 들어보렴: "${EXAMPLES[w][1]}"`);
 }
 function greet(id) {
+  const cb = CALLBACKS[S.level];
+  if (cb && cb.id === id && storyFrom === S.level - 1 && !S.cbDone) greetPrefix = cb;
   if (id === 'grandma') setTimeout(() => { if (S && !S.done) grandmaExample(); }, 0);
   if (S.level === 2 && id === 'grandma') {
     if (S.carrying) { const [en, ko] = R.grandma2(new Set(), ''); return npcSay(id, en, ko); }
@@ -1662,7 +1665,7 @@ function levelButtons() {
 function startLevel(n) { if (!played) { played = true; store.set('ag520.played', true); } LEVEL = n; S = null; hide(); newLoop(); $('sayInput').focus(); }
 function goLevel(n) { const due = dueWords(); due.length ? review(due, 0, 0, () => startLevel(n)) : startLevel(n); }
 function bindLevels() {
-  document.querySelectorAll('.lvl').forEach(b => b.addEventListener('click', () => goLevel(+b.dataset.level)));
+  document.querySelectorAll('.lvl').forEach(b => b.addEventListener('click', () => { storyFrom = null; goLevel(+b.dataset.level); }));
 }
 // The five situations read as one afternoon: each win leads into the next with a line of story.
 const BRIDGES = {
@@ -1672,7 +1675,15 @@ const BRIDGES = {
   4: [5, '관광객을 배웅하고 손을 씻으러 화장실에 들렀더니… 뭔가 고장 나 있다.'],
   5: [1, '긴 오후가 끝났다. 내일도 또 다른 5시 20분이 기다리고 있다.'],
 };
-let pendingBridge = null;
+let pendingBridge = null, storyFrom = null;
+// In story mode, the first person you meet remembers what you just did.
+const CALLBACKS = {
+  2: { id: 'grandma', en: 'Oh, you found your wallet? Thank goodness! ', ko: '어머, 지갑 찾았구나? 다행이다! ' },
+  3: { id: 'janitor', en: 'Mrs. Park told me you got her a drink. So sweet! ', ko: '박 할머니가 네가 음료 사다 줬다더라. 착하기도 하지! ' },
+  4: { id: 'visitor', en: '(She looks at your box.) Oh, you got a package! ', ko: '(상자를 보며) 어머, 택배 받으셨네요! ' },
+  5: { id: 'janitor', en: 'I saw you helping that tourist. That was kind of you! ', ko: '아까 그 관광객 도와주는 거 봤어. 친절하더라! ' },
+};
+let greetPrefix = null;
 // Before a new afternoon starts, words from earlier recaps come back: pick the meaning from four.
 // One-letter slips count as remembered; the answer is shown either way.
 function editDistance(a, b) {
@@ -1838,7 +1849,7 @@ function win() {
     ${levelButtons()}`, () => {
       bindLevels();
       const [next, line] = BRIDGES[S.level];
-      $('nextStory').addEventListener('click', () => { if (S.level !== 5) pendingBridge = line; goLevel(next); });
+      $('nextStory').addEventListener('click', () => { if (S.level !== 5) { pendingBridge = line; storyFrom = S.level; } else storyFrom = null; goLevel(next); });
     });
 }
 

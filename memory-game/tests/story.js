@@ -11,4 +11,9 @@ console.log('win sheet:', (await p.textContent('#sheet')).replace(/\s+/g, ' ').s
 await p.screenshot({ path: require('path').join(__dirname, 'out', 'story.png') });
 await p.click('#nextStory'); await p.waitForTimeout(300);
 console.log('now level', await p.evaluate(() => ag520.state().level), '| first sys:', await p.evaluate(() => document.querySelector('.msg.sys').textContent));
+await p.evaluate(() => document.activeElement.blur()); await p.keyboard.press('ArrowUp'); await p.keyboard.press('ArrowRight'); await p.waitForTimeout(200);
+console.log('story grandma:', await p.evaluate(() => [...document.querySelectorAll('.msg.npc .en')][0].dataset.full.slice(0, 60)));
+await p.click('#levelBtn'); await p.click('#sheet .lvl[data-level="2"]');
+await p.evaluate(() => document.activeElement.blur()); await p.keyboard.press('ArrowUp'); await p.keyboard.press('ArrowRight'); await p.waitForTimeout(200);
+console.log('list grandma:', await p.evaluate(() => [...document.querySelectorAll('.msg.npc .en')][0].dataset.full.slice(0, 60)));
 console.log('errors', errs); await b.close(); })();

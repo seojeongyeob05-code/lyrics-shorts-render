@@ -20,6 +20,7 @@ check "L5rooms mistakes: 0 " "상황 5: 방 구경은 실수가 아님"
 check "phone hscroll false" "휴대폰 폭 가로 넘침 없음"
 if grep -E "pageerror|errors \[ ['\"]" out/playthrough.log >/dev/null; then echo "FAIL  페이지 오류가 기록됨"; status=1; else echo "ok    페이지 오류 없음"; fi
 node story.js > out/story.log 2>&1
+if grep -q "story grandma: Oh, you found your wallet" out/story.log && ! grep -q "list grandma: Oh, you found" out/story.log; then echo "ok    이야기 잇기: 할머니가 앞 상황을 기억함"; else echo "FAIL  앞 상황 기억 (out/story.log)"; status=1; fi
 if grep -q "now level 2 | first sys: 지갑을 주머니에" out/story.log && grep -q "errors \[\]" out/story.log; then echo "ok    이야기 잇기: 상황 1 → 2"; else echo "FAIL  이야기 잇기 (out/story.log)"; status=1; fi
 if [ "${1:-}" = "--monkey" ]; then
   node monkey.js "${2:-8}" > out/monkey.log 2>&1
