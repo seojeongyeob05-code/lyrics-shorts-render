@@ -22,6 +22,8 @@ if grep -E "pageerror|errors \[ ['\"]" out/playthrough.log >/dev/null; then echo
 node story.js > out/story.log 2>&1
 if grep -q "story grandma: Oh, you found your wallet" out/story.log && ! grep -q "list grandma: Oh, you found" out/story.log; then echo "ok    이야기 잇기: 할머니가 앞 상황을 기억함"; else echo "FAIL  앞 상황 기억 (out/story.log)"; status=1; fi
 if grep -q "now level 2 | first sys: 지갑을 주머니에" out/story.log && grep -q "errors \[\]" out/story.log; then echo "ok    이야기 잇기: 상황 1 → 2"; else echo "FAIL  이야기 잇기 (out/story.log)"; status=1; fi
+node afternoon.js > out/afternoon.log 2>&1
+if grep -q "after win L4: summary=false" out/afternoon.log && grep -q "after win L5: summary=true" out/afternoon.log && grep -q "errors \[\]" out/afternoon.log; then echo "ok    오후 기록: 상황 1~5를 이어서 마치면 표시"; else echo "FAIL  오후 기록 (out/afternoon.log)"; status=1; fi
 if [ "${1:-}" = "--monkey" ]; then
   node monkey.js "${2:-8}" > out/monkey.log 2>&1
   if sed -n '/UNIQUE ERRORS:/,$p' out/monkey.log | grep -q "x "; then echo "FAIL  몽키 테스트 오류 (out/monkey.log)"; status=1; else echo "ok    몽키 테스트 ${2:-8}판 오류 없음"; fi

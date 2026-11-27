@@ -207,6 +207,14 @@ mark.focus { background: transparent; color: var(--amber); border-bottom: 2px do
 .goal .focusline { color: var(--ink); }
 .bridge { border-left: 3px solid var(--amber); padding: 4px 0 4px 12px; display: grid; gap: 10px; }
 .bridge p { color: var(--ink); font-style: normal; }
+.afternoon { border: 2px solid var(--amber); background: var(--bg-2); padding: 10px 12px; display: grid; gap: 8px; }
+.afternoon h3 { margin: 0; font-family: var(--f-pixel-b); font-weight: normal; color: var(--amber); font-size: 16px; }
+.afternoon table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.afternoon th, .afternoon td { text-align: left; padding: 3px 4px; border-bottom: 1px solid var(--line); }
+.afternoon th { color: var(--muted); font-weight: normal; }
+.afternoon td:not(:first-child), .afternoon th:not(:first-child) { text-align: right; }
+.afternoon .total td { color: var(--amber); border-bottom: 0; }
+.afternoon em { font-style: normal; color: var(--ok); }
 .how { display: grid; gap: 6px; margin: 0; padding-left: 18px; font-size: 14px; }
 </style>
 
@@ -601,6 +609,7 @@ function mark(word, field) {
   const j = journal[word] || (journal[word] = {});
   if (!j[field]) {
     j[field] = true;
+    if (field === 'used') j.usedAt = Date.now();
     if (field === 'known' && j.box == null) { j.box = 0; j.due = Date.now() + DAY * REVIEW_DAYS[0] - 3600000; }
     store.set('ag520.journal', journal);
   }
@@ -923,7 +932,7 @@ function drawMap() {
   });
 }
 if (!reduceMotion) setInterval(() => { if (S && baseCanvas) { animFrame++; drawMap(); } }, 420);
-window.ag520 = { state: () => S, blocked, map: MAP };
+window.ag520 = { state: () => S, blocked, map: MAP, win: () => { S.won = true; win(); } }; // test hooks
 
 // Signs are only readable from the doorway; once read they stay readable for this loop.
 const DOORS = {};
@@ -1662,7 +1671,10 @@ function levelButtons() {
       <span class="skills">${L.skills.map(k => `<em>${k}</em>`).join('')}</span><small>${L.story}</small><span class="rec${r ? ' done' : ''}">${rec}</span></button>`;
   }).join('')}</div>`;
 }
-function startLevel(n) { if (!played) { played = true; store.set('ag520.played', true); } LEVEL = n; S = null; hide(); newLoop(); $('sayInput').focus(); }
+// One afternoon in story mode: situations 1 to 5 in a row, each started from the previous win.
+let storyRun = [], storyStart = 0;
+function startLevel(n) {
+  if (n === 1) { storyRun = []; storyStart = Date.now(); } if (!played) { played = true; store.set('ag520.played', true); } LEVEL = n; S = null; hide(); newLoop(); $('sayInput').focus(); }
 function goLevel(n) { const due = dueWords(); due.length ? review(due, 0, 0, () => startLevel(n)) : startLevel(n); }
 function bindLevels() {
   document.querySelectorAll('.lvl').forEach(b => b.addEventListener('click', () => { storyFrom = null; goLevel(+b.dataset.level); }));
@@ -1832,6 +1844,19 @@ function win() {
   const mins = Math.round((S.t - START) / 60), prev = best[S.level];
   const newBest = !prev || S.loop < prev.loops || (S.loop === prev.loops && mins < prev.minutes);
   if (newBest) { best[S.level] = { loops: S.loop, minutes: mins, mistakes: S.mistakes.length }; store.set('ag520.best', best); }
+  if (S.level === 1 || (storyFrom === S.level - 1 && storyRun.length === S.level - 1)) storyRun.push({ level: S.level, loops: S.loop, minutes: mins, mistakes: S.mistakes.length });
+  else storyRun = [];
+  let summary = '';
+  if (S.level === 5 && storyRun.length === 5) {
+    const tot = k => storyRun.reduce((a, r) => a + r[k], 0);
+    const fresh = VOCAB.filter(([w]) => journal[w] && journal[w].usedAt >= storyStart).map(([w]) => w);
+    summary = `<div class="afternoon"><h3>오늘 오후의 기록</h3>
+      <table><thead><tr><th>상황</th><th>회차</th><th>시간</th><th>실수</th></tr></thead><tbody>
+      ${storyRun.map(r => `<tr><td>${LEVELS[r.level].name}</td><td>${r.loops}</td><td>${r.minutes}분</td><td>${r.mistakes}</td></tr>`).join('')}
+      <tr class="total"><td>합계</td><td>${tot('loops')}</td><td>${tot('minutes')}분</td><td>${tot('mistakes')}</td></tr></tbody></table>
+      <p>이번 오후에 처음 직접 써서 통한 단어 <b>${fresh.length}개</b>${fresh.length ? ': ' + fresh.map(w => `<em>${esc(w)}</em>`).join(', ') : ''}</p></div>`;
+    storyRun = [];
+  }
   const used = Math.round((S.t - START) / 60);
   const phr = S.level === 3 && S.bigParcel
     ? `<li><em>too big</em> for the lockers → SECURITY OFFICE · apartment <em>${aptWords(S.apt)}</em> = ${S.apt}호</li>`
@@ -1843,6 +1868,7 @@ function win() {
     <p class="lead">${S.loop}회차 · ${used}분 사용 · 실수 ${S.mistakes.length}번${newBest ? ' · <b class="newbest">새 최고 기록!</b>' : ''}</p>
     <p>${S.level === 3 ? '쪽지의 숫자를 제대로 읽었어요.' : '당신의 말은 통했어요. 다음엔 이렇게 말해보세요.'}</p>
     <ul class="phr">${phr || '<li>몸짓만으로 해냈어요! 다음엔 한 단어라도 영어로 말해보세요.</li>'}</ul>
+    ${summary}
     <div class="bridge"><p>${BRIDGES[S.level][1]}</p>
       <button class="primary" id="nextStory" type="button">${S.level === 5 ? '처음 상황부터 다시' : `다음 이야기: ${LEVELS[BRIDGES[S.level][0]].name}`}</button></div>
     <p><b>또는 원하는 상황을 고르세요.</b></p>
