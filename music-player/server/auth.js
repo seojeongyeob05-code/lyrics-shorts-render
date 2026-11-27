@@ -47,7 +47,8 @@ function createLoginLimiter({ max = 10, windowMs = 15 * 60 * 1000 } = {}) {
   };
 }
 
-export function createAuth(db, config) {
+// onUserCreated: 첫 계정을 만든 직후 부르는 함수 (첫 자동 백업 등). 실패해도 계정 만들기는 성공으로 둔다.
+export function createAuth(db, config, { onUserCreated } = {}) {
   const limiter = createLoginLimiter();
 
   const maxAge = config.sessionDays * DAY;
@@ -116,13 +117,18 @@ export function createAuth(db, config) {
   });
 
   // 최초 1회만: 첫 계정을 만들고 이후 가입은 막는다.
-  router.post('/setup', (req, res) => {
+  router.post('/setup', async (req, res) => {
     if (userCount() > 0) return res.status(403).json({ error: '이미 계정이 만들어져 있습니다' });
     const v = validate(req.body);
     if (v.error) return res.status(400).json({ error: v.error });
     const { lastInsertRowid } = db.prepare('INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?)')
       .run(v.username, hashPassword(v.password), Date.now());
     startSession(res, Number(lastInsertRowid));
+    try {
+      await onUserCreated?.(Number(lastInsertRowid));
+    } catch (err) {
+      console.error('계정을 만든 뒤 처리 실패:', err);
+    }
     res.status(201).json({ user: { id: Number(lastInsertRowid), username: v.username } });
   });
 

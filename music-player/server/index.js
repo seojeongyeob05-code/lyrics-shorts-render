@@ -32,7 +32,10 @@ export function createApp(config) {
   fs.mkdirSync(config.musicDir, { recursive: true });
   fs.mkdirSync(config.coverDir, { recursive: true });
   const db = openDb(path.join(config.dataDir, 'library.db'));
-  const auth = createAuth(db, config);
+  // 첫 계정을 만들면 바로 첫 자동 백업을 남긴다 (매시간 확인을 기다리지 않도록)
+  const auth = createAuth(db, config, {
+    onUserCreated: () => runAutoBackup(db, config.backupDir, { keep: config.autoBackupKeep }),
+  });
   auth.purgeExpired();
 
   const app = express();

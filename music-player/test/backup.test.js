@@ -159,7 +159,11 @@ test('자동 백업: 하루 한 번, 최근 N개만 보관, 다른 파일은 건
 test('자동 백업 목록과 바로 복원, 다른 경로는 읽지 못함', async () => {
   const s = await startServer();
   const [a] = await s.upload([['a.wav', 1]]);
-  assert.deepEqual(await (await s.call('GET', '/api/backup/auto')).json(), []); // 아직 없음
+  // 계정을 만들자마자 첫 자동 백업이 하나 생긴다
+  const { localDate } = await import('../server/backup.js');
+  const today = localDate();
+  const initial = await (await s.call('GET', '/api/backup/auto')).json();
+  assert.deepEqual(initial.map((b) => b.date), [today]);
 
   // 그제와 어제의 자동 백업이 있다고 치고 파일을 둔다 (어제 것은 가사가 있음)
   await s.call('PUT', `/api/tracks/${a.id}/lyrics`, { lyrics: '[00:00.10]어제 가사' });
@@ -172,7 +176,7 @@ test('자동 백업 목록과 바로 복원, 다른 경로는 읽지 못함', as
   fs.writeFileSync(path.join(s.dir, 'secret.json'), JSON.stringify(yesterday));
 
   const list = await (await s.call('GET', '/api/backup/auto')).json();
-  assert.deepEqual(list.map((b) => b.date), ['2026-11-19', '2026-11-18']); // 최신순
+  assert.deepEqual(list.map((b) => b.date), [today, '2026-11-19', '2026-11-18']); // 최신순
   assert.ok(list.every((b) => b.size > 0 && b.name.startsWith('my-music-backup-')));
 
   // 가사를 잃은 뒤 어제 자동 백업으로 복원
@@ -191,4 +195,35 @@ test('자동 백업 목록과 바로 복원, 다른 경로는 읽지 못함', as
 
   s.logout();
   assert.equal((await s.call('GET', '/api/backup/auto')).status, 401);
+});
+
+test('계정 만들 때 첫 백업: 끄면(0) 만들지 않고, 실패해도 계정은 만들어진다', async () => {
+  const setup = async (env, prepare) => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'music-player-first-'));
+    cleanups.push(() => fs.rmSync(dir, { recursive: true, force: true }));
+    prepare?.(dir);
+    const { app } = createApp(loadConfig({ DATA_DIR: dir, ...env }));
+    const server = await new Promise((resolve) => { const s = app.listen(0, () => resolve(s)); });
+    cleanups.push(() => server.close());
+    const res = await fetch(`http://127.0.0.1:${server.address().port}/api/auth/setup`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: 'me', password: 'password123' }),
+    });
+    return { dir, status: res.status };
+  };
+
+  const off = await setup({ AUTO_BACKUP_KEEP: '0' });
+  assert.equal(off.status, 201);
+  assert.ok(!fs.existsSync(path.join(off.dir, 'backups')));
+
+  // backups 자리에 파일이 있어 폴더를 만들 수 없는 경우
+  const errors = [];
+  const original = console.error;
+  console.error = (...args) => errors.push(args.join(' '));
+  try {
+    const broken = await setup({}, (dir) => fs.writeFileSync(path.join(dir, 'backups'), 'not a folder'));
+    assert.equal(broken.status, 201);
+  } finally {
+    console.error = original;
+  }
+  assert.ok(errors.some((e) => e.includes('계정을 만든 뒤 처리 실패')));
 });
