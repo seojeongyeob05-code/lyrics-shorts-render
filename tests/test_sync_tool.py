@@ -70,6 +70,17 @@ class SyncToolTest(unittest.TestCase):
                                          "[00:04.00]next line\n")
         self.assertFalse(w["lineModeTap"])  # 줄 모드: 둘째 줄 다음은 없음
 
+    def test_preview_follows_taps(self):
+        before, mid, after_last_word, second, done = self.r["preview"]
+        self.assertEqual((before["cur"], before["all"], before["next"]), (None, "", "Hello big world"))
+        # 1.75초: big(1.5초, 6번째 글자)~world(2.0초, 10번째) 사이 절반 → 8글자까지 밝게
+        self.assertEqual((mid["cur"], mid["sung"], mid["lit"]), (0, 8, "Hello bi"))
+        self.assertEqual(mid["next"], "next line")
+        # 마지막 단어는 다음 줄(4.0초)까지 이어진다: 3.0초면 world의 절반
+        self.assertEqual(after_last_word["sung"], 12.5)
+        self.assertEqual((second["cur"], second["next"]), (1, ""))
+        self.assertEqual(done["cur"], None)  # 마지막 줄도 최대 8초 뒤엔 사라짐
+
     def test_mode_saved_and_legacy_taps_read(self):
         self.assertEqual(self.r["modeAfterReload"], "word")
         self.assertEqual(self.r["legacy"], "[00:01.00]a\n[00:02.00]\n")

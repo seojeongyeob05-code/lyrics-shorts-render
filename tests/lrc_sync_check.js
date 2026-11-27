@@ -58,6 +58,21 @@ const path = require("path");
     r.lineModeTap = app.tap(6);
     return r;
   });
+  // 미리보기: 찍은 타이밍대로 화면이 넘어가고 노래방 줄은 부른 만큼 채워진다
+  out.preview = await page.evaluate(() => {
+    app.reset();
+    app.setLyrics("Hello big world\nnext line");
+    app.setMode("word");
+    [1.15, 1.65, 2.15, 4.15, 4.65].forEach(t => app.tap(t));
+    const shot = t => {
+      const st = app.previewAt(t);
+      const cur = document.querySelector("#pvCur");
+      return { cur: st.cur, sung: Math.round(st.sung * 100) / 100,
+               lit: cur.querySelector(".s")?.textContent ?? "", all: cur.textContent,
+               next: document.querySelector("#pvNext").textContent };
+    };
+    return [0.5, 1.75, 3.0, 4.6, 20].map(shot);
+  });
   await page.evaluate(() => app.setMode("word"));
   await page.reload();
   out.modeAfterReload = await page.evaluate(() => document.querySelector("#mode").value);
