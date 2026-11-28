@@ -52,6 +52,14 @@ python3 -m shorts render examples/demo/demo.json --preview      # demo-1.preview
 python3 tools/autosync.py 노래.mp3 가사.txt --sub 발음.txt --sub 뜻.txt --language ja -o 노래.lrc
 ```
 
+**일본어 발음 만들기·오타 찾기:** 발음 파일이 없으면 만들어 주고, 직접 쓴 발음이 있으면 원문 읽기와
+대조해 다른 자리를 알려줍니다(`pip install pykakasi` 필요). 사전 읽기가 틀릴 수도 있어 "확인해 볼 곳"으로만 알려줍니다.
+
+```
+python3 tools/pron.py 가사.txt -o 발음.txt          # 한글 발음 만들기
+python3 tools/pron.py 가사.txt --check 발음.txt     # 내가 쓴 발음의 오타 의심 자리
+```
+
 LRC는 이런 모양의 글자 파일입니다. 메모장으로 고쳐도 됩니다.
 
 ```
