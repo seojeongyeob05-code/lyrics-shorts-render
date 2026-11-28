@@ -1109,6 +1109,7 @@ function parse(text) {
   if (has(/^\s*(no|nope)\b/)) out.add('no');
   if (has(/\b(coffee|latte|americano|tea|espresso|cappuccino)\b/)) out.add('coffee');
   for (const c of ['black', 'brown', 'red', 'blue', 'white', 'green', 'yellow', 'pink', 'purple', 'gray', 'grey', 'orange']) if (has(new RegExp('\\b' + c + '\\b'))) out.add('k:' + c);
+  for (const [syn, c] of [['navy', 'blue'], ['maroon', 'red'], ['crimson', 'red'], ['scarlet', 'red'], ['charcoal', 'black'], ['tan', 'brown'], ['beige', 'brown']]) if (has(new RegExp('\\b' + syn + '\\b'))) out.add('k:' + c);
   if (has(/\b(card|id|student)\b/)) out.add('c:card');
   if (has(/\b(photo|picture|pic|photograph)\b/)) out.add('c:photo');
   if (has(/\b(ticket|concert)\b/)) out.add('c:ticket');
@@ -1119,6 +1120,9 @@ function parse(text) {
   if (has(/\b(chai|tea)\b/)) out.add('d:chai tea');
   if (has(/\b(americano|cappuccino|espresso)\b/)) out.add('d:' + t.match(/\b(americano|cappuccino|espresso)\b/)[1]);
   for (const z of ['small', 'medium', 'large']) if (has(new RegExp('\\b' + z + '\\b'))) out.add('s:' + z);
+  // Chain-store size names many learners know: understood, then gently corrected.
+  for (const [sb, z] of [['tall', 'small'], ['grande', 'medium'], ['venti', 'large']]) if (has(new RegExp('\\b' + sb + '\\b'))) { out.add('s:' + z); out.add('sb:' + sb); }
+  if (has(/\b(soy|soya|skim|coconut|lactose)\b/)) out.add('mx:' + t.match(/\b(soy|soya|skim|coconut|lactose)\b/)[1]);
   if (has(/\boat\b/)) out.add('m:oat');
   if (has(/\balmond\b/)) out.add('m:almond');
   if (has(/\b(regular|whole|normal|plain) ?(milk)?\b/)) out.add('m:regular');
@@ -1489,8 +1493,10 @@ const R = {
     if (I.has('korean')) { miss('한국어', `"${raw}"`, '카페 직원은 한국어를 못 알아들어요.'); return ["Sorry—what? I don't speak... that. What can I get you?", '네? 그 말은… 못 해요. 뭐 드릴까요?', false]; }
     if (S.carrying) return ['Enjoy! Come again!', '맛있게 드세요! 또 오세요!', true];
     const B = S.bOrder, ask = S.bAsk;
-    const d = first(I, 'd:'), z = first(I, 's:'), m = first(I, 'm:'), h = first(I, 'h:');
+    const d = first(I, 'd:'), z = first(I, 's:'), m = first(I, 'm:'), h = first(I, 'h:'), sb = first(I, 'sb:'), mx = first(I, 'mx:');
     const got = !!(d || z || m || h);
+    if (mx && !m) { S.bAsk = 'milk'; return [`Sorry, we don't have ${mx} milk. We've got regular, oat, and almond.`, `죄송해요, ${mx} 우유는 없어요. 일반, 귀리, 아몬드 있어요.`, true]; }
+    const note = sb ? [`${cap(sb)}? Ha, this isn't a chain store, we just say ${z}. `, `${sb}요? 하하, 여긴 체인점이 아니라서 그냥 ${SIZES[z]}라고 해요. `] : ['', ''];
     if (d) B.drink = d; if (z) B.size = z; if (m) B.milk = m; if (h) B.here = h;
     if (got && raw) S.bSaid.push(raw);
     const Q = {
@@ -1513,7 +1519,7 @@ const R = {
     }
     const next = ['drink', 'size', 'milk', 'here'].find(k => !B[k]);
     const heard = [B.size, B.drink].filter(Boolean).join(' ') + (B.milk ? ` with ${B.milk} milk` : '');
-    if (next) { S.bAsk = next; return [`${heard ? cap(heard) + ', got it. ' : 'Got it. '}${Q[next][0]}`, `${heard ? '알겠어요. ' : '네. '}${Q[next][1]}`, true]; }
+    if (next) { S.bAsk = next; return [`${note[0]}${heard ? cap(heard) + ', got it. ' : 'Got it. '}${Q[next][0]}`, `${note[1]}${heard ? '알겠어요. ' : '네. '}${Q[next][1]}`, true]; }
     S.carrying = { ...B }; S.bAsk = null; S.t += COST.coffee;
     S.phrases.push([S.bSaid.join(' / '), `Can I get ${orderEn(B)} to go, please?`]);
     const mug = B.here === 'here' ? ' (She hands you a heavy ceramic mug.)' : ' (She hands you a paper cup with a lid.)';

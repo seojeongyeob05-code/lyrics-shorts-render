@@ -2,6 +2,21 @@
 
 배포 링크(비공개): https://claude.ai/artifact/JwYf98yBEL1xhmtUwnTyhv (매일 같은 링크에 재배포)
 
+## 2026-11-28 (29일차)
+
+### 한 일
+- **확인**: 어제 테스트하지 못한 "오후 기록"의 새 단어 목록이 실제로 채워지는지 확인했다(경비원에게 "I lost my wallet" → "wallet, lost"). 이 검사를 `tests/run.sh`에 추가했다.
+- **학습자가 실제로 쓰는 말 더 알아듣기**(통하면 장땡을 넓히기):
+  - 카페: 한국 학습자에게 익숙한 체인점 크기 이름 tall / grande / venti를 small / medium / large로 알아듣고, "Grande? Ha, this isn't a chain store, we just say medium."처럼 일반적인 표현으로 되받아준다.
+  - 카페: soy, coconut 같은 없는 우유를 말하면 실수로 치지 않고 "Sorry, we don't have soy milk. We've got regular, oat, and almond."라고 다시 안내한다.
+  - 경비원: 색깔 비슷한 말 navy(→blue), maroon·crimson·scarlet(→red), charcoal(→black), tan·beige(→brown)를 알아듣고 기본 색 이름으로 되받는다.
+- `tests/run.sh` 14개 모두 통과.
+
+### 다음 할 일
+- GPT로 만든 NPC 흉상 초상화가 오면 대화창 얼굴 자리에 연결
+- 실제 휴대폰에서 키보드 동작 확인(사용자 피드백 필요)
+- 다른 상황에서도 학습자가 자주 쓰는 표현(예: "bathroom", "toilet paper", "elevator") 받아주기 점검
+
 ## 2026-11-27 (28일차)
 
 ### 한 일
